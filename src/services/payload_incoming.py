@@ -103,6 +103,23 @@ class IncomingService:
         return {
             "api_output": api_output
         }
+        
+    def data_transforming(self, dataOut):
+        # There should be only one table inside "value", get its content
+        table_data = next(iter(dataOut.get("value", {}).values()), None)
+        if not table_data:
+            return {"columns": [], "rows": []}
+
+        columns = table_data.get("columns", [])
+        rows = table_data.get("rows", [])
+
+        # Convert each row (list) into a dict keyed by columns
+        mapped_rows = [dict(zip(columns, row)) for row in rows]
+        
+        return {
+            "columns" : columns,
+            "rows" : mapped_rows
+        }
     
     
     
