@@ -5,7 +5,6 @@ from datetime import datetime
 class IncomingService:
     def incoming_payload_extractor(self, ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId ):
         year = ENTITY_PAYLOAD.year
-        year = ENTITY_PAYLOAD.year
         govId = ENTITY_PAYLOAD.govId
         presidentId = ENTITY_PAYLOAD.presidentId
         dataSet = ENTITY_PAYLOAD.dataSet 
@@ -26,7 +25,7 @@ class IncomingService:
         
         url = f"https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/{req_entityId}/relations"
         
-        # TODO : I need to change this AS_DEPARTMENT to IS_ATTRIBUTE (After Vibhatha implements the thing)
+        # TODO : I need to change this 'AS_DEPARTMENT' to 'IS_ATTRIBUTE' (After Vibhatha implements the thing)
         payload = {
             "id": "",
             "relatedEntityId": "",
@@ -84,7 +83,7 @@ class IncomingService:
         
         headers = {
             "Conten-Type": "application/json",
-            # "Authorization": f"Bearer {token}"   # uncomment if required   
+            # "Authorization": f"Bearer {token}"    
         }
         
         try:
