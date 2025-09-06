@@ -3,7 +3,7 @@ import requests
 from datetime import datetime
 
 class IncomingService:
-    def incoming_payload_extractor(self, REQ_ONE: REQ_ONE , ministryId ):
+    def incoming_payload_extractor(self, REQ_ONE: REQ_ONE , entityId ):
         year = REQ_ONE.year
         year = REQ_ONE.year
         govId = REQ_ONE.govId
@@ -15,19 +15,18 @@ class IncomingService:
             "govId" : govId,
             "presidentId" : presidentId,
             "dataSet" : dataSet,
-            "ministryId" : ministryId
+            "entityId" : entityId
         }
         
-    def query_aggregator(self, extracted_data):
+    def expose_relevant_attributes(self, extracted_data):
         
         data_list_for_req_year = []
-        req_ministryId = extracted_data["ministryId"]
+        req_entityId = extracted_data["entityId"]
         req_year = extracted_data["year"]
         
-        # API endpoint
-        url = f"https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/{req_ministryId}/relations"
+        url = f"https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/{req_entityId}/relations"
         
-        # Payload you want to send
+        # TODO : I need to change this AS_DEPARTMENT to IS_ATTRIBUTE (After Vibhatha implements the thing)
         payload = {
             "id": "",
             "relatedEntityId": "",
@@ -38,16 +37,14 @@ class IncomingService:
             "direction": ""
         }
 
-        # Headers (adjust if the API requires authentication like a token)
         headers = {
             "Content-Type": "application/json",
-            # "Authorization": f"Bearer {token}"   # uncomment if required
+            # "Authorization": f"Bearer {token}"  
         }
 
         try:
-            # Send POST request
             response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()  # raise error for 4xx/5xx
+            response.raise_for_status()  
             api_output = response.json()
             
             for item in api_output:
@@ -66,6 +63,11 @@ class IncomingService:
                         })   
                         
             api_output = data_list_for_req_year
+            
+            if len(api_output) == 0:
+                api_output = {
+                    "message": "No data found"
+                    }
 
         except Exception as e:
             api_output = {"error": str(e)}
