@@ -1,5 +1,5 @@
-from .ministry_payload_incoming import REQ_ONE
+from .entity_payload_incoming import ENTITY_PAYLOAD
 
 __all__ = [
-    "REQ_ONE"
+    "ENTITY_PAYLOAD"
 ]

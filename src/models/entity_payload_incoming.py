@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-class REQ_ONE(BaseModel):
+class ENTITY_PAYLOAD(BaseModel):
     year : int
     govId : str
     presidentId : str

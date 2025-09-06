@@ -1,14 +1,14 @@
-from src.models import REQ_ONE
+from src.models import ENTITY_PAYLOAD
 import requests
 from datetime import datetime
 
 class IncomingService:
-    def incoming_payload_extractor(self, REQ_ONE: REQ_ONE , entityId ):
-        year = REQ_ONE.year
-        year = REQ_ONE.year
-        govId = REQ_ONE.govId
-        presidentId = REQ_ONE.presidentId
-        dataSet = REQ_ONE.dataSet 
+    def incoming_payload_extractor(self, ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId ):
+        year = ENTITY_PAYLOAD.year
+        year = ENTITY_PAYLOAD.year
+        govId = ENTITY_PAYLOAD.govId
+        presidentId = ENTITY_PAYLOAD.presidentId
+        dataSet = ENTITY_PAYLOAD.dataSet 
             
         return {
             "year" : year,
