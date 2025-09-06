@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from src.models import ENTITY_PAYLOAD
+from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 from src.services import IncomingService
 
 router = APIRouter()
@@ -13,6 +13,5 @@ async def get_relevant_attributes_for_entity(ENTITY_PAYLOAD: ENTITY_PAYLOAD , en
 
 # Get attributes for the selected dataset
 @router.post("/data/{attributeId}")
-async def get_relevant_attributes_for_datasets(attributeId : str):
-    
-    return
+async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, attributeId : str):
+    return service.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, attributeId)

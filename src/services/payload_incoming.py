@@ -1,4 +1,4 @@
-from src.models import ENTITY_PAYLOAD
+from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 import requests
 from datetime import datetime
 
@@ -76,6 +76,36 @@ class IncomingService:
             "extracted_data": extracted_data,
             "api_output": api_output
         }
+    
+    def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , attributeId):
+        dataset = ATTRIBUTE_PAYLOAD.dataSet
+        
+        url = f"https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/{attributeId}/attributes/{dataset}"
+        
+        headers = {
+            "Conten-Type": "application/json",
+            # "Authorization": f"Bearer {token}"   # uncomment if required   
+        }
+        
+        try:
+            response = requests.post(url, headers=headers)
+            response.raise_for_status()  
+            api_output = response.json()
+            
+            if len(api_output) == 0:
+                api_output = {
+                    "message": "No data found"
+                    }
+
+        except Exception as e:
+            api_output = {"error": str(e)}
+
+        return {
+            "api_output": api_output
+        }
+    
+    
+    
     
     
     
