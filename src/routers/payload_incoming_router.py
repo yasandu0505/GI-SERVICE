@@ -17,14 +17,15 @@ async def get_relevant_attributes_for_entity(
     service: IncomingService = Depends(get_service)
     ):
     extracted_data = service.incoming_payload_extractor(ENTITY_PAYLOAD , entityId)
-    result = await service.expose_relevant_attributes(extracted_data)
-    return result
+    attributes_of_the_entity = await service.expose_relevant_attributes(extracted_data)
+    return attributes_of_the_entity
 
 # Get attributes for the selected attribute
 @router.post("/data/attribute/{attributeId}")
 async def get_relevant_attributes_for_datasets(
     ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, 
-    attributeId : str):
+    attributeId : str,
+    service: IncomingService = Depends(get_service)):
     # datasetOUT= service.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, attributeId)
     mock_api_response =  {
                         "startTime": "2024-01-01T00:00:00Z",
