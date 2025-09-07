@@ -2,6 +2,7 @@ from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 import requests
 from datetime import datetime
 from src.utils import CacheService
+import json
 
 class IncomingService:
     def __init__(self, cache: CacheService):
@@ -71,18 +72,29 @@ class IncomingService:
                 api_output = {
                     "message": "No data found"
                     }
-
+            
+            # ministries = await self.cache.get("ministries")
+            departments = await self.cache.get("departments")
+                
+            data_lookup = {item["id"]: item["name"] for item in departments["body"]}
+            
+            for item in api_output:
+                if item["id"] in data_lookup:
+                    # print(type(data_lookup[item["id"]]), data_lookup[item["id"]])
+                    # proto_obj = data_lookup[item["id"]]
+                    # if isinstance(proto_obj, str):
+                    #     proto_obj = json.loads(proto_obj)
+                    # hex_value = proto_obj.get("value", "")
+                    # decoded_name = bytes.fromhex(hex_value).decode('utf-8') if hex_value else ""
+                    # item["name"] = decoded_name
+                    item["name"] = data_lookup[item["id"]]
+        
         except Exception as e:
             api_output = {"error": str(e)}
             
-        ministries = await self.cache.get("ministries")
-        departments = await self.cache.get("departments")
-        
         return {
             "extracted_data": extracted_data,
-            "api_output": api_output,
-            "ministries": ministries,
-            "departments": departments
+            "api_output": api_output
         }
     
     def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , attributeId):

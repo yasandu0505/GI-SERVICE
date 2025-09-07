@@ -22,7 +22,9 @@ async def get_relevant_attributes_for_entity(
 
 # Get attributes for the selected attribute
 @router.post("/data/attribute/{attributeId}")
-async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, attributeId : str):
+async def get_relevant_attributes_for_datasets(
+    ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, 
+    attributeId : str):
     # datasetOUT= service.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, attributeId)
     mock_api_response =  {
                         "startTime": "2024-01-01T00:00:00Z",
