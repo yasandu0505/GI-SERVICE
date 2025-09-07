@@ -1,8 +1,12 @@
 from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 import requests
 from datetime import datetime
+from src.utils import CacheService
 
 class IncomingService:
+    def __init__(self, cache: CacheService):
+        self.cache = cache
+        
     def incoming_payload_extractor(self, ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId ):
         year = ENTITY_PAYLOAD.year
         govId = ENTITY_PAYLOAD.govId
@@ -17,7 +21,7 @@ class IncomingService:
             "entityId" : entityId
         }
         
-    def expose_relevant_attributes(self, extracted_data):
+    async def expose_relevant_attributes(self, extracted_data):
         
         data_list_for_req_year = []
         req_entityId = extracted_data["entityId"]
@@ -70,10 +74,15 @@ class IncomingService:
 
         except Exception as e:
             api_output = {"error": str(e)}
-
+            
+        ministries = await self.cache.get("ministries")
+        departments = await self.cache.get("departments")
+        
         return {
             "extracted_data": extracted_data,
-            "api_output": api_output
+            "api_output": api_output,
+            "ministries": ministries,
+            "departments": departments
         }
     
     def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , attributeId):

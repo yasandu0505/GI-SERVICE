@@ -1,15 +1,24 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 from src.services import IncomingService
+from src.utils import CacheService
+from src.dependencies import get_cache
 
 router = APIRouter()
-service = IncomingService()
+
+def get_service(cache: CacheService = Depends(get_cache)):
+    return IncomingService(cache)
 
 # Get the relevant attributes for the entity
 @router.post("/data/entity/{entityId}")
-async def get_relevant_attributes_for_entity(ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId : str):
+async def get_relevant_attributes_for_entity(
+    ENTITY_PAYLOAD: ENTITY_PAYLOAD , 
+    entityId : str,
+    service: IncomingService = Depends(get_service)
+    ):
     extracted_data = service.incoming_payload_extractor(ENTITY_PAYLOAD , entityId)
-    return service.expose_relevant_attributes(extracted_data)
+    result = await service.expose_relevant_attributes(extracted_data)
+    return result
 
 # Get attributes for the selected attribute
 @router.post("/data/attribute/{attributeId}")
