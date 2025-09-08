@@ -3,6 +3,7 @@ from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 from src.services import IncomingService
 from src.utils import CacheService
 from src.dependencies import get_cache
+from chartFactory.utils import transform_data_for_chart
 
 router = APIRouter()
 
@@ -25,8 +26,8 @@ async def get_relevant_attributes_for_entity(
 async def get_relevant_attributes_for_datasets(
     ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, 
     entityId : str,
-    chart_type : str,
     service: IncomingService = Depends(get_service)):
+    chart_type = ATTRIBUTE_PAYLOAD.chart_type
     # datasetOUT= service.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, entityId)
     mock_api_response =  {
                         "startTime": "2024-01-01T00:00:00Z",
@@ -43,5 +44,5 @@ async def get_relevant_attributes_for_datasets(
 
                         }
                     }          
-    return service.data_transforming(mock_api_response, chart_type)
+    return transform_data_for_chart(mock_api_response, chart_type)
 
