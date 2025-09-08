@@ -11,4 +11,4 @@ def transform_data_for_chart(response, chart_type):
     if not transformer:
         raise ValueError(f"Unsupported chart type: {chart_type}")
     
-    return transformer(records, "age", "salary", "name" )
+    return transformer(records)
