@@ -8,4 +8,5 @@ def transform_data_for_chart(response, chart_type):
     transformer = TRANSFORMERS.get(chart_type)
     if not transformer:
         raise ValueError(f"Unsupported chart type: {chart_type}")
+    
     return transformer(records)

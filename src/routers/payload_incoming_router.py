@@ -43,6 +43,11 @@ async def get_relevant_attributes_for_datasets(
                                 ]
 
                         }
-                    }          
-    return transform_data_for_chart(mock_api_response, chart_type)
+                    }    
+    try:
+        data = transform_data_for_chart(mock_api_response, chart_type)
+    except ValueError as e:
+        data = {"error": f"{str(e)}"}
+     
+    return data
 
