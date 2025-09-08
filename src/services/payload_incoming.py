@@ -2,7 +2,6 @@ from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 import requests
 from datetime import datetime
 from src.utils import CacheService
-import json
 
 class IncomingService:
     def __init__(self, cache: CacheService):
@@ -34,7 +33,7 @@ class IncomingService:
         payload = {
             "id": "",
             "relatedEntityId": "",
-            "name": "AS_DEPARTMENT",
+            "name": "IS_ATTRIBUTE",
             "activeAt": "",
             "startTime": "",
             "endTime": "",
@@ -67,28 +66,40 @@ class IncomingService:
                         })   
                         
             api_output = data_list_for_req_year
-            
+                        
             if len(api_output) == 0:
                 api_output = {
                     "message": "No data found"
                     }
-            
-            # ministries = await self.cache.get("ministries")
-            departments = await self.cache.get("departments")
-                
-            data_lookup = {item["id"]: item["name"] for item in departments["body"]}
-            
+
             for item in api_output:
-                if item["id"] in data_lookup:
-                    # print(type(data_lookup[item["id"]]), data_lookup[item["id"]])
-                    # proto_obj = data_lookup[item["id"]]
-                    # if isinstance(proto_obj, str):
-                    #     proto_obj = json.loads(proto_obj)
-                    # hex_value = proto_obj.get("value", "")
-                    # decoded_name = bytes.fromhex(hex_value).decode('utf-8') if hex_value else ""
-                    # item["name"] = decoded_name
-                    item["name"] = data_lookup[item["id"]]
-        
+                                
+                url = "https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/search"
+                
+                payload = {
+                    "id": item["id"],
+                    "kind": {
+                        "major": "",
+                        "minor": ""
+                        },
+                    "name": "",
+                    "created": "",
+                    "terminated": ""
+                }
+                
+                headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+                
+                try:
+                    response = requests.post(url, json=payload, headers=headers)
+                    response.raise_for_status()  
+                    api_output_2 = response.json()
+                    item["name"] =  api_output_2["body"][0]["name"]
+                except Exception as e:
+                    item["name"] = f"error : {str(e)}"
+                    
         except Exception as e:
             api_output = {"error": str(e)}
             
@@ -97,10 +108,10 @@ class IncomingService:
             "api_output": api_output
         }
     
-    def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , attributeId):
-        dataset = ATTRIBUTE_PAYLOAD.dataSet
+    def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , entityId):
+        attribute_name = ATTRIBUTE_PAYLOAD.attribute_name
         
-        url = f"https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/{attributeId}/attributes/{dataset}"
+        url = f"https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/{entityId}/attributes/{attribute_name}"
         
         headers = {
             "Conten-Type": "application/json",
@@ -120,11 +131,9 @@ class IncomingService:
         except Exception as e:
             api_output = {"error": str(e)}
 
-        return {
-            "api_output": api_output
-        }
+        return api_output
         
-    def data_transforming(self, dataOut):
+    def data_transforming(self, dataOut, chart_type):
         # There should be only one table inside "value", get its content
         table_data = next(iter(dataOut.get("value", {}).values()), None)
         if not table_data:
@@ -140,12 +149,6 @@ class IncomingService:
             "columns" : columns,
             "rows" : mapped_rows
         }
-    
-    
-    
-    
-    
-    
     
     
     

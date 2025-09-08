@@ -1,4 +1,5 @@
 from pydantic import BaseModel
 
 class ATTRIBUTE_PAYLOAD(BaseModel):
-    dataSet : str
+    attribute_name : str
+    chart_type : str

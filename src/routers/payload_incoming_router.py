@@ -21,17 +21,17 @@ async def get_relevant_attributes_for_entity(
     return attributes_of_the_entity
 
 # Get attributes for the selected attribute
-@router.post("/data/attribute/{attributeId}")
+@router.post("/data/attribute/{entityId}")
 async def get_relevant_attributes_for_datasets(
     ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, 
-    attributeId : str,
+    entityId : str,
+    chart_type : str,
     service: IncomingService = Depends(get_service)):
-    # datasetOUT= service.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, attributeId)
+    # datasetOUT= service.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, entityId)
     mock_api_response =  {
                         "startTime": "2024-01-01T00:00:00Z",
                         "endTime": "",
                         "value": {
-                            "employee_table": {
                                 "columns": ["id", "name", "age", "department", "salary"],
                                 "rows": [
                                     [1, "John Doe", 30, "Engineering", 75000.50],
@@ -40,8 +40,8 @@ async def get_relevant_attributes_for_datasets(
                                     [4, "Alice Brown", 28, "Engineering", 70000.25],
                                     [5, "Charlie Davis", 32, "Finance", 80000]
                                 ]
-                            }
+
                         }
-                    }    
-    return service.data_transforming(mock_api_response)
+                    }          
+    return service.data_transforming(mock_api_response, chart_type)
 
