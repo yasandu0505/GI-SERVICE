@@ -1,12 +1,8 @@
 from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 import requests
 from datetime import datetime
-from src.utils import CacheService
 
 class IncomingService:
-    def __init__(self, cache: CacheService):
-        self.cache = cache
-        
     def incoming_payload_extractor(self, ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId ):
         year = ENTITY_PAYLOAD.year
         govId = ENTITY_PAYLOAD.govId

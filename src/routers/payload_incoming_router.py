@@ -1,38 +1,39 @@
 from fastapi import APIRouter, Depends
 from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 from src.services import IncomingService
+from src.services import IncomingServiceOrgchart
 from src.utils import CacheService
 from src.dependencies import get_cache
 from chartFactory.utils import transform_data_for_chart
 
 router = APIRouter()
+statService  = IncomingService()
 
 def get_service(cache: CacheService = Depends(get_cache)):
-    return IncomingService(cache)
+    return IncomingServiceOrgchart(cache)
 
 # Get the relevant attributes for the entity
 @router.post("/data/entity/{entityId}")
 async def get_relevant_attributes_for_entity(
     ENTITY_PAYLOAD: ENTITY_PAYLOAD , 
-    entityId : str,
-    service: IncomingService = Depends(get_service)
+    entityId : str
     ):
-    extracted_data = service.incoming_payload_extractor(ENTITY_PAYLOAD , entityId)
-    attributes_of_the_entity = await service.expose_relevant_attributes(extracted_data)
+    extracted_data = statService.incoming_payload_extractor(ENTITY_PAYLOAD , entityId)
+    attributes_of_the_entity = await statService.expose_relevant_attributes(extracted_data)
     return attributes_of_the_entity
 
 # Get attributes for the selected attribute
 @router.post("/data/attribute/{entityId}")
 async def get_relevant_attributes_for_datasets(
     ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, 
-    entityId : str,
-    service: IncomingService = Depends(get_service)):
+    entityId : str
+    ):
     chart_type = ATTRIBUTE_PAYLOAD.chart_type
     x_axis = ATTRIBUTE_PAYLOAD.x_axis or None
     y_axis = ATTRIBUTE_PAYLOAD.y_axis or None
     label = ATTRIBUTE_PAYLOAD.label or None
     value = ATTRIBUTE_PAYLOAD.value or None
-    # datasetOUT= service.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, entityId)
+    # datasetOUT= statService.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, entityId)
     mock_api_response =  {
                         "startTime": "2024-01-01T00:00:00Z",
                         "endTime": "",
@@ -54,4 +55,10 @@ async def get_relevant_attributes_for_datasets(
         data = {"error": f"{str(e)}"}
      
     return data
+
+@router.post("data/orgchart")
+async def get_data_for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_service)):
+    
+    return
+
 

@@ -10,7 +10,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
 @app.on_event("startup")
 async def startup_event():
     print("🚀 App starting... connecting to Redis")
@@ -18,12 +17,17 @@ async def startup_event():
     app.state.redis = redis.from_url("redis://localhost:6379", decode_responses=True)
     
     ministries = await prepare_cache("Organisation", "minister")
+    print("✅ ministries preloaded into Redis")
     departments = await prepare_cache("Organisation", "department")
-    # CACHE["departments"] = await prepare_cache("People", "citizen") 
+    print("✅ departments preloaded into Redis")
+    people = await prepare_cache("Person", "citizen")
+    print("✅ people preloaded into Redis")
     
     await app.state.redis.set("ministries", json.dumps(ministries))
     await app.state.redis.set("departments", json.dumps(departments))
-    print("✅ Cache preloaded into Redis")
+    await app.state.redis.set("people", json.dumps(people))
+    
+    print("✅ Cache preloaded into Redis - Complete")
 
 @app.on_event("shutdown")
 async def shutdown_event():
