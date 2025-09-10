@@ -19,3 +19,6 @@ class CacheService:
 
     async def get_departments(self):
         return await self.get("departments")
+    
+    async def get_people(self):
+        return await self.get("people")

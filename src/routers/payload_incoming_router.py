@@ -14,20 +14,14 @@ def get_service(cache: CacheService = Depends(get_cache)):
 
 # Get the relevant attributes for the entity
 @router.post("/data/entity/{entityId}")
-async def get_relevant_attributes_for_entity(
-    ENTITY_PAYLOAD: ENTITY_PAYLOAD , 
-    entityId : str
-    ):
+async def get_relevant_attributes_for_entity(ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId : str):
     extracted_data = statService.incoming_payload_extractor(ENTITY_PAYLOAD , entityId)
     attributes_of_the_entity = await statService.expose_relevant_attributes(extracted_data)
     return attributes_of_the_entity
 
 # Get attributes for the selected attribute
 @router.post("/data/attribute/{entityId}")
-async def get_relevant_attributes_for_datasets(
-    ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, 
-    entityId : str
-    ):
+async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, entityId : str):
     chart_type = ATTRIBUTE_PAYLOAD.chart_type
     x_axis = ATTRIBUTE_PAYLOAD.x_axis or None
     y_axis = ATTRIBUTE_PAYLOAD.y_axis or None
@@ -56,9 +50,11 @@ async def get_relevant_attributes_for_datasets(
      
     return data
 
-@router.post("data/orgchart")
-async def get_data_for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_service)):
-    
-    return
+@router.get("/data/orgchart/timeline")
+async def get_timeline_for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_service)):
+    documentData = await orgchartService.get_documents()
+    presidentData = await orgchartService.get_presidents()
+    timeLine = orgchartService.get_timeline(documentData, presidentData)
+    return timeLine
 
 
