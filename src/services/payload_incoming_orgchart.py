@@ -3,8 +3,8 @@ import requests
 from datetime import datetime
 
 class IncomingServiceOrgchart:
-    # def __init__(self, cache : CacheService ):
-    #     self.cache = cache
+    def __init__(self, config: dict):
+        self.config = config
         
     async def get_data(self):   
         ministries = await self.cache.get_ministries()
@@ -19,7 +19,7 @@ class IncomingServiceOrgchart:
         
     async def get_documents(self):
         
-        url = "https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/search"
+        url = f"{self.config["BASE_URL_QUERY"]}/v1/entities/search"
 
         payload = {
             "id": "",
@@ -57,7 +57,7 @@ class IncomingServiceOrgchart:
 
     async def get_presidents(self):
            
-        url = "https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/gov_01/relations"
+        url = f"{self.config["BASE_URL_QUERY"]}/v1/entities/gov_01/relations"
 
         payload = {
             "id": "",
@@ -82,7 +82,7 @@ class IncomingServiceOrgchart:
             
             for item in presidents:
                 
-                url = "https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/search"
+                url = f"{self.config["BASE_URL_QUERY"]}/v1/entities/search"
                 
                 payload = {
                     "id": item["relatedEntityId"],

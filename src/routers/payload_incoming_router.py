@@ -8,30 +8,31 @@ from src.dependencies import get_config
 from chartFactory.utils import transform_data_for_chart
 
 router = APIRouter()
-statService  = IncomingService()
-orgchartService = IncomingServiceOrgchart()
+
+def get_orgchart_service(config: dict = Depends(get_config)):
+    return IncomingServiceOrgchart(config)
+def get_stat_service(config: dict = Depends(get_config)):
+    return IncomingService(config)
 
 # def get_service(cache: CacheService = Depends(get_cache)):
 #     return IncomingServiceOrgchart(cache)
 
 # Get the relevant attributes for the entity
 @router.post("/data/entity/{entityId}")
-async def get_relevant_attributes_for_entity(ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId : str, config: dict = Depends(get_config)):
-    BASE_URL_QUERY = config["BASE_URL_QUERY"]
+async def get_relevant_attributes_for_entity(ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId : str, statService: IncomingService = Depends(get_stat_service)):
     extracted_data = statService.incoming_payload_extractor(ENTITY_PAYLOAD , entityId)
-    attributes_of_the_entity = await statService.expose_relevant_attributes(extracted_data, BASE_URL_QUERY)
+    attributes_of_the_entity = await statService.expose_relevant_attributes(extracted_data)
     return attributes_of_the_entity
 
 # Get attributes for the selected attribute
 @router.post("/data/attribute/{entityId}")
-async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, entityId : str, config: dict = Depends(get_config)):
+async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, entityId : str, statService: IncomingService = Depends(get_stat_service)):
     chart_type = ATTRIBUTE_PAYLOAD.chart_type
     x_axis = ATTRIBUTE_PAYLOAD.x_axis or None
     y_axis = ATTRIBUTE_PAYLOAD.y_axis or None
     label = ATTRIBUTE_PAYLOAD.label or None
     value = ATTRIBUTE_PAYLOAD.value or None
-    BASE_URL_QUERY = config["BASE_URL_QUERY"]
-    datasetOUT= statService.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, entityId, BASE_URL_QUERY)
+    datasetOUT= statService.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, entityId)
     # mock_api_response =  {
     #                     "startTime": "2024-01-01T00:00:00Z",
     #                     "endTime": "",
@@ -56,7 +57,7 @@ async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYL
 
 # Get the timeline for the orgchart
 @router.get("/data/orgchart/timeline")
-async def get_timeline_for_orgchart():
+async def get_timeline_for_orgchart(orgchartService: IncomingService = Depends(get_orgchart_service)):
     documentData = await orgchartService.get_documents()
     presidentData = await orgchartService.get_presidents()
     timeLine = orgchartService.get_timeline(documentData, presidentData)
