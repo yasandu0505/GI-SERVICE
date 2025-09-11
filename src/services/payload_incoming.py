@@ -17,15 +17,14 @@ class IncomingService:
             "entityId" : entityId
         }
         
-    async def expose_relevant_attributes(self, extracted_data):
+    async def expose_relevant_attributes(self, extracted_data, BASE_URL_QUERY):
         
         data_list_for_req_year = []
         req_entityId = extracted_data["entityId"]
         req_year = extracted_data["year"]
         
-        url = f"https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/{req_entityId}/relations"
+        url = f"{BASE_URL_QUERY}/v1/entities/{req_entityId}/relations"
         
-        # TODO : I need to change this 'AS_DEPARTMENT' to 'IS_ATTRIBUTE' (After Vibhatha implements the thing)
         payload = {
             "id": "",
             "relatedEntityId": "",
@@ -70,7 +69,7 @@ class IncomingService:
 
             for item in api_output:
                                 
-                url = "https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/search"
+                url = f"{BASE_URL_QUERY}/v1/entities/search"
                 
                 payload = {
                     "id": item["id"],
@@ -104,10 +103,10 @@ class IncomingService:
             "api_output": api_output
         }
     
-    def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , entityId):
+    def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , entityId, BASE_URL_QUERY):
         attribute_name = ATTRIBUTE_PAYLOAD.attribute_name
         
-        url = f"https://aaf8ece1-3077-4a52-ab05-183a424f6d93-dev.e1-us-east-azure.choreoapis.dev/data-platform/query-api/v1.0/v1/entities/{entityId}/attributes/{attribute_name}"
+        url = f"{BASE_URL_QUERY}/v1/entities/{entityId}/attributes/{attribute_name}"
         
         headers = {
             "Conten-Type": "application/json",

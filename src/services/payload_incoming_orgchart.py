@@ -1,10 +1,10 @@
-from src.utils import CacheService
+# from src.utils import CacheService
 import requests
 from datetime import datetime
 
 class IncomingServiceOrgchart:
-    def __init__(self, cache : CacheService ):
-        self.cache = cache
+    # def __init__(self, cache : CacheService ):
+    #     self.cache = cache
         
     async def get_data(self):   
         ministries = await self.cache.get_ministries()
