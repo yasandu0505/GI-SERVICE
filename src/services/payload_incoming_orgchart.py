@@ -19,7 +19,7 @@ class IncomingServiceOrgchart:
         
     async def get_documents(self):
         
-        url = f"{self.config["BASE_URL_QUERY"]}/v1/entities/search"
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
 
         payload = {
             "id": "",
@@ -57,7 +57,7 @@ class IncomingServiceOrgchart:
 
     async def get_presidents(self):
            
-        url = f"{self.config["BASE_URL_QUERY"]}/v1/entities/gov_01/relations"
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/gov_01/relations"
 
         payload = {
             "id": "",
@@ -82,7 +82,7 @@ class IncomingServiceOrgchart:
             
             for item in presidents:
                 
-                url = f"{self.config["BASE_URL_QUERY"]}/v1/entities/search"
+                url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
                 
                 payload = {
                     "id": item["relatedEntityId"],

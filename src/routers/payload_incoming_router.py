@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
-from src.services import IncomingService
-from src.services import IncomingServiceOrgchart
+from src.services import IncomingService, IncomingServiceOrgchart, WriteAttributes
 from src.utils import CacheService
 from src.dependencies import get_cache
 from src.dependencies import get_config
@@ -9,6 +8,7 @@ from chartFactory.utils import transform_data_for_chart
 
 router = APIRouter()
 
+writer = WriteAttributes() 
 def get_orgchart_service(config: dict = Depends(get_config)):
     return IncomingServiceOrgchart(config)
 def get_stat_service(config: dict = Depends(get_config)):
@@ -54,6 +54,12 @@ async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYL
         data = {"error": f"{str(e)}"}
      
     return data
+
+@router.get("/data/write")
+async def dd():
+    # base_url = "/Users/yasandu/Desktop/RawData/data/2019"
+    base_url = "/Users/yasandu/Desktop/RawData/data/2019/Sri Lanka/Government/Gotabaya Rajapaksa/"
+    return writer.traverse_folder(base_url)
 
 # Get the timeline for the orgchart
 @router.get("/data/orgchart/timeline")

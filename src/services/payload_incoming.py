@@ -26,7 +26,7 @@ class IncomingService:
         req_entityId = extracted_data["entityId"]
         req_year = extracted_data["year"]
         
-        url = f"{self.config["BASE_URL_QUERY"]}/v1/entities/{req_entityId}/relations"
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{req_entityId}/relations"
         
         payload = {
             "id": "",
@@ -72,7 +72,7 @@ class IncomingService:
 
             for item in api_output:
                                 
-                url = f"{self.config["BASE_URL_QUERY"]}/v1/entities/search"
+                url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
                 
                 payload = {
                     "id": item["id"],
@@ -109,7 +109,7 @@ class IncomingService:
     def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , entityId, BASE_URL_QUERY):
         attribute_name = ATTRIBUTE_PAYLOAD.attribute_name
         
-        url = f"{self.config["BASE_URL_QUERY"]}/v1/entities/{entityId}/attributes/{attribute_name}"
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/attributes/{attribute_name}"
         
         headers = {
             "Conten-Type": "application/json",
