@@ -58,8 +58,12 @@ async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYL
 @router.get("/data/write")
 async def dd():
     # base_url = "/Users/yasandu/Desktop/RawData/data/2019"
-    base_url = "/Users/yasandu/Desktop/RawData/data/2019/Sri Lanka/Government/Gotabaya Rajapaksa/"
-    return writer.traverse_folder(base_url)
+    base_url = "/Users/yasandu/Desktop/RawData/data/"
+    result = writer.traverse_folder(base_url)
+    result = writer.pre_process_traverse_result(result)
+    result = writer.entity_validator(result)
+    return writer.create_parent_categories_and_children_categories(result)
+    # return result
 
 # Get the timeline for the orgchart
 @router.get("/data/orgchart/timeline")
