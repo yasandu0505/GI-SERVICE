@@ -12,6 +12,7 @@ class WriteAttributes:
         for root, dirs, files in os.walk(base_path):
             if 'data.json' in files and 'metadata.json' in files:
                 data_path = os.path.join(root, 'data.json')
+                metadata_path = os.path.join(root, 'metadata.json')
                 parent_folder_name = os.path.basename(root)
 
                 try:
@@ -21,6 +22,13 @@ class WriteAttributes:
                             print(f"Skipping empty data.json in {root}")
                             continue
                         data_content = json.loads(content)
+                        
+                    with open(metadata_path, 'r', encoding='utf-8') as fm:
+                        content_metadata = fm.read().strip()
+                        if not content_metadata:
+                            print(f"Skipping empty metadata.json in {root}")
+                            continue
+                        metadata_content = json.loads(content_metadata)
                 except json.JSONDecodeError as e:
                     print(f"Skipping invalid JSON in {root}: {e}")
                     continue
@@ -52,7 +60,8 @@ class WriteAttributes:
                     "attributeName": parent_folder_name,
                     "relatedEntityName": relatedEntityName,
                     "relation": relation,
-                    "attributeData": data_content
+                    "attributeData": data_content,
+                    "attributeMetadata": metadata_content
                 })
 
         return result
@@ -297,6 +306,7 @@ class WriteAttributes:
                 
                 attribute_name = item['attributeName']
                 attribute_data = item['attributeData']
+                # attribute_metadata = item["attributeMetadata"]
                 
                 if parent_name not in node_ids:
                     node_id = self.generate_random_id() + str(count)
@@ -337,8 +347,12 @@ class WriteAttributes:
                         first_rel = res['relationships'][0]
                         rel_key = first_rel['key']
                         print(f"Create relationship: {parent_name}({parent_id}) -> {child_name}({child_id}) with relationship id: {rel_key}")
-                        self.create_attribute_to_entity(date, child_id, attribute_name, attribute_data)
-
+                        res = self.create_attribute_to_entity(date, child_id, attribute_name, attribute_data)
+                        print("attribute created.....=-========================================")
+                        # attribute_id = res["id"]
+                        # self.create_metadata_to_attribute(attribute_id, attribute_metadata)
+                        # print("attribute metadata created.....=-========================================")
+                        
                 print("=" * 50) 
             else:
                 if 'minister' and 'department' in item:
@@ -351,12 +365,37 @@ class WriteAttributes:
                 print(f"there is a possible relationship from {parent_of_attribute} - {item['attributeName']}")
                 attribute_name = item['attributeName']
                 attribute_data = item['attributeData']
+                # attribute_metadata = item["attributeMetadata"]
                 
-                self.create_attribute_to_entity(date, parent_of_attribute, attribute_name, attribute_data )
+                res = self.create_attribute_to_entity(date, parent_of_attribute, attribute_name, attribute_data )
+                # attribute_id = res["id"]
                 print("attribute created.....=-========================================")
+                # self.create_metadata_to_attribute(attribute_id, attribute_metadata)
+                # print("attribute metadata created.....=-========================================")
                 
                 
         return
+    
+    def create_metadata_to_attribute(self, attribute_id, attribute_metadata): 
+        url = f"http://0.0.0.0:8080/entities/{attribute_id}"
+        payload = {
+            "id": attribute_id,
+            "metadata": attribute_metadata
+        }
+        
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        
+        try:
+            response = requests.put(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            return output
+        except Exception as e:
+            print(f"error : " +  str(e))
+            return 
 
     def create_attribute_to_entity(self, date, entity_id, attribute_name, values): 
         url = f"http://0.0.0.0:8080/entities/{entity_id}"
