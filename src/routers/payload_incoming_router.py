@@ -1,27 +1,22 @@
 from fastapi import APIRouter, Depends
-from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
+from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD, WRITE_PAYLOAD
 from src.services import IncomingService, IncomingServiceOrgchart, WriteAttributes
-from src.utils import CacheService
-from src.dependencies import get_cache
 from src.dependencies import get_config
 from chartFactory.utils import transform_data_for_chart
 
 router = APIRouter()
-
 writer = WriteAttributes() 
+
 def get_orgchart_service(config: dict = Depends(get_config)):
     return IncomingServiceOrgchart(config)
+
 def get_stat_service(config: dict = Depends(get_config)):
     return IncomingService(config)
-
-# def get_service(cache: CacheService = Depends(get_cache)):
-#     return IncomingServiceOrgchart(cache)
 
 # Get the relevant attributes for the entity
 @router.post("/data/entity/{entityId}")
 async def get_relevant_attributes_for_entity(ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId : str, statService: IncomingService = Depends(get_stat_service)):
-    extracted_data = statService.incoming_payload_extractor(ENTITY_PAYLOAD , entityId)
-    attributes_of_the_entity = await statService.expose_relevant_attributes(extracted_data)
+    attributes_of_the_entity = await statService.expose_relevant_attributes(ENTITY_PAYLOAD , entityId)
     return attributes_of_the_entity
 
 # Get attributes for the selected attribute
@@ -33,37 +28,21 @@ async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYL
     label = ATTRIBUTE_PAYLOAD.label or None
     value = ATTRIBUTE_PAYLOAD.value or None
     datasetOUT= statService.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, entityId)
-    # mock_api_response =  {
-    #                     "startTime": "2024-01-01T00:00:00Z",
-    #                     "endTime": "",
-    #                     "value": {
-    #                             "columns": ["id", "name", "age", "department", "salary"],
-    #                             "rows": [
-    #                                 [1, "John Doe", 30, "Engineering", 75000.50],
-    #                                 [2, "Jane Smith", 25, "Marketing", 65000],
-    #                                 [3, "Bob Wilson", 35, "Sales", 85000.75],
-    #                                 [4, "Alice Brown", 28, "Engineering", 70000.25],
-    #                                 [5, "Charlie Davis", 32, "Finance", 80000]
-    #                             ]
-
-    #                     }
-    #                 }    
     try:
         data = transform_data_for_chart(datasetOUT, chart_type, x_axis, y_axis, label, value)
     except ValueError as e:
         data = {"error": f"{str(e)}"}
-     
     return data
 
-@router.get("/data/write")
-async def dd():
-    # base_url = "/Users/yasandu/Desktop/RawData/data/2019"
-    base_url = "/Users/yasandu/Desktop/RawData/data/"
+# Write attributes to the entities
+@router.post("/data/writeAttributes")
+async def write_attributes(WRITE_PAYLOAD: WRITE_PAYLOAD):
+    # Example : base_url = "/Users/yasandu/Documents/RawData/data/2022"
+    base_url = WRITE_PAYLOAD.base_url
     result = writer.traverse_folder(base_url)
     result = writer.pre_process_traverse_result(result)
     result = writer.entity_validator(result)
     return writer.create_parent_categories_and_children_categories(result)
-    # return result
 
 # Get the timeline for the orgchart
 @router.get("/data/orgchart/timeline")
