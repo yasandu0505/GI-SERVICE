@@ -5,7 +5,179 @@ import requests
 import random
 import string
 class WriteAttributes:
+    def generate_random_id(self,length=5):
+        return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
+    def create_nodes(self, node_id, node_name, node_key, date):
+        
+        url = "http://0.0.0.0:8080/entities/"
+           
+        payload = {
+            "id": node_id,
+            "kind": {
+                "major": "Category",
+                "minor": node_key
+                },
+            "created": date,
+            "terminated": "",
+            "name": {
+                "startTime": date,
+                "endTime": "",
+                "value": node_name
+            },
+            "metadata": [],
+            "attributes": [],
+            "relationships": []
+        }
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            return output
+        except Exception as e:
+            print("error : " +  str(e))
+            return {
+                "error": str(e)
+            }
+
+    def validate_node(self, entity_name, minorKind, majorKind) -> tuple[bool, str]:
+        url = "http://0.0.0.0:8081/v1/entities/search"
+        
+        payload = {
+            "id": "",
+            "kind": {
+                "major": majorKind,
+                "minor": minorKind
+            },
+            "name": entity_name,
+            "created": "",
+            "terminated": ""
+            }
+        
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+                
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            if output and "body" in output and len(output["body"]) > 0:
+                entity_id = output["body"][0]["id"]
+                return True, entity_id
+            else:
+                return False, "Not found"
+        except Exception as e:
+            print("error : " +  str(e))
+            return False , "Not found - Error occured"
+        
+    def create_relationships(self, parent_id, child_id, date):
+        url = f"http://0.0.0.0:8080/entities/{parent_id}"
+        
+        payload = {
+                "id": parent_id,
+                "kind": {},
+                "created": "",
+                "terminated": "",
+                "name": {
+                },
+                "metadata": [],
+                "attributes": [],
+                "relationships": [
+                 {
+                    "key": "AS_CATEGORY",
+                    "value": {
+                        "relatedEntityId": child_id,
+                        "startTime": date,
+                        "endTime": "",
+                        "id": f"{parent_id}-to-{child_id}",
+                        "name": "AS_CATEGORY"
+                    }
+                }
+            ]
+        }
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        
+        
+        try:
+            response = requests.put(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            return output
+        except Exception as e:
+            print("error : " +  str(e))
+            return {
+                "error": str(e)
+            }
+            
+    def create_metadata_to_attribute(self, attribute_id, attribute_metadata): 
+        url = f"http://0.0.0.0:8080/entities/{attribute_id}"
+        
+        payload = {
+            "id": attribute_id,
+            "metadata": attribute_metadata
+        }
+        
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        
+        try:
+            response = requests.put(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            return output
+        except Exception as e:
+            print(f"error : " +  str(e))
+            return {
+                "error": str(e)
+            }
+
+    def create_attribute_to_entity(self, date, entity_id, attribute_name, values): 
+        url = f"http://0.0.0.0:8080/entities/{entity_id}"
+        payload = {
+            "id": entity_id,
+            "attributes": [
+                {
+                    "key": attribute_name,
+                    "value": {
+                        "values": [
+                            {
+                                "startTime": date,
+                                "endTime": "",
+                                "value": values
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        
+        try:
+            response = requests.put(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            return output
+        except Exception as e:
+            print(f"error : " +  str(e))
+            return {
+                "error" : str(e)
+            }
+            
     def traverse_folder(self, base_path):
         result = []
 
@@ -19,21 +191,22 @@ class WriteAttributes:
                     with open(data_path, 'r', encoding='utf-8') as f:
                         content = f.read().strip()
                         if not content:
-                            print(f"Skipping empty data.json in {root}")
+                            print(f"Skipping empty data.json in {root} \n")
+                            
                             continue
                         data_content = json.loads(content)
                         
                     with open(metadata_path, 'r', encoding='utf-8') as fm:
                         content_metadata = fm.read().strip()
                         if not content_metadata:
-                            print(f"Skipping empty metadata.json in {root}")
+                            print(f"Skipping empty metadata.json in {root}\n")
                             continue
                         metadata_content = json.loads(content_metadata)
                 except json.JSONDecodeError as e:
-                    print(f"Skipping invalid JSON in {root}: {e}")
+                    print(f"Skipping invalid JSON in {root}: {e} \n")
                     continue
                 except Exception as e:
-                    print(f"Error reading {data_path}: {e}")
+                    print(f"Error reading {data_path}: {e}\n")
                     continue
 
                 # Collect relation parts from parent folder back to base_path
@@ -90,44 +263,10 @@ class WriteAttributes:
                         item["categoryData"]["parentCategory"] = str(related_item.split('(')[0])
                     elif category_hop_count >= 1:
                         item["categoryData"]["childCategory_" + str(category_hop_count)] = str(related_item.split('(')[0])
-                        
                     category_hop_count += 1
-                    
         return result
     
-    
-    def validate_node(self, entity_name, minorKind, majorKind) -> tuple[bool, str]:
-        url = "http://0.0.0.0:8081/v1/entities/search"
-        
-        payload = {
-            "id": "",
-            "kind": {
-                "major": majorKind,
-                "minor": minorKind
-            },
-            "name": entity_name,
-            "created": "",
-            "terminated": ""
-            }
-        
-        headers = {
-                    "Content-Type": "application/json",
-                    # "Authorization": f"Bearer {token}"  
-                }
-                
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            output = response.json()
-            if output:
-                output = output["body"][0]["id"]
-                return True , str(output)
-        except Exception as e:
-            print(f"error : " +  str(e))
-            return False , "not found"
-        
     def entity_validator(self, result):
-        
         for item in result:
             for data in item:
                 if data == "government":
@@ -162,131 +301,8 @@ class WriteAttributes:
                         item[data] = entity_id
                     else:
                         item[data] = entity_id
-                
         return result
-    
-    def create_nodes(self, node_id, node_name, node_key, date):
-        
-        url = "http://0.0.0.0:8080/entities/"
-           
-        payload = {
-            "id": node_id,
-            "kind": {
-                "major": "Category",
-                "minor": node_key
-                },
-            "created": date,
-            "terminated": "",
-            "name": {
-                "startTime": date,
-                "endTime": "",
-                "value": node_name
-            },
-            "metadata": [],
-            "attributes": [],
-            "relationships": []
-        }
-        headers = {
-                    "Content-Type": "application/json",
-                    # "Authorization": f"Bearer {token}"  
-                }
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            output = response.json()
-            return output
 
-        except Exception as e:
-            print(f"error : " +  str(e))
-            return None
-        
-        
-    def create_relationship(self, parent_id, child_id, date):
-        url = f"http://0.0.0.0:8080/entities/{parent_id}"
-        
-        payload = {
-                "id": parent_id,
-                "kind": {},
-                "created": "",
-                "terminated": "",
-                "name": {
-                },
-                "metadata": [],
-                "attributes": [],
-                "relationships": [
-                 {
-                    "key": "AS_CATEGORY",
-                    "value": {
-                        "relatedEntityId": child_id,
-                        "startTime": date,
-                        "endTime": "",
-                        "id": f"{parent_id}-to-{child_id}",
-                        "name": "AS_CATEGORY"
-                    }
-                }
-            ]
-        }
-        headers = {
-                    "Content-Type": "application/json",
-                    # "Authorization": f"Bearer {token}"  
-                }
-        
-        
-        try:
-            response = requests.put(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            output = response.json()
-            return output
-        
-        except Exception as e:
-            print(f"error : " +  str(e))
-            return None
-            
-    def generate_random_id(self,length=5):
-        return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
-    
-    def create_relationship_with_main_parent(self, parent_of_parent_category, parent_id, date):
-        url = f"http://0.0.0.0:8080/entities/{parent_of_parent_category}"
-        
-        payload = {
-                "id": parent_of_parent_category,
-                "kind": {},
-                "created": "",
-                "terminated": "",
-                "name": {
-                },
-                "metadata": [],
-                "attributes": [],
-                "relationships": [
-                 {
-                    "key": "AS_CATEGORY",
-                    "value": {
-                        "relatedEntityId": parent_id,
-                        "startTime": date,
-                        "endTime": "",
-                        "id": f"{parent_of_parent_category}-to-{parent_id}",
-                        "name": "AS_CATEGORY"
-                    }
-                }
-            ]
-        }
-        headers = {
-                    "Content-Type": "application/json",
-                    # "Authorization": f"Bearer {token}"  
-                }
-        
-        
-        try:
-            response = requests.put(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            output = response.json()
-            return output
-        
-        except Exception as e:
-            print(f"error : " +  str(e))
-            return None
-       
-    
     def create_parent_categories_and_children_categories(self, result):
         count = 0
         node_ids = {}  
@@ -300,133 +316,90 @@ class WriteAttributes:
                 parent_name = category_data['parentCategory']
                 
                 if 'minister' and 'department' in item:
-                    parent_of_parent_category = item["department"]
+                    parent_of_parent_category_id = item["department"]
                 elif 'minister' in item:
-                    parent_of_parent_category = item["minister"]
+                    parent_of_parent_category_id = item["minister"]
                 
                 attribute_name = item['attributeName']
                 attribute_data = item['attributeData']
-                # attribute_metadata = item["attributeMetadata"]
                 
                 if parent_name not in node_ids:
                     node_id = self.generate_random_id() + str(count)
-                    print(f"Creating parent node '{parent_name}'...")
+                    print(f"\n🟡 Creating parent category node for ---> '{parent_name}'")
                     res = self.create_nodes(node_id, parent_name, 'parentCategory', date)
                     count += 1
                     node_id = res['id']
                     node_ids[parent_name] = node_id
-                    print(f"Created parent node '{parent_name}' with id: {node_id}")
+                    print(f"🟢 Created parent category node for ---> '{parent_name}' with id: {node_id}")
                 else:
-                    print(f"Parent node '{parent_name}' already exists with id: {node_ids[parent_name]}")
+                    print(f"🚩 Parent category node for ---> '{parent_name}' is already exists with the id: {node_ids[parent_name]}")
             
                 parent_id = node_ids[parent_name]
                 
-                print(f"{parent_of_parent_category} - {parent_id}")
+                print(f"🟡 Creating relationship from {parent_of_parent_category_id} ---> {parent_id}")
+                res = self.create_relationships(parent_of_parent_category_id, parent_id, date)
+                if res["id"]:
+                    print(f"🟢 Created relationship from {parent_of_parent_category_id} ---> {parent_id}")
+                else:
+                    print(f"🔴 Creating relationship from {parent_of_parent_category_id} ---> {parent_id} was unsuccessfull")
+                    print(f"With error ---> {res['error']}")
+                    
+                print("\n")
                 
-                self.create_relationship_with_main_parent(parent_of_parent_category, parent_id, date)
-
                 # --- Create child nodes ---
                 for key, child_name in category_data.items():
                     if key.startswith('childCategory'):
                         child_key = (parent_name, child_name)  # unique per parent
                         if child_key not in node_ids:
                             node_id = self.generate_random_id() + str(count)
-                            print(f"Creating child node '{child_name}' for parent '{parent_name}'...")
+                            print(f"🟡 Creating child node '{child_name}' for parent '{parent_name}'")
                             res = self.create_nodes(node_id, child_name, key, date)
                             count += 1
                             node_id = res['id']
                             node_ids[child_key] = node_id
-                            print(f"Created child node '{child_name}' with id: {node_id}")
+                            print(f"🟢 Created child node '{child_name}' with id: {node_id} for parent '{parent_name}'")
                         else:
-                            print(f"Child node '{child_name}' for parent '{parent_name}' already exists with id: {node_ids[child_key]}")
+                            print(f"🚩 Child node '{child_name}' for parent '{parent_name}' already exists with id: {node_ids[child_key]}")
 
                         child_id = node_ids[child_key]
 
                         # --- Create relationship ---
-                        res = self.create_relationship(parent_id, child_id, date)
-                        first_rel = res['relationships'][0]
-                        rel_key = first_rel['key']
-                        print(f"Create relationship: {parent_name}({parent_id}) -> {child_name}({child_id}) with relationship id: {rel_key}")
-                        res = self.create_attribute_to_entity(date, child_id, attribute_name, attribute_data)
-                        print("attribute created.....=-========================================")
-                        # attribute_id = res["id"]
-                        # self.create_metadata_to_attribute(attribute_id, attribute_metadata)
-                        # print("attribute metadata created.....=-========================================")
-                        
-                print("=" * 50) 
+                        print(f"🟡 Creating relationship from {parent_name} ---> {child_name}")
+                        res = self.create_relationships(parent_id, child_id, date)
+                        if res['relationships'][0]:
+                            print(f"🟢 Created relationship from {parent_name} ---> {child_name}")
+                            print(f"🟡 Creating attribute for {child_name} ---> {attribute_name}")
+                            res = self.create_attribute_to_entity(date, child_id, attribute_name, attribute_data)
+                            if res["id"]:
+                                print(f"🟢 Created attribute for {child_name} with attribute id {res['id']}")
+                            else:
+                                print(f"🔴 Creating attribute for {child_name} was unsuccessfull")
+                                print(f"With error ---> {res['error']}")     
+                        else:
+                            print(f"🔴 Creating relationship from {parent_name} ---> {child_name} was unsuccessfull")
+                            print(f"With error ---> {res['error']}")
+                
+                print("\n")       
+                    
             else:
                 if 'minister' and 'department' in item:
                     parent_of_attribute = item["department"]
-                    print("attribute directly connected to a department") 
+                    print("\n🟡 Attribute directly connects to a Department") 
                 elif 'minister' in item:
                     parent_of_attribute = item["minister"]
-                    print("attribute directly connected to a ministry") 
-                    
-                print(f"there is a possible relationship from {parent_of_attribute} - {item['attributeName']}")
+                    print("\n🟡 Attribute directly connected to a Ministry")
+                     
                 attribute_name = item['attributeName']
                 attribute_data = item['attributeData']
-                # attribute_metadata = item["attributeMetadata"]
-                
-                res = self.create_attribute_to_entity(date, parent_of_attribute, attribute_name, attribute_data )
-                # attribute_id = res["id"]
-                print("attribute created.....=-========================================")
-                # self.create_metadata_to_attribute(attribute_id, attribute_metadata)
-                # print("attribute metadata created.....=-========================================")
-                
-                
+                print(f"🟡 Creating attribute for {parent_of_attribute} ---> {attribute_name}")
+                res = self.create_attribute_to_entity(date, parent_of_attribute, attribute_name, attribute_data)
+                if res["id"]:
+                    print(f"🟢 Created attribute for {parent_of_attribute} with attribute id {res['id']}")
+                else:
+                    print(f"🔴 Creating attribute for {parent_of_attribute} was unsuccessfull")
+                    print(f"With error ---> {res['error']}")
+                    
+                print("\n")
+                       
         return
     
-    def create_metadata_to_attribute(self, attribute_id, attribute_metadata): 
-        url = f"http://0.0.0.0:8080/entities/{attribute_id}"
-        payload = {
-            "id": attribute_id,
-            "metadata": attribute_metadata
-        }
-        
-        headers = {
-                    "Content-Type": "application/json",
-                    # "Authorization": f"Bearer {token}"  
-                }
-        
-        try:
-            response = requests.put(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            output = response.json()
-            return output
-        except Exception as e:
-            print(f"error : " +  str(e))
-            return 
-
-    def create_attribute_to_entity(self, date, entity_id, attribute_name, values): 
-        url = f"http://0.0.0.0:8080/entities/{entity_id}"
-        payload = {
-            "id": entity_id,
-            "attributes": [
-                {
-                    "key": attribute_name,
-                    "value": {
-                        "values": [
-                            {
-                                "startTime": date,
-                                "endTime": "",
-                                "value": values
-                            }
-                        ]
-                    }
-                }
-            ]
-        }
-        
-        headers = {
-                    "Content-Type": "application/json",
-                    # "Authorization": f"Bearer {token}"  
-                }
-        
-        try:
-            response = requests.put(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            output = response.json()
-            return output
-        except Exception as e:
-            print(f"error : " +  str(e))
-            return  
