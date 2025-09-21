@@ -1,5 +1,4 @@
-from .dependencies import get_cache, get_config
+from .dependencies import get_config
 __all__ = [
-    "get_cache",
     "get_config"
 ]
