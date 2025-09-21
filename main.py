@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from src.routers import payload_incoming_router
-# import json
 import yaml
 
 app = FastAPI(
