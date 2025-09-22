@@ -2,8 +2,7 @@ import os
 import json
 from datetime import datetime
 import requests
-import random
-import string
+
 class WriteAttributes:
     def generate_id_for_category(self, date, parent_of_parent_category_id, name):
         date_for_id = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
@@ -409,6 +408,6 @@ class WriteAttributes:
                     print(f"With error ---> {res['error']}")
                     
                 print("=" * 200) 
-                       
+                    
         return
     
