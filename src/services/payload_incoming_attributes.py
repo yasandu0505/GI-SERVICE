@@ -104,13 +104,16 @@ class IncomingServiceAttributes:
                 }
             }
         
-        return data_list_for_req_year
+        return {
+            "year": req_year,
+            "attributes": data_list_for_req_year
+        }
 
     
     def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , entityId):
         attribute_name = ATTRIBUTE_PAYLOAD.attribute_name
         
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/attributes/{attribute_name}"
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entitiesj/{entityId}/attributes/{attribute_name}"
         
         headers = {
             "Conten-Type": "application/json",
@@ -120,14 +123,23 @@ class IncomingServiceAttributes:
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()  
-            api_output = response.json()
+            attribute_data = response.json()
             
-            if len(api_output) == 0:
-                api_output = {
-                    "message": "No data found"
-                    }
+            if len(attribute_data) == 0:
+                return {
+                    "attributeName": attribute_name,
+                    "error": "No data found"
+                }
+            
+            return{
+                "attributeName": attribute_name,
+                "data": attribute_data
+            }
 
         except Exception as e:
-            api_output = {"error": str(e)}
-        return api_output
+            return{
+                "attributeName": attribute_name,
+                "error": f"No data found - Error occured - {str(e)}"
+            }
+            
         
