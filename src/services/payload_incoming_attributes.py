@@ -113,7 +113,7 @@ class IncomingServiceAttributes:
     def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , entityId):
         attribute_name = ATTRIBUTE_PAYLOAD.attribute_name
         
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entitiesj/{entityId}/attributes/{attribute_name}"
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/attributes/{attribute_name}"
         
         headers = {
             "Conten-Type": "application/json",
