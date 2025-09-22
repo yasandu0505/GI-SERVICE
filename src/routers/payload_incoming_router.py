@@ -22,12 +22,8 @@ async def get_relevant_attributes_for_entity(ENTITY_PAYLOAD: ENTITY_PAYLOAD , en
 # Get attributes for the selected attribute
 @router.post("/data/attribute/{entityId}")
 async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD, entityId : str, statService: IncomingServiceAttributes = Depends(get_stat_service)):
-    datasetOUT= statService.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, entityId)
-    try:
-        data = transform_data_for_chart(datasetOUT, ATTRIBUTE_PAYLOAD)
-    except ValueError as e:
-        data = {"error": f"{str(e)}"}
-    return data
+    attribute_data_out = statService.expose_data_for_the_attribute(ATTRIBUTE_PAYLOAD, entityId)   
+    return transform_data_for_chart(attribute_data_out)
 
 # Write attributes to the entities
 @router.post("/data/writeAttributes")

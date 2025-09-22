@@ -32,72 +32,83 @@ class IncomingServiceAttributes:
         try:
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()  
-            api_output = response.json()
+            attributes = response.json()
+            
+            if len(attributes) > 0:
+                for item in attributes:
+                    startTime = item["startTime"]
+                    if "endTime" in item and item["endTime"]:
+                        endTime = item["endTime"]
+                    else:
+                        endTime = startTime
+                    if startTime and endTime:
+                        start_year = datetime.fromisoformat(startTime.replace("Z", "")).year
+                        end_year = datetime.fromisoformat(endTime.replace("Z", "")).year
 
-            for item in api_output:
-                startTime = item["startTime"]
-                if "endTime" in item and item["endTime"]:
-                    endTime = item["endTime"]
-                else:
-                    endTime = startTime
-                if startTime and endTime:
-                    start_year = datetime.fromisoformat(startTime.replace("Z", "")).year
-                    end_year = datetime.fromisoformat(endTime.replace("Z", "")).year
-
-                    # Check if req_year is between start and end year
-                    if int(start_year) <= int(req_year) <= int(end_year):
-                        data_list_for_req_year.append({
-                            "id" : item["relatedEntityId"],
-                            "startTime" : item["startTime"],
-                            "endTime" : item["endTime"]
-                        })   
-                        
-            api_output = data_list_for_req_year
-                        
-            if len(api_output) == 0:
+                        # Check if req_year is between start and end year
+                        if int(start_year) <= int(req_year) <= int(end_year):
+                            data_list_for_req_year.append({
+                                "id" : item["relatedEntityId"],
+                                "startTime" : item["startTime"],
+                                "endTime" : item["endTime"]
+                            })  
+                
+                if len(data_list_for_req_year) == 0:
+                    return {
+                        "year": req_year,
+                        "attributes": {
+                            "message": "No attributes found in the requested time range"
+                        }
+                    } 
+                
+                for item in data_list_for_req_year:
+                    url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+                
+                    payload = {
+                        "id": item["id"],
+                        "kind": {
+                            "major": "",
+                            "minor": ""
+                            },
+                        "name": "",
+                        "created": "",
+                        "terminated": ""
+                    }
+                
+                    headers = {
+                        "Content-Type": "application/json",
+                        # "Authorization": f"Bearer {token}"  
+                    }
+                
+                    try:
+                        response = requests.post(url, json=payload, headers=headers)
+                        response.raise_for_status()  
+                        output = response.json()
+                        item["name"] =  output["body"][0]["name"]
+                    except Exception as e:
+                        item["name"] = f"error : {str(e)}"
+                
+            else:
                 return {
                     "year": req_year,
                     "attributes": {
-                        "message": "No data found"
+                        "message": "No attributes found for the entity"
                     }
                 }
-
-            for item in api_output:
-                                
-                url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
-                
-                payload = {
-                    "id": item["id"],
-                    "kind": {
-                        "major": "",
-                        "minor": ""
-                        },
-                    "name": "",
-                    "created": "",
-                    "terminated": ""
-                }
-                
-                headers = {
-                    "Content-Type": "application/json",
-                    # "Authorization": f"Bearer {token}"  
-                }
-                
-                try:
-                    response = requests.post(url, json=payload, headers=headers)
-                    response.raise_for_status()  
-                    api_output_2 = response.json()
-                    item["name"] =  api_output_2["body"][0]["name"]
-                except Exception as e:
-                    item["name"] = f"error : {str(e)}"
-                    
+                               
         except Exception as e:
-            api_output = {"error": str(e)}
-            
+            return {
+                "year": req_year,
+                "attributes": {
+                    "error": str(e)
+                }
+            }
+        
         return {
             "year": req_year,
-            "attributes": api_output
+            "attributes": data_list_for_req_year
         }
-    
+
     
     def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , entityId):
         attribute_name = ATTRIBUTE_PAYLOAD.attribute_name
@@ -112,14 +123,23 @@ class IncomingServiceAttributes:
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()  
-            api_output = response.json()
+            attribute_data = response.json()
             
-            if len(api_output) == 0:
-                api_output = {
-                    "message": "No data found"
-                    }
+            if len(attribute_data) == 0:
+                return {
+                    "attributeName": attribute_name,
+                    "error": "No data found"
+                }
+            
+            return{
+                "attributeName": attribute_name,
+                "data": attribute_data
+            }
 
         except Exception as e:
-            api_output = {"error": str(e)}
-        return api_output
+            return{
+                "attributeName": attribute_name,
+                "error": f"No data found - Error occured - {str(e)}"
+            }
+            
         

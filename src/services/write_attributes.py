@@ -2,11 +2,13 @@ import os
 import json
 from datetime import datetime
 import requests
-import random
-import string
+
 class WriteAttributes:
-    def generate_random_id(self,length=5):
-        return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+    def generate_id_for_category(self, date, parent_of_parent_category_id, name):
+        date_for_id = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+        month_day = date_for_id.strftime("%m-%d").replace("-", "_")
+        node_id = f"{parent_of_parent_category_id}_cat_{name}_{month_day}"
+        return node_id.lower()
 
     def create_nodes(self, node_id, node_name, node_key, date):
         
@@ -324,82 +326,88 @@ class WriteAttributes:
                 attribute_data = item['attributeData']
                 
                 if parent_name not in node_ids:
-                    node_id = self.generate_random_id() + str(count)
-                    print(f"\n🟡 Creating parent category node for ---> '{parent_name}'")
-                    res = self.create_nodes(node_id, parent_name, 'parentCategory', date)
-                    count += 1
-                    node_id = res['id']
-                    node_ids[parent_name] = node_id
-                    print(f"🟢 Created parent category node for ---> '{parent_name}' with id: {node_id}")
+                    node_id = self.generate_id_for_category(date, parent_of_parent_category_id, parent_name)
+                    print(f"🟡 Creating parent category node for ---> '{parent_name}'")
+                    res = self.create_nodes(node_id.lower(), parent_name, 'parentCategory', date)
+                    if res.get('id'):
+                        count += 1
+                        node_id = res['id']
+                        node_ids[parent_name] = node_id
+                        print(f"🟢 Created parent category node for ---> '{parent_name}' with id: {node_id}")
+                        parent_id = node_ids[parent_name]
+                        print(f"🟡 Creating relationship from {parent_of_parent_category_id} ---> {parent_id}")
+                        res = self.create_relationships(parent_of_parent_category_id, parent_id, date)
+                        if res.get('id'):
+                            print(f"🟢 Created relationship from {parent_of_parent_category_id} ---> {parent_id}")
+                        else:
+                            print(f"🔴 Creating relationship from {parent_of_parent_category_id} ---> {parent_id} was unsuccessfull")
+                            print(f"With error ---> {res['error']}")
+                    else:
+                        print(f"🔴 Creating parent category for {parent_name} was unsuccessfull")
+                        print(f"With error ---> {res['error']}") 
+                        
                 else:
-                    print(f"🚩 Parent category node for ---> '{parent_name}' is already exists with the id: {node_ids[parent_name]}")
-            
-                parent_id = node_ids[parent_name]
+                    print(f"🚩 Parent category node for ---> '{parent_name}' is already exists with the id: {node_ids[parent_name]}") 
                 
-                print(f"🟡 Creating relationship from {parent_of_parent_category_id} ---> {parent_id}")
-                res = self.create_relationships(parent_of_parent_category_id, parent_id, date)
-                if res["id"]:
-                    print(f"🟢 Created relationship from {parent_of_parent_category_id} ---> {parent_id}")
-                else:
-                    print(f"🔴 Creating relationship from {parent_of_parent_category_id} ---> {parent_id} was unsuccessfull")
-                    print(f"With error ---> {res['error']}")
-                    
-                print("\n")
-                
+                   
                 # --- Create child nodes ---
                 for key, child_name in category_data.items():
                     if key.startswith('childCategory'):
                         child_key = (parent_name, child_name)  # unique per parent
                         if child_key not in node_ids:
-                            node_id = self.generate_random_id() + str(count)
+                            name_for_id = f"{parent_name}_{child_name}"
+                            node_id = self.generate_id_for_category(date, parent_of_parent_category_id, name_for_id)
                             print(f"🟡 Creating child node '{child_name}' for parent '{parent_name}'")
                             res = self.create_nodes(node_id, child_name, key, date)
-                            count += 1
-                            node_id = res['id']
-                            node_ids[child_key] = node_id
-                            print(f"🟢 Created child node '{child_name}' with id: {node_id} for parent '{parent_name}'")
-                        else:
-                            print(f"🚩 Child node '{child_name}' for parent '{parent_name}' already exists with id: {node_ids[child_key]}")
-
-                        child_id = node_ids[child_key]
-
-                        # --- Create relationship ---
-                        print(f"🟡 Creating relationship from {parent_name} ---> {child_name}")
-                        res = self.create_relationships(parent_id, child_id, date)
-                        if res['relationships'][0]:
-                            print(f"🟢 Created relationship from {parent_name} ---> {child_name}")
-                            print(f"🟡 Creating attribute for {child_name} ---> {attribute_name}")
-                            res = self.create_attribute_to_entity(date, child_id, attribute_name, attribute_data)
-                            if res["id"]:
-                                print(f"🟢 Created attribute for {child_name} with attribute id {res['id']}")
+                            if res.get("id"):
+                                count += 1
+                                node_id = res['id']
+                                node_ids[child_key] = node_id
+                                print(f"🟢 Created child node '{child_name}' with id: {node_id} for parent '{parent_name}'")   
+                                child_id = node_ids[child_key]
+                                parent_id = node_ids[parent_name]
+                                # --- Create relationship ---
+                                print(f"🟡 Creating relationship from {parent_name} ---> {child_name}")
+                                res = self.create_relationships(parent_id, child_id, date)
+                                if res['relationships'][0]:
+                                    print(f"🟢 Created relationship from {parent_name} ---> {child_name}")
+                                    print(f"🟡 Creating attribute for {child_name} ---> {attribute_name}")
+                                    res = self.create_attribute_to_entity(date, child_id, attribute_name, attribute_data)
+                                    if res.get('id'):
+                                        print(f"🟢 Created attribute for {child_name} with attribute id {res['id']}")
+                                    else:
+                                        print(f"🔴 Creating attribute for {child_name} was unsuccessfull")
+                                        print(f"With error ---> {res['error']}")     
+                                else:
+                                    print(f"🔴 Creating relationship from {parent_name} ---> {child_name} was unsuccessfull")
+                                    print(f"With error ---> {res['error']}")
                             else:
-                                print(f"🔴 Creating attribute for {child_name} was unsuccessfull")
-                                print(f"With error ---> {res['error']}")     
+                                print(f"🔴 Creating child node {child_name} was unsuccessfull")
+                                print(f"With error ---> {res['error']}")  
                         else:
-                            print(f"🔴 Creating relationship from {parent_name} ---> {child_name} was unsuccessfull")
-                            print(f"With error ---> {res['error']}")
+                            print(f"🚩 Child node '{child_name}' for parent '{parent_name}' already exists with id: {node_ids[child_key]}")    
+                            
+                print("=" * 200)   
                 
-                print("\n")       
-                    
             else:
                 if 'minister' and 'department' in item:
                     parent_of_attribute = item["department"]
-                    print("\n🟡 Attribute directly connects to a Department") 
+                    print("🟡 Attribute directly connects to a Department") 
                 elif 'minister' in item:
                     parent_of_attribute = item["minister"]
-                    print("\n🟡 Attribute directly connected to a Ministry")
+                    print("🟡 Attribute directly connected to a Ministry")
                      
                 attribute_name = item['attributeName']
                 attribute_data = item['attributeData']
                 print(f"🟡 Creating attribute for {parent_of_attribute} ---> {attribute_name}")
                 res = self.create_attribute_to_entity(date, parent_of_attribute, attribute_name, attribute_data)
-                if res["id"]:
+                if res.get('id'):
                     print(f"🟢 Created attribute for {parent_of_attribute} with attribute id {res['id']}")
                 else:
                     print(f"🔴 Creating attribute for {parent_of_attribute} was unsuccessfull")
                     print(f"With error ---> {res['error']}")
                     
-                print("\n")
-                       
+                print("=" * 200) 
+                    
         return
     

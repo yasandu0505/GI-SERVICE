@@ -1,4 +1,3 @@
-from chartFactory.data_transformers.transformers_registry import TRANSFORMERS
 import json
 from google.protobuf import struct_pb2
 from google.protobuf.json_format import MessageToDict
@@ -23,32 +22,32 @@ def decode_response(response):
     return MessageToDict(struct_obj)
     
 
-def transform_data_for_chart(response, ATTRIBUTE_PAYLOAD):
-    chart_type = ATTRIBUTE_PAYLOAD.chart_type
-    x_axis = ATTRIBUTE_PAYLOAD.x_axis or None
-    y_axis = ATTRIBUTE_PAYLOAD.y_axis or None
-    label = ATTRIBUTE_PAYLOAD.label or None
-    value = ATTRIBUTE_PAYLOAD.value or None
-  
-    decoded_data = decode_response(response)
+def transform_data_for_chart(attribute_data_out):    
+    if attribute_data_out.get("error"):
+        return {
+            "attributeName": attribute_data_out["attributeName"],
+            "error": attribute_data_out["error"]
+        }
+    else:
+        decoded_data = decode_response(attribute_data_out["data"])
     
-    if not decoded_data:
-        print("Could not decode response")
-        return None
+        if not decoded_data:
+            return {
+                "attributeName": attribute_data_out["attributeName"],
+                "error": "Could not decode response"
+            }
     
-    data_dictionary = json.loads(decoded_data["data"])
+        data_dictionary = json.loads(decoded_data["data"])
         
-    columns = data_dictionary["columns"]
-    rows = data_dictionary["rows"]
-    records = [dict(zip(columns, row)) for row in rows]
+        columns = data_dictionary["columns"]
+        rows = data_dictionary["rows"]
+        
+        return{
+            "attributeName": attribute_data_out["attributeName"],
+            "columns": columns,
+            "rows": rows
+        }
+        
+        # records = [dict(zip(columns, row)) for row in rows]
+        # print(records)
     
-    transformer = TRANSFORMERS.get(chart_type)
-    if not transformer:
-        raise ValueError(f"Unsupported chart type: {chart_type}")
-
-    if chart_type == "line" or chart_type == "bar":
-        return transformer(records, x_axis, y_axis, label)
-    elif chart_type == "pie":
-        return transformer(records, value, label)
-    elif chart_type == "table":
-        return transformer(records)
