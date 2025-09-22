@@ -6,17 +6,6 @@ class IncomingServiceOrgchart:
     def __init__(self, config: dict):
         self.config = config
         
-    async def get_data(self):   
-        ministries = await self.cache.get_ministries()
-        departments = await self.cache.get_departments()
-        people = await self.cache.get_people()
-        
-        return {
-            "ministries" : ministries["body"],
-            "departments" : departments["body"],
-            "people" : people["body"]
-        }
-        
     async def get_documents(self):
         
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"

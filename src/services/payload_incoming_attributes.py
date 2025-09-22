@@ -2,7 +2,7 @@ from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 import requests
 from datetime import datetime
 
-class IncomingService:
+class IncomingServiceAttributes:
     def __init__(self, config : dict):
         self.config = config
             

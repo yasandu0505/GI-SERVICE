@@ -23,7 +23,13 @@ def decode_response(response):
     return MessageToDict(struct_obj)
     
 
-def transform_data_for_chart(response, chart_type, x_axis, y_axis, label, value):
+def transform_data_for_chart(response, ATTRIBUTE_PAYLOAD):
+    chart_type = ATTRIBUTE_PAYLOAD.chart_type
+    x_axis = ATTRIBUTE_PAYLOAD.x_axis or None
+    y_axis = ATTRIBUTE_PAYLOAD.y_axis or None
+    label = ATTRIBUTE_PAYLOAD.label or None
+    value = ATTRIBUTE_PAYLOAD.value or None
+  
     decoded_data = decode_response(response)
     
     if not decoded_data:
