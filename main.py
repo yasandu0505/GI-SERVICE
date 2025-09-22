@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from src.routers import payload_incoming_router
 import yaml
+from dotenv import load_dotenv
+import os
 
 app = FastAPI(
     title="GI - Service",     
@@ -11,8 +13,19 @@ app = FastAPI(
 # Load config at startup
 @app.on_event("startup")
 async def load_config():
-    with open("config.yaml", "r") as f:
-        app.state.config = yaml.safe_load(f)
-
+    load_dotenv()
     
+    BASE_URL_CRUD = os.getenv("BASE_URL_CRUD")
+    BASE_URL_QUERY = os.getenv("BASE_URL_QUERY")
+    
+    if BASE_URL_CRUD and BASE_URL_QUERY:
+        print(f"✅ BASE_URL_CRUD and BASE_URL_QUERY found: {BASE_URL_QUERY} , {BASE_URL_CRUD}...")
+        app.state.config = {
+            "BASE_URL_CRUD": BASE_URL_CRUD,
+            "BASE_URL_QUERY": BASE_URL_QUERY
+        }    
+    else:
+        print("❌ not found in environment")
+        print("Available env vars:", list(os.environ.keys()))
+        
 app.include_router(payload_incoming_router.router)
