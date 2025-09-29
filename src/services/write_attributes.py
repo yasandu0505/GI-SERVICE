@@ -667,15 +667,21 @@ class WriteAttributes:
                                     if res.get('id'):
                                         print(f"✅ Created attribute for {child_name} with attribute id {res['id']}")
                                         print(f"🔄 Storing metadata for {child_name}")
+                                        
                                         metadata = {
                                             "key" : attribute_name_for_table_name,
                                             "value": attribute_name_as_human_readable
                                         }
+                                        parent_cat = {
+                                            "key": "parent_of_parent_category_id",
+                                            "value": parent_of_parent_category_id
+                                        }
                                         if created_child_id in metadata_dict:
                                             metadata_dict[created_child_id].append(metadata)
                                         else:
-                                            metadata_dict[created_child_id] = [metadata]
-                                        
+                                            metadata_dict[created_child_id] = [metadata, parent_cat]
+                                            
+                                    
                                         print(f"✅ Storing metadata for {child_name} successfull")
                                         
                                     else:
@@ -723,11 +729,15 @@ class WriteAttributes:
                          "key": attribute_name_for_table_name,
                          "value": attribute_name_as_human_readable
                     }
+                    parent_cat = {
+                        "key": "parent_of_parent_category_id",
+                        "value": parent_of_attribute
+                    }
                     # If entity already exists, append; else create a new list
                     if parent_of_attribute in metadata_dict:
                         metadata_dict[parent_of_attribute].append(metadata)
                     else:
-                        metadata_dict[parent_of_attribute] = [metadata]
+                        metadata_dict[parent_of_attribute] = [metadata, parent_cat]
                         
                     print(f"✅ Storing metadata for {parent_of_attribute} successfull")
                     

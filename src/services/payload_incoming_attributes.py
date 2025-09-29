@@ -359,7 +359,7 @@ class IncomingServiceAttributes:
             "kind": {
                 "major": "Dataset",
                 "minor": "tabular"
-            },
+            }
         }
         
         headers = {
@@ -404,6 +404,10 @@ class IncomingServiceAttributes:
                             attribute_name_to_decode = value
                             decoded_name = self.decode_protobuf_attribute_name(attribute_name_to_decode)
                             break
+                        
+                        # if key == "parent_of_parent_category_id":
+                        #     print(f"Found parent_of_parent_category_id: {value}")
+                        #     break   
 
                 except Exception as e:
                     metadata = {}
@@ -421,8 +425,49 @@ class IncomingServiceAttributes:
                         if m:
                             year_key = m.group(0)
                 
+                parent_of_parent_category_id = metadata.get("parent_of_parent_category_id", "N/A")
+                
+                if parent_of_parent_category_id == "N/A":
+                    decoded_parent_of_parent = "N/A"
+                else:   
+                    decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_of_parent_category_id) 
+                    print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
+                    
+                    url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        
+                    payload = {
+                            "id": decoded_parent_of_parent
+                    }
+                    
+                    headers = {
+                        "Content-Type": "application/json",
+                        # "Authorization": f"Bearer {token}"    
+                    }
+                    
+                    try:
+                        response = requests.post(url, json=payload, headers=headers)
+                        response.raise_for_status()  
+                        parent_entity = response.json()
+                                                
+                        parent_body = parent_entity.get('body', [])
+                        
+                        print(f"Parent entity body: {parent_body}")
+                        
+                        if len(parent_body) > 0:
+                            parent_raw_name = parent_body[0].get("name", "")
+                            print(f"Parent raw name: {parent_raw_name}")
+                            decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_raw_name)
+                            print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
+                        else:
+                            decoded_parent_of_parent = "N/A"        
+                    except Exception as e:
+                        print(f"Error fetching parent entity: {str(e)}")
+                        decoded_parent_of_parent = "N/A"
+                        
+                    
                 simplified = {
                     "id": item_id,
+                    "parent_of_parent_category_id": decoded_parent_of_parent,
                     "parent_entity_id": sliced_id,
                     "attribute_hash_name": hash_to_the_attribute_name,
                     "name": decoded_name,

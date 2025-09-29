@@ -3,6 +3,7 @@ from src.routers import payload_incoming_router
 import yaml
 from dotenv import load_dotenv
 import os
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="GI - Service",     
@@ -27,5 +28,17 @@ async def load_config():
     else:
         print("❌ not found in environment")
         print("Available env vars:", list(os.environ.keys()))
+        
+
+origins = ["http://localhost:5173/"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],            # or ["*"] for all
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
         
 app.include_router(payload_incoming_router.router)
