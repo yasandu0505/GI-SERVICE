@@ -32,9 +32,8 @@ async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYL
 # Write attributes to the entities
 @router.post("/data/writeAttributes")
 async def write_attributes(WRITE_PAYLOAD: WRITE_PAYLOAD):
-    # Example : base_url = "/Users/yasandu/Documents/RawData/data/2022, "/Users/yasandu/Desktop/datasets/data/2019""
-    # base_url = WRITE_PAYLOAD.base_url
-    base_url = "/Users/vibhatha/github/datasets/data/2022"
+    # Example : base_url = /Users/yasandu/Desktop/datasets/data/2022
+    base_url = WRITE_PAYLOAD.base_url
     result = writer.traverse_folder(base_url)
     result = writer.pre_process_traverse_result(result)
     result = writer.entity_validator(result)
