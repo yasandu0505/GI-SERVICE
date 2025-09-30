@@ -155,52 +155,7 @@ class IncomingServiceAttributes:
         except Exception as e:
             print(f"[DEBUG decode] outer exception: {e}")
             return ""
-    
-    
-    # def decode_protobuf_attribute_name(self, name: str) -> str:
-    #     """
-    #     Decode a protobuf StringValue from a JSON-encoded hex string.
-    #     Handles both proper protobuf-encoded values and raw hex strings.
-
-    #     Args:
-    #         name (str): JSON string containing a 'value' key with hex-encoded bytes.
-
-    #     Returns:
-    #         str: Decoded, human-readable string.
-    #     """
-    #     try:
-    #         # Load the JSON string
-    #         data = json.loads(name)
-    #         hex_value = data.get("value")
-    #         if not hex_value:
-    #             return ""
-
-    #         # Convert hex string to bytes
-    #         decoded_bytes = binascii.unhexlify(hex_value)
-
-    #         # Try decoding as protobuf StringValue
-    #         sv = StringValue()
-    #         try:
-    #             sv.ParseFromString(decoded_bytes)
-    #             if sv.value:
-    #                 return sv.value.strip()
-    #         except Exception:
-    #             pass
-
-    #         # Fallback: decode as UTF-8 string
-    #         try:
-    #             decoded_str = decoded_bytes.decode("utf-8")
-    #             # Remove non-printable characters
-    #             return ''.join(ch for ch in decoded_str if ch.isprintable()).strip()
-    #         except Exception:
-    #             # Last-resort: ignore errors and filter printable characters
-    #             return ''.join(ch for ch in decoded_bytes.decode("utf-8", errors="ignore") if ch.isprintable()).strip()
-
-    #     except Exception as e:
-    #         print(f"[DEBUG decode] Exception: {e}")
-    #         return ""
-
-    
+        
     def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , entityId):
         attribute_name_readable = ATTRIBUTE_PAYLOAD.attribute_name
         attribute_name = ""
@@ -352,7 +307,7 @@ class IncomingServiceAttributes:
             }
 
     
-    def expose_all_attributes(self):
+    def expose_all_attributes_v1(self):
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
         
         payload = {
@@ -476,7 +431,214 @@ class IncomingServiceAttributes:
                 grouped_by_year.setdefault(year_key, []).append(simplified)
             
             return {
+                "attributes": grouped_by_year,
+                "lenght" : len(grouped_by_year["2022"])
+            }
+
+        except Exception as e:
+            return{
+                "error": f"Error occured - {str(e)}"
+            }
+    
+    def expose_all_attributes(self):
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        
+        payload = {
+            "kind": {
+                "major": "Dataset",
+                "minor": "tabular"
+            }
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            # "Authorization": f"Bearer {token}"    
+        }
+        
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            all_attributes = response.json()
+            
+            # access only the body
+            body = all_attributes.get('body', [])
+            
+            if len(body) == 0:
+                return {
+                    "message": "No attributes found"
+                } 
+            
+            # Group simplified items (id, name, created) by year extracted from 'created'
+            grouped_by_year = {}
+            
+            for item in body:
+                item_id = item.get("id") or item.get("entityId") or ""
+                raw_name = item.get("name", "")
+                hash_to_the_attribute_name = self.decode_protobuf_attribute_name(raw_name)
+                sliced_id = item_id.split("_attr")[0]
+                
+                url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{sliced_id}/metadata"
+                
+                headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+                
+                try:
+                    response = requests.get(url, headers=headers)
+                    response.raise_for_status()  
+                    metadata = response.json()
+                    for key, value in metadata.items():
+                        if key == hash_to_the_attribute_name:
+                            attribute_name_to_decode = value
+                            decoded_name = self.decode_protobuf_attribute_name(attribute_name_to_decode)
+                            break
+  
+                except Exception as e:
+                    metadata = {}
+                    print(f"Error fetching metadata: {str(e)}")
+                    decoded_name = "No description available"   
+                
+                created = item.get("created", "") or item.get("createdAt", "")
+                
+                year_key = "unknown"
+                if created:
+                    try:
+                        year_key = str(datetime.fromisoformat(created.replace("Z", "")).year)
+                    except Exception:
+                        m = re.search(r"\b(20\d{2}|19\d{2})\b", created)
+                        if m:
+                            year_key = m.group(0)
+                
+                
+                if "dep" in sliced_id:
+                    parent_of_parent_category_id = sliced_id
+                    print(parent_of_parent_category_id)
+                else:
+                    related_parent = {} 
+                    url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{sliced_id}/relations"
+                
+                    payload = {
+                        "id": "",
+                        "relatedEntityId": "",
+                        "name": "AS_CATEGORY",
+                        "activeAt": "",
+                        "startTime": "",
+                        "endTime": "",
+                        "direction": "INCOMING"
+                    }
+                    
+                    headers = {
+                        "Content-Type": "application/json",
+                        # "Authorization": f"Bearer {token}"  
+                    }
+                    
+                    try:
+                        response = requests.post(url, json=payload, headers=headers)
+                        response.raise_for_status()  
+                        related_parent = response.json()
+                        print(related_parent)
+                            
+                    except Exception as e:
+                        print(f"Error fetching related_parent: {str(e)}")
+                        decoded_name = "No description available"  
+                        
+
+                    # Check if it's a list and has items
+                    if isinstance(related_parent, list) and len(related_parent) > 0:
+                        related_entity_id = related_parent[0].get('relatedEntityId')
+                        
+                        if related_entity_id:
+                            url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{related_entity_id}/relations"
+                            
+                            headers = {
+                                "Content-Type": "application/json",
+                            }
+                            
+                            payload = {
+                                "id": "",
+                                "relatedEntityId": "",
+                                "name": "AS_CATEGORY",
+                                "activeAt": "",
+                                "startTime": "",
+                                "endTime": "",
+                                "direction": "INCOMING"
+                            }
+                            
+                            try:
+                                response = requests.post(url, json=payload, headers=headers)
+                                response.raise_for_status()  
+                                parent_response = response.json()
+                                print(f"parent response >>>{parent_response}")
+
+                            except Exception as e:
+                                print(f"Error fetching parent_response: {str(e)}")
+                                parent_response = {}
+                        else:
+                            parent_of_parent_category_id = "N/A"
+                    else:
+                        parent_of_parent_category_id = "N/A"
+                        
+                          
+                    if isinstance(parent_response, list) and len(parent_response) > 0:
+                        parent_of_parent_category_id = parent_response[0].get("relatedEntityId")
+                        print(parent_of_parent_category_id)
+                    else:
+                        parent_of_parent_category_id = "N/A"
+                                          
+                if parent_of_parent_category_id == "N/A":
+                    decoded_parent_of_parent = "N/A"
+                else:
+                    # decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_of_parent_category_id)
+                    decoded_parent_of_parent = parent_of_parent_category_id
+                    
+                    print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
+                    
+                    url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        
+                    payload = {
+                            "id": decoded_parent_of_parent
+                    }
+                    
+                    headers = {
+                        "Content-Type": "application/json",
+                        # "Authorization": f"Bearer {token}"    
+                    }
+                    
+                    try:
+                        response = requests.post(url, json=payload, headers=headers)
+                        response.raise_for_status()  
+                        parent_entity = response.json()
+                                                
+                        parent_body = parent_entity.get('body', [])
+                        
+                        print(f"Parent entity body: {parent_body}")
+                        
+                        if len(parent_body) > 0:
+                            parent_raw_name = parent_body[0].get("name", "")
+                            print(f"Parent raw name: {parent_raw_name}")
+                            decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_raw_name)
+                            print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
+                        else:
+                            decoded_parent_of_parent = "N/A"        
+                    except Exception as e:
+                        print(f"Error fetching parent entity: {str(e)}")
+                        decoded_parent_of_parent = "N/A"
+                        
+                    
+                simplified = {
+                    "id": item_id,
+                    "parent_of_parent_category_id": decoded_parent_of_parent,
+                    "parent_entity_id": sliced_id,
+                    "attribute_hash_name": hash_to_the_attribute_name,
+                    "name": decoded_name,
+                    "created": created
+                }
+                grouped_by_year.setdefault(year_key, []).append(simplified)
+            
+            return {
                 "attributes": grouped_by_year
+                
             }
 
         except Exception as e:
