@@ -472,6 +472,7 @@ class IncomingServiceAttributes:
             grouped_by_year = {}
             
             for item in body:
+                decoded_name = "" 
                 item_id = item.get("id") or item.get("entityId") or ""
                 raw_name = item.get("name", "")
                 hash_to_the_attribute_name = self.decode_protobuf_attribute_name(raw_name)
