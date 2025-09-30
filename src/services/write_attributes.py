@@ -1,649 +1,753 @@
-from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
-import requests
-from datetime import datetime
+import os
 import json
-import binascii
-from google.protobuf.wrappers_pb2 import StringValue
-import string
-import re
+from datetime import datetime
+import requests
+import hashlib
 
-class IncomingServiceAttributes:
-    def __init__(self, config : dict):
-        self.config = config
-            
-    async def expose_relevant_attributes(self, ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId):
+class WriteAttributes:
+    def generate_id_for_category(self, date, parent_of_parent_category_id, name):
+        date_for_id = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+        year = date_for_id.strftime("%Y")
+        month_day = date_for_id.strftime("%m-%d")
+
+        raw = f"{parent_of_parent_category_id}-{name}-{year}-{month_day}"
+
+        short_hash = hashlib.sha1(raw.encode()).hexdigest()[:10]
+
+        node_id = f"cat_{short_hash}"
+        return node_id
+
+    def create_nodes(self, node_id, node_name, node_key, date):
         
-        data_list_for_req_year = []
-        req_entityId = entityId
-        req_year = ENTITY_PAYLOAD.year
-       
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{req_entityId}/relations"
+        url = "http://0.0.0.0:8080/entities/"
+           
+        payload = {
+            "id": node_id,
+            "kind": {
+                "major": "Category",
+                "minor": node_key
+                },
+            "created": date,
+            "terminated": "",
+            "name": {
+                "startTime": date,
+                "endTime": "",
+                "value": node_name
+            },
+            "metadata": [],
+            "attributes": [],
+            "relationships": []
+        }
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            return output
+        except Exception as e:
+            print("error : " +  str(e))
+            return {
+                "error": str(e)
+            }
+
+    def validate_node(self, entity_name, minorKind, majorKind) -> tuple[bool, str]:
+        url = "http://0.0.0.0:8081/v1/entities/search"
         
         payload = {
             "id": "",
-            "relatedEntityId": "",
-            "name": "IS_ATTRIBUTE",
-            "activeAt": "",
-            "startTime": "",
-            "endTime": "",
-            "direction": ""
-        }
-
-        headers = {
-            "Content-Type": "application/json",
-            # "Authorization": f"Bearer {token}"  
-        }
-
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            attributes = response.json()
-            
-            if len(attributes) > 0:
-                for item in attributes:
-                    startTime = item["startTime"]
-                    if "endTime" in item and item["endTime"]:
-                        endTime = item["endTime"]
-                    else:
-                        endTime = startTime
-                    if startTime and endTime:
-                        start_year = datetime.fromisoformat(startTime.replace("Z", "")).year
-                        end_year = datetime.fromisoformat(endTime.replace("Z", "")).year
-
-                        # Check if req_year is between start and end year
-                        if int(start_year) <= int(req_year) <= int(end_year):
-                            data_list_for_req_year.append({
-                                "id" : item["relatedEntityId"],
-                                "startTime" : item["startTime"],
-                                "endTime" : item["endTime"]
-                            })  
-                
-                if len(data_list_for_req_year) == 0:
-                    return {
-                        "year": req_year,
-                        "attributes": {
-                            "message": "No attributes found in the requested time range"
-                        }
-                    } 
-                
-                for item in data_list_for_req_year:
-                    url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
-                
-                    payload = {
-                        "id": item["id"],
-                        "kind": {
-                            "major": "",
-                            "minor": ""
-                            },
-                        "name": "",
-                        "created": "",
-                        "terminated": ""
-                    }
-                
-                    headers = {
-                        "Content-Type": "application/json",
-                        # "Authorization": f"Bearer {token}"  
-                    }
-                
-                    try:
-                        response = requests.post(url, json=payload, headers=headers)
-                        response.raise_for_status()  
-                        output = response.json()
-                        item["name"] =  output["body"][0]["name"]
-                        print(item["name"])
-                        decoded_name = self.decode_protobuf_attribute_name(item["name"])
-                        print(f"Decoded name : {decoded_name}")
-                        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/metadata"
-                        headers = {
-                            "Content-Type": "application/json",
-                            # "Authorization": f"Bearer {token}"  
-                        }
-                        try:
-                            response = requests.get(url, headers=headers)
-                            response.raise_for_status()  
-                            metadata = response.json()
-                            for k, v in metadata.items():
-                                if k == decoded_name:
-                                    item["human_readable_name"] = v
-                                    break
-                        except Exception as e:
-                            metadata = {}
-                            print(f"Error fetching metadata: {str(e)}")
-                            item["human_readable_name"] = "No description available"
-                            
-                    except Exception as e:
-                        item["name"] = f"error : {str(e)}"
-            else:
-                return {
-                    "year": req_year,
-                    "attributes": {
-                        "message": "No attributes found for the entity"
-                    }
-                }
-                               
-        except Exception as e:
-            return {
-                "year": req_year,
-                "attributes": {
-                    "error": str(e)
-                }
-            }
-        
-        return {
-            "year": req_year,
-            "attributes": data_list_for_req_year
-        }
-    
-    def decode_protobuf_attribute_name(self, name : str) -> str:
-        try:
-            print(f"[DEBUG decode] input name: {name!r}")
-            data = json.loads(name)
-            hex_value = data.get("value")
-            print(f"[DEBUG decode] hex_value: {hex_value!r}")
-            if not hex_value:
-                return ""
-
-            decoded_bytes = binascii.unhexlify(hex_value)
-            sv = StringValue()
-            try:
-                sv.ParseFromString(decoded_bytes)
-                return sv.value.strip()
-            except Exception:
-                decoded_str = decoded_bytes.decode("utf-8", errors="ignore")
-                cleaned = ''.join(ch for ch in decoded_str if ch.isprintable())
-                return cleaned.strip()
-        except Exception as e:
-            print(f"[DEBUG decode] outer exception: {e}")
-            return ""
-        
-    def expose_data_for_the_attribute(self, ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYLOAD , entityId):
-        attribute_name_readable = ATTRIBUTE_PAYLOAD.attribute_name
-        attribute_name = ""
-        
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/metadata"
-        headers = {
-            "Content-Type": "application/json",
-            # "Authorization": f"Bearer {token}"  
-        }
-        
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()  
-            metadata = response.json()
-            
-            print(f"Metadata fetched: {metadata}")
-            
-            for key, value in metadata.items():
-                decoded_str = self.decode_protobuf_attribute_name(value)
-                decoded_str_clean = decoded_str.strip().strip(string.punctuation)                
-                if decoded_str_clean == attribute_name_readable:
-                    print(f"Found attribute name : {key}")
-                    attribute_name = key
-                    break
-                
-            if not attribute_name:
-                return {
-                    "attributeName": attribute_name_readable,
-                    "error": "Attribute not found in metadata"
-                }
-        except Exception as e:
-            metadata = {}
-            print(f"Error fetching metadata: {str(e)}")
-            
-        
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/attributes/{attribute_name}"
-        
-        headers = {
-            "Content-Type": "application/json",
-            # "Authorization": f"Bearer {token}"    
-        }
-        
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()  
-            attribute_data = response.json()
-            
-            if len(attribute_data) == 0:
-                return {
-                    "attributeName": attribute_name_readable,
-                    "error": "No data found"
-                } 
-            
-            return{
-                "attributeName": attribute_name_readable,
-                "data": attribute_data
-            }
-
-        except Exception as e:
-            return{
-                "attributeName": attribute_name_readable,
-                "error": f"No data found - Error occured - {str(e)}"
-            }
-    
-
-    def expose_all_attributes_v2(self):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
-        
-        payload = {
             "kind": {
-                "major": "Dataset",
-                "minor": "tabular"
+                "major": majorKind,
+                "minor": minorKind
             },
-        }
+            "name": entity_name,
+            "created": "",
+            "terminated": ""
+            }
         
         headers = {
-            "Content-Type": "application/json",
-            # "Authorization": f"Bearer {token}"    
-        }
-        
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            all_attributes = response.json()
-            
-            # access only the body
-            body = all_attributes.get('body', [])
-            
-            if len(body) == 0:
-                return {
-                    "message": "No attributes found"
-                } 
-            
-            # Group simplified items (id, name, created) by year extracted from 'created'
-            grouped_by_year = {}
-            
-            for item in body:
-                item_id = item.get("id") or item.get("entityId") or ""
-                raw_name = item.get("name", "")
-                hash_to_the_attribute_name = self.decode_protobuf_attribute_name(raw_name)
-                sliced_id = item_id.split("_attr")[0]
-                
-                url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{sliced_id}/metadata"
-                
-                headers = {
                     "Content-Type": "application/json",
                     # "Authorization": f"Bearer {token}"  
                 }
-                try:
-                    response = requests.get(url, headers=headers)
-                    response.raise_for_status()  
-                    metadata = response.json()
-                    for key, value in metadata.items():
-                        if key == hash_to_the_attribute_name:
-                            attribute_name_to_decode = value
-                            decoded_name = self.decode_protobuf_attribute_name(attribute_name_to_decode)
-                            break
-                except Exception as e:
-                    metadata = {}
-                    print(f"Error fetching metadata: {str(e)}")
-                    decoded_name = "No description available"   
                 
-                created = item.get("created", "") or item.get("createdAt", "")
-                
-                year_key = "unknown"
-                if created:
-                    try:
-                        year_key = str(datetime.fromisoformat(created.replace("Z", "")).year)
-                    except Exception:
-                        m = re.search(r"\b(20\d{2}|19\d{2})\b", created)
-                        if m:
-                            year_key = m.group(0)
-                
-                simplified = {
-                    "id": item_id,
-                    "parent_entity_id": sliced_id,
-                    "attribute_hash_name": hash_to_the_attribute_name,
-                    "name": decoded_name,
-                    "created": created
-                }
-                grouped_by_year.setdefault(year_key, []).append(simplified)
-            
-            return {
-                "attributes": grouped_by_year
-            }
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            if output and "body" in output and len(output["body"]) > 0:
+                entity_id = output["body"][0]["id"]
+                return True, entity_id
+            else:
+                return False, "Not found"
         except Exception as e:
-            return{
-                "error": f"Error occured - {str(e)}"
-            }
-
-    
-    def expose_all_attributes_v1(self):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+            print("error : " +  str(e))
+            return False , "Not found - Error occured"
+        
+    def create_relationships(self, parent_id, child_id, date):
+        url = f"http://0.0.0.0:8080/entities/{parent_id}"
         
         payload = {
-            "kind": {
-                "major": "Dataset",
-                "minor": "tabular"
-            }
-        }
-        
-        headers = {
-            "Content-Type": "application/json",
-            # "Authorization": f"Bearer {token}"    
-        }
-        
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            all_attributes = response.json()
-            
-            # access only the body
-            body = all_attributes.get('body', [])
-            
-            if len(body) == 0:
-                return {
-                    "message": "No attributes found"
-                } 
-            
-            # Group simplified items (id, name, created) by year extracted from 'created'
-            grouped_by_year = {}
-            
-            for item in body:
-                item_id = item.get("id") or item.get("entityId") or ""
-                raw_name = item.get("name", "")
-                hash_to_the_attribute_name = self.decode_protobuf_attribute_name(raw_name)
-                sliced_id = item_id.split("_attr")[0]
-                
-                url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{sliced_id}/metadata"
-                
-                headers = {
-                    "Content-Type": "application/json",
-                    # "Authorization": f"Bearer {token}"  
-                }
-                try:
-                    response = requests.get(url, headers=headers)
-                    response.raise_for_status()  
-                    metadata = response.json()
-                    for key, value in metadata.items():
-                        if key == hash_to_the_attribute_name:
-                            attribute_name_to_decode = value
-                            decoded_name = self.decode_protobuf_attribute_name(attribute_name_to_decode)
-                            break
-                        
-                        # if key == "parent_of_parent_category_id":
-                        #     print(f"Found parent_of_parent_category_id: {value}")
-                        #     break   
-
-                except Exception as e:
-                    metadata = {}
-                    print(f"Error fetching metadata: {str(e)}")
-                    decoded_name = "No description available"   
-                
-                created = item.get("created", "") or item.get("createdAt", "")
-                
-                year_key = "unknown"
-                if created:
-                    try:
-                        year_key = str(datetime.fromisoformat(created.replace("Z", "")).year)
-                    except Exception:
-                        m = re.search(r"\b(20\d{2}|19\d{2})\b", created)
-                        if m:
-                            year_key = m.group(0)
-                
-                parent_of_parent_category_id = metadata.get("parent_of_parent_category_id", "N/A")
-                
-                if parent_of_parent_category_id == "N/A":
-                    decoded_parent_of_parent = "N/A"
-                else:   
-                    decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_of_parent_category_id) 
-                    print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
-                    
-                    url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
-        
-                    payload = {
-                            "id": decoded_parent_of_parent
-                    }
-                    
-                    headers = {
-                        "Content-Type": "application/json",
-                        # "Authorization": f"Bearer {token}"    
-                    }
-                    
-                    try:
-                        response = requests.post(url, json=payload, headers=headers)
-                        response.raise_for_status()  
-                        parent_entity = response.json()
-                                                
-                        parent_body = parent_entity.get('body', [])
-                        
-                        print(f"Parent entity body: {parent_body}")
-                        
-                        if len(parent_body) > 0:
-                            parent_raw_name = parent_body[0].get("name", "")
-                            print(f"Parent raw name: {parent_raw_name}")
-                            decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_raw_name)
-                            print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
-                        else:
-                            decoded_parent_of_parent = "N/A"        
-                    except Exception as e:
-                        print(f"Error fetching parent entity: {str(e)}")
-                        decoded_parent_of_parent = "N/A"
-                        
-                    
-                simplified = {
-                    "id": item_id,
-                    "parent_of_parent_category_id": decoded_parent_of_parent,
-                    "parent_entity_id": sliced_id,
-                    "attribute_hash_name": hash_to_the_attribute_name,
-                    "name": decoded_name,
-                    "created": created
-                }
-                grouped_by_year.setdefault(year_key, []).append(simplified)
-            
-            return {
-                "attributes": grouped_by_year,
-                "lenght" : len(grouped_by_year["2022"])
-            }
-
-        except Exception as e:
-            return{
-                "error": f"Error occured - {str(e)}"
-            }
-    
-    def expose_all_attributes(self):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
-        
-        payload = {
-            "kind": {
-                "major": "Dataset",
-                "minor": "tabular"
-            }
-        }
-        
-        headers = {
-            "Content-Type": "application/json",
-            # "Authorization": f"Bearer {token}"    
-        }
-        
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()  
-            all_attributes = response.json()
-            
-            # access only the body
-            body = all_attributes.get('body', [])
-            
-            if len(body) == 0:
-                return {
-                    "message": "No attributes found"
-                } 
-            
-            # Group simplified items (id, name, created) by year extracted from 'created'
-            grouped_by_year = {}
-            
-            for item in body:
-                item_id = item.get("id") or item.get("entityId") or ""
-                raw_name = item.get("name", "")
-                hash_to_the_attribute_name = self.decode_protobuf_attribute_name(raw_name)
-                sliced_id = item_id.split("_attr")[0]
-                
-                url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{sliced_id}/metadata"
-                
-                headers = {
-                    "Content-Type": "application/json",
-                    # "Authorization": f"Bearer {token}"  
-                }
-                
-                try:
-                    response = requests.get(url, headers=headers)
-                    response.raise_for_status()  
-                    metadata = response.json()
-                    for key, value in metadata.items():
-                        if key == hash_to_the_attribute_name:
-                            attribute_name_to_decode = value
-                            decoded_name = self.decode_protobuf_attribute_name(attribute_name_to_decode)
-                            break
-  
-                except Exception as e:
-                    metadata = {}
-                    print(f"Error fetching metadata: {str(e)}")
-                    decoded_name = "No description available"   
-                
-                created = item.get("created", "") or item.get("createdAt", "")
-                
-                year_key = "unknown"
-                if created:
-                    try:
-                        year_key = str(datetime.fromisoformat(created.replace("Z", "")).year)
-                    except Exception:
-                        m = re.search(r"\b(20\d{2}|19\d{2})\b", created)
-                        if m:
-                            year_key = m.group(0)
-                
-                
-                if "dep" in sliced_id:
-                    parent_of_parent_category_id = sliced_id
-                    print(parent_of_parent_category_id)
-                else:
-                    related_parent = {} 
-                    url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{sliced_id}/relations"
-                
-                    payload = {
-                        "id": "",
-                        "relatedEntityId": "",
-                        "name": "AS_CATEGORY",
-                        "activeAt": "",
-                        "startTime": "",
+                "id": parent_id,
+                "kind": {},
+                "created": "",
+                "terminated": "",
+                "name": {
+                },
+                "metadata": [],
+                "attributes": [],
+                "relationships": [
+                 {
+                    "key": "AS_CATEGORY",
+                    "value": {
+                        "relatedEntityId": child_id,
+                        "startTime": date,
                         "endTime": "",
-                        "direction": "INCOMING"
+                        "id": f"{parent_id}-to-{child_id}",
+                        "name": "AS_CATEGORY"
                     }
-                    
-                    headers = {
-                        "Content-Type": "application/json",
-                        # "Authorization": f"Bearer {token}"  
-                    }
-                    
-                    try:
-                        response = requests.post(url, json=payload, headers=headers)
-                        response.raise_for_status()  
-                        related_parent = response.json()
-                        print(related_parent)
-                            
-                    except Exception as e:
-                        print(f"Error fetching related_parent: {str(e)}")
-                        decoded_name = "No description available"  
-                        
-
-                    # Check if it's a list and has items
-                    if isinstance(related_parent, list) and len(related_parent) > 0:
-                        related_entity_id = related_parent[0].get('relatedEntityId')
-                        
-                        if related_entity_id:
-                            url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{related_entity_id}/relations"
-                            
-                            headers = {
-                                "Content-Type": "application/json",
-                            }
-                            
-                            payload = {
-                                "id": "",
-                                "relatedEntityId": "",
-                                "name": "AS_CATEGORY",
-                                "activeAt": "",
-                                "startTime": "",
-                                "endTime": "",
-                                "direction": "INCOMING"
-                            }
-                            
-                            try:
-                                response = requests.post(url, json=payload, headers=headers)
-                                response.raise_for_status()  
-                                parent_response = response.json()
-                                print(f"parent response >>>{parent_response}")
-
-                            except Exception as e:
-                                print(f"Error fetching parent_response: {str(e)}")
-                                parent_response = {}
-                        else:
-                            parent_of_parent_category_id = "N/A"
-                    else:
-                        parent_of_parent_category_id = "N/A"
-                        
-                          
-                    if isinstance(parent_response, list) and len(parent_response) > 0:
-                        parent_of_parent_category_id = parent_response[0].get("relatedEntityId")
-                        print(parent_of_parent_category_id)
-                    else:
-                        parent_of_parent_category_id = "N/A"
-                                          
-                if parent_of_parent_category_id == "N/A":
-                    decoded_parent_of_parent = "N/A"
-                else:
-                    # decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_of_parent_category_id)
-                    decoded_parent_of_parent = parent_of_parent_category_id
-                    
-                    print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
-                    
-                    url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
-        
-                    payload = {
-                            "id": decoded_parent_of_parent
-                    }
-                    
-                    headers = {
-                        "Content-Type": "application/json",
-                        # "Authorization": f"Bearer {token}"    
-                    }
-                    
-                    try:
-                        response = requests.post(url, json=payload, headers=headers)
-                        response.raise_for_status()  
-                        parent_entity = response.json()
-                                                
-                        parent_body = parent_entity.get('body', [])
-                        
-                        print(f"Parent entity body: {parent_body}")
-                        
-                        if len(parent_body) > 0:
-                            parent_raw_name = parent_body[0].get("name", "")
-                            print(f"Parent raw name: {parent_raw_name}")
-                            decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_raw_name)
-                            print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
-                        else:
-                            decoded_parent_of_parent = "N/A"        
-                    except Exception as e:
-                        print(f"Error fetching parent entity: {str(e)}")
-                        decoded_parent_of_parent = "N/A"
-                        
-                    
-                simplified = {
-                    "id": item_id,
-                    "parent_of_parent_category_id": decoded_parent_of_parent,
-                    "parent_entity_id": sliced_id,
-                    "attribute_hash_name": hash_to_the_attribute_name,
-                    "name": decoded_name,
-                    "created": created
                 }
-                grouped_by_year.setdefault(year_key, []).append(simplified)
-            
-            return {
-                "attributes": grouped_by_year
-                
-            }
-
+            ]
+        }
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        
+        
+        try:
+            response = requests.put(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            return output
         except Exception as e:
-            return{
-                "error": f"Error occured - {str(e)}"
+            print("error : " +  str(e))
+            return {
+                "error": str(e)
             }
+            
+    # def create_metadata_to_attribute(self, attribute_id, attribute_metadata): 
+    #     url = f"http://0.0.0.0:8080/entities/{attribute_id}"
+        
+    #     payload = {
+    #         "id": attribute_id,
+    #         "metadata": attribute_metadata
+    #     }
+        
+    #     headers = {
+    #                 "Content-Type": "application/json",
+    #                 # "Authorization": f"Bearer {token}"  
+    #             }
+        
+    #     try:
+    #         response = requests.put(url, json=payload, headers=headers)
+    #         response.raise_for_status()  
+    #         output = response.json()
+    #         return output
+    #     except Exception as e:
+    #         print(f"error : " +  str(e))
+    #         return {
+    #             "error": str(e)
+    #         }
 
+    def create_attribute_to_entity(self, date, entity_id, attribute_name_for_table_name, values): 
+        url = f"http://0.0.0.0:8080/entities/{entity_id}"
+        payload = {
+            "id": entity_id,
+            "attributes": [
+                {
+                    "key": attribute_name_for_table_name,
+                    "value": {
+                        "values": [
+                            {
+                                "startTime": date,
+                                "endTime": "",
+                                "value": values
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        
+        try:
+            response = requests.put(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            return output
+        except Exception as e:
+            print(f"error : " +  str(e))
+            return {
+                "error" : str(e)
+            }
+            
+    def create_metadata_to_entity(self, entity_id, metadata): 
+        url = f"http://0.0.0.0:8080/entities/{entity_id}"
+        payload = {
+            "id": entity_id,
+             "metadata": metadata
+        }
+        
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        
+        try:
+            response = requests.put(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            return output
+        except Exception as e:
+            print(f"error : " +  str(e))
+            return {
+                "error" : str(e)
+            }
+    
+    
+    def format_attribute_name_for_table_name(self, name):
+        formatted = name.replace(" ", "_").replace("-", "_")
+        hashed = hashlib.md5(formatted.encode()).hexdigest()[:10] 
+        return hashed
+    
+    def format_attribute_name_as_human_readable(self, name):
+        formatted = name.replace("_", " ").replace("-", " ") 
+        return formatted.title()
+            
+    def traverse_folder(self, base_path):
+        result = []
+
+        for root, dirs, files in os.walk(base_path):
+            # data.json is mandatory, metadata.json optional
+            if 'data.json' in files:
+                data_path = os.path.join(root, 'data.json')
+                metadata_path = os.path.join(root, 'metadata.json')
+                parent_folder_name = os.path.basename(root)
+
+                # Read data.json (required)
+                try:
+                    with open(data_path, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+                        if not content:
+                            print(f"Skipping empty data.json in {root} \n")
+                            continue
+                        data_content = json.loads(content)
+                except json.JSONDecodeError as e:
+                    print(f"Skipping invalid JSON in {root} (data.json): {e} \n")
+                    continue
+                except Exception as e:
+                    print(f"Error reading {data_path}: {e}\n")
+                    continue
+
+                # Read metadata.json (optional)
+                if 'metadata.json' in files:
+                    try:
+                        with open(metadata_path, 'r', encoding='utf-8') as fm:
+                            content_metadata = fm.read().strip()
+                            if not content_metadata:
+                                print(f"metadata.json empty in {root} — using placeholder\n")
+                                metadata_content = {"message": "No metadata found"}
+                            else:
+                                try:
+                                    metadata_content = json.loads(content_metadata)
+                                except json.JSONDecodeError as e:
+                                    print(f"Invalid metadata.json in {root}: {e} — using placeholder\n")
+                                    metadata_content = {"message": "Invalid metadata JSON"}
+                    except Exception as e:
+                        print(f"Error reading {metadata_path}: {e}\n")
+                        metadata_content = {"message": "No metadata found"}
+                else:
+                    # metadata missing -> use placeholder
+                    metadata_content = {"message": "No metadata found"}
+
+                # If data_content has columns & rows, validate rows lengths match columns count
+                attribute_data = None
+                if isinstance(data_content, dict) and 'columns' in data_content and 'rows' in data_content:
+                    columns = data_content.get('columns')
+                    rows = data_content.get('rows')
+
+                    if not isinstance(columns, list) or not isinstance(rows, list):
+                        print(f"[WARN] columns/rows in {data_path} are not lists — storing raw data\n")
+                        attribute_data = data_content
+                    else:
+                        expected_len = len(columns)
+                        valid_rows = []
+                        invalid_count = 0
+                        for i, row in enumerate(rows):
+                            if isinstance(row, list) and len(row) == expected_len:
+                                valid_rows.append(row)
+                            else:
+                                invalid_count += 1
+                                print(f"[WARN] Row #{i} in {data_path} has length {len(row) if isinstance(row, list) else 'N/A'}; expected {expected_len}")
+
+                        attribute_data = {
+                            "columns": columns,
+                            "rows": valid_rows,
+                            "validation": {
+                                "total_rows": len(rows),
+                                "valid_rows": len(valid_rows),
+                                "invalid_rows": invalid_count
+                            }
+                        }
+                else:
+                    # Not a tabular structure — keep as-is
+                    attribute_data = data_content
+
+                # Collect relation parts from parent folder back to base_path
+                relation_parts = [parent_folder_name]  # folder before data.json
+                current_dir = os.path.dirname(root)   # go one level up
+
+                relatedEntityName = None
+
+                while current_dir and current_dir != os.path.dirname(base_path):
+                    folder_name = os.path.basename(current_dir)
+                    relation_parts.append(folder_name)
+
+                    # Pick the first non-(AS_CATEGORY) folder as relatedEntityName
+                    if relatedEntityName is None and not folder_name.endswith("(AS_CATEGORY)"):
+                        relatedEntityName = folder_name
+
+                    current_dir = os.path.dirname(current_dir)
+
+                # Reverse so relation starts from base_path down to parent folder
+                relation_parts = list(reversed(relation_parts))
+                relation = " - ".join(relation_parts)
+
+                result.append({
+                    "attributeName": parent_folder_name,
+                    "relatedEntityName": relatedEntityName,
+                    "relation": relation,
+                    "attributeData": attribute_data,
+                    "attributeMetadata": metadata_content
+                })
+
+        return result
+    
+    def pre_process_traverse_result(self, result):    
+        for item in result:
+            category_hop_count = 0
+            relation_set = item["relation"].split(" - ")
+            year = relation_set[0]
+            date = datetime(int(year), 12, 31) 
+            iso_date_str = date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            item["attributeReleaseDate"] = str(iso_date_str)
+            for related_item in relation_set:
+                if related_item.endswith("(government)"):
+                    item["government"] = str(related_item.split('(')[0])
+                elif related_item.endswith("(citizen)"):
+                    item["president"] = str(related_item.split('(')[0])
+                elif related_item.endswith("(minister)"):
+                    item["minister"] = str(related_item.split('(')[0])
+                elif related_item.endswith("(department)"):
+                    item["department"] = str(related_item.split('(')[0])
+                elif related_item.endswith("(AS_CATEGORY)"):
+                    if "categoryData" not in item:
+                        item["categoryData"] = {}
+                    if category_hop_count == 0:
+                        item["categoryData"]["parentCategory"] = str(related_item.split('(')[0])
+                    elif category_hop_count >= 1:
+                        item["categoryData"]["childCategory_" + str(category_hop_count)] = str(related_item.split('(')[0])
+                    category_hop_count += 1
+        return result
+    
+    def entity_validator(self, result):
+        for item in result:
+            for data in item:
+                if data == "government":
+                    minorKind = "government"
+                    majorKind = "Organisation"
+                    is_valid, entity_id = self.validate_node(item[data], minorKind, majorKind)
+                    if is_valid:
+                        item[data] = entity_id
+                    else:
+                        item[data] = entity_id
+                elif data == "president":
+                    minorKind = "citizen"
+                    majorKind = "Person"
+                    is_valid, entity_id  = self.validate_node(item[data], minorKind, majorKind)
+                    if is_valid:
+                        item[data] = entity_id
+                    else:
+                        item[data] = entity_id
+                elif data == "minister":
+                    minorKind = "minister"
+                    majorKind = "Organisation"
+                    is_valid, entity_id = self.validate_node(item[data], minorKind, majorKind)
+                    if is_valid:
+                        item[data] = entity_id
+                    else:
+                        item[data] = entity_id
+                elif data == "department":
+                    minorKind = "department"
+                    majorKind = "Organisation"
+                    is_valid, entity_id = self.validate_node(item[data], minorKind, majorKind)
+                    if is_valid:
+                        item[data] = entity_id
+                    else:
+                        item[data] = entity_id
+        return result
+
+    def create_parent_categories_and_children_categories(self, result):
+        count = 0
+        node_ids = {}  
+        metadata_dict = {}
+        
+        print(f"Total items to process: {len(result)}")
+        
+        print("=" * 200)
+    
+        for item in result:
+            
+            date = item["attributeReleaseDate"]
+            if 'categoryData' in item:
+                pass
+                category_data = item['categoryData']
+
+                # --- Create parent node ---
+                parent_name = category_data['parentCategory']
+                
+                if 'minister' and 'department' in item:
+                    parent_of_parent_category_id = item["department"]
+                elif 'minister' in item:
+                    parent_of_parent_category_id = item["minister"]
+                
+                attribute_name = item['attributeName']  
+                attribute_data = item['attributeData']
+                
+                if parent_name not in node_ids:
+                    node_id = self.generate_id_for_category(date, parent_of_parent_category_id, parent_name)
+                    print(f"id >>>>>>>>>>>>>> {node_id}")
+                    print(f"🔄 Creating parent category node for ---> '{parent_name}'")
+                    date_for_id_u = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+                    year_u = date_for_id_u.strftime("%Y")
+                    month_day_u = date_for_id_u.strftime("%m-%d")
+                    parent_name_unique = f"{parent_of_parent_category_id}_{year_u}_{month_day_u}"
+                    res = self.create_nodes(node_id.lower(), parent_name_unique, 'parentCategory', date)
+                    if res.get('id'):
+                        count += 1
+                        node_id = res['id']
+                        node_ids[parent_name] = node_id
+                        print(f"✅ Created parent category node for ---> '{parent_name}' with id: {node_id}")
+                        parent_id = node_ids[parent_name]
+                        print(f"🔄 Creating relationship from {parent_of_parent_category_id} ---> {parent_id}")
+                        res = self.create_relationships(parent_of_parent_category_id, parent_id, date)
+                        if res.get('id'):
+                            print(f"✅ Created relationship from {parent_of_parent_category_id} ---> {parent_id}")
+                        else:
+                            print(f"❌ Creating relationship from {parent_of_parent_category_id} ---> {parent_id} was unsuccessfull")
+                            print(f"With error ---> {res['error']}")
+                    else:
+                        print(f"❌ Creating parent category for {parent_name} was unsuccessfull")
+                        print(f"With error ---> {res['error']}") 
+                        
+                else:
+                    print(f"❗️ Parent category node for ---> '{parent_name}' is already exists with the id: {node_ids[parent_name]}") 
+                
+                print("\n")
+                   
+                # --- Create child nodes ---
+                for key, child_name in category_data.items():
+                    if key.startswith('childCategory'):
+                        child_key = (parent_name, child_name)  # unique per parent
+                        if child_key not in node_ids:
+                            name_for_id = f"{parent_name}_{child_name}"
+                            node_id = self.generate_id_for_category(date, parent_of_parent_category_id, name_for_id)
+                            print(f"id >>>>>>>>>>>>>> {node_id}")
+                            print(f"🔄 Creating child node '{child_name}' for parent '{parent_name}'")
+                            date_for_id_u = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+                            year_u = date_for_id_u.strftime("%Y")
+                            month_day_u = date_for_id_u.strftime("%m-%d")
+                            child_name_unique = f"{child_name}_{year_u}_{month_day_u}"
+                            res = self.create_nodes(node_id, child_name_unique, key, date)
+                            if res.get("id"):
+                                count += 1
+                                node_id = res['id']
+                                node_ids[child_key] = node_id
+                                print(f"✅ Created child node '{child_name}' with id: {node_id} for parent '{parent_name}'")   
+                                child_id = node_ids[child_key]
+                                parent_id = node_ids[parent_name]
+                                # --- Create relationship ---
+                                print(f"🔄 Creating relationship from {parent_name} ---> {child_name}")
+                                res = self.create_relationships(parent_id, child_id, date)
+                                if res['relationships'][0]:
+                                    print(f"✅ Created relationship from {parent_name} ---> {child_name}")
+                                    print(f"🔄 Creating attribute for {child_name} ---> {attribute_name}")
+                                    attribute_name_for_table_name = self.format_attribute_name_for_table_name(attribute_name)
+                                    attribute_name_as_human_readable = self.format_attribute_name_as_human_readable(attribute_name)
+                                    print(f"  --Attribute name (Human readable) - {attribute_name_as_human_readable}")
+                                    print(f"  --Formatted attribute name for table name - {attribute_name_for_table_name}")
+                                    attribute_name_for_table_name = f"{attribute_name_for_table_name}_{year_u}_{node_id}"
+                                    res = self.create_attribute_to_entity(date, child_id, attribute_name_for_table_name, attribute_data)
+                                    if res.get('id'):
+                                        print(f"✅ Created attribute for {child_name} with attribute id {res['id']}")
+                                        print(f"🔄 Storing metadata for {child_name}")
+                                        metadata = {
+                                            "key" : attribute_name_for_table_name,
+                                            "value": attribute_name_as_human_readable
+                                        }
+                                        if child_id in metadata_dict:
+                                            metadata_dict[child_id].append(metadata)
+                                        else:
+                                            metadata_dict[child_id] = [metadata]
+                                        
+                                        print(f"✅ Storing metadata for {child_name} successfull")
+                                        
+                                    else:
+                                        print(f"❌ Creating attribute for {child_name} was unsuccessfull")
+                                        print(f"With error ---> {res['error']}")     
+                                else:
+                                    print(f"❌ Creating relationship from {parent_name} ---> {child_name} was unsuccessfull")
+                                    print(f"With error ---> {res['error']}")
+                            else:
+                                print(f"❌ Creating child node {child_name} was unsuccessfull")
+                                print(f"With error ---> {res['error']}")  
+                        else:
+                            print(f"❗️ Child node '{child_name}' for parent '{parent_name}' already exists with id: {node_ids[child_key]}")    
+                            
+                print("=" * 200)   
+                
+            else:
+                if 'minister' and 'department' in item:
+                    parent_of_attribute = item["department"]
+                    print("❗️ Attribute directly connects to a Department") 
+                elif 'minister' in item:
+                    parent_of_attribute = item["minister"]
+                    print("❗️ Attribute directly connected to a Ministry")
+                     
+                attribute_name = item['attributeName']
+                attribute_data = item['attributeData']
+                attribute_name_for_table_name = self.format_attribute_name_for_table_name(attribute_name)
+                attribute_name_as_human_readable = self.format_attribute_name_as_human_readable(attribute_name)
+                print(f"  --Attribute name (Human readable) - {attribute_name_as_human_readable}")
+                print(f"  --Formatted attribute name for table name - {attribute_name_for_table_name}")
+                print(f"🔄 Creating attribute for {parent_of_attribute} ---> {attribute_name}")
+                date_for_id_u = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+                year_u = date_for_id_u.strftime("%Y")
+                month_day_u = date_for_id_u.strftime("%m-%d")
+                attribute_name_for_table_name = f"{attribute_name_for_table_name}_{year_u}_{parent_of_attribute}"
+                res = self.create_attribute_to_entity(date, parent_of_attribute, attribute_name_for_table_name, attribute_data)
+                if res.get('id'):
+                    print(f"✅ Created attribute for {parent_of_attribute} with attribute id {res['id']}")
+                    print(f"🔄 Storing metadata for {parent_of_attribute}")
+                    metadata = {
+                         "key": attribute_name_for_table_name,
+                         "value": attribute_name_as_human_readable
+                    }
+                    # If entity already exists, append; else create a new list
+                    if parent_of_attribute in metadata_dict:
+                        metadata_dict[parent_of_attribute].append(metadata)
+                    else:
+                        metadata_dict[parent_of_attribute] = [metadata]
+                        
+                    print(f"✅ Storing metadata for {parent_of_attribute} successfull")
+                    
+                else:
+                    print(f"❌ Creating attribute for {parent_of_attribute} was unsuccessfull")
+                    print(f"With error ---> {res['error']}")
+                    
+                print("=" * 200) 
+            
+        self.create_metadata_to_entities(metadata_dict)
+                 
+        return
+    
+    def create_metadata_to_entities(self, metadata_dict):
+        for entity_id, metadata in metadata_dict.items():
+            print(f"🔄 Creating metadata for entity {entity_id}")
+            print(f"Metadata to be added: {metadata}")
+            res = self.create_metadata_to_entity(entity_id, metadata)
+            if res.get('id'):
+                print(f"✅ Created metadata for entity {entity_id} successfully")
+            else:
+                print(f"❌ Creating metadata for entity {entity_id} was unsuccessfull")
+                print(f"With error ---> {res['error']}")
+        return
+    
+    def create_parent_categories_and_children_categories_v2(self, result):
+        count = 0
+        node_ids = {}  
+        metadata_dict = {}
+        
+        print(f"Total items to process: {len(result)}")
+        
+        print("=" * 200)
+    
+        for item in result:
+            
+            date = item["attributeReleaseDate"]
+            if 'categoryData' in item:
+                category_data = item['categoryData']
+
+                # --- Create parent node ---
+                parent_name = category_data['parentCategory']
+                
+                # Fix: Properly check for both minister and department
+                if 'minister' in item and 'department' in item:
+                    parent_of_parent_category_id = item["department"]
+                    print(f"🔄 Using department as parent: {parent_of_parent_category_id}")
+                elif 'minister' in item:
+                    parent_of_parent_category_id = item["minister"]
+                    print(f"🔄 Using minister as parent: {parent_of_parent_category_id}")
+                else:
+                    print(f"❌ No minister or department found in item")
+                    continue
+                
+                attribute_name = item['attributeName']  
+                attribute_data = item['attributeData']
+                
+                if parent_name not in node_ids:
+                    parent_node_id = self.generate_id_for_category(date, parent_of_parent_category_id, parent_name)
+                    print(f"id >>>>>>>>>>>>>> {parent_node_id}")
+                    print(f"🔄 Creating parent category node for ---> '{parent_name}'")
+                    date_for_id_u = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+                    year_u = date_for_id_u.strftime("%Y")
+                    month_day_u = date_for_id_u.strftime("%m-%d")
+                    parent_name_unique = f"{parent_name}_{year_u}_{month_day_u}"
+                    res = self.create_nodes(parent_node_id, parent_name_unique, 'parentCategory', date)
+                    if res.get('id'):
+                        count += 1
+                        created_parent_id = res['id']
+                        node_ids[parent_name] = created_parent_id
+                        print(f"✅ Created parent category node for ---> '{parent_name}' with id: {created_parent_id}")
+                        print(f"🔄 Creating relationship from {parent_of_parent_category_id} ---> {created_parent_id}")
+                        res = self.create_relationships(parent_of_parent_category_id, created_parent_id, date)
+                        if res.get('id'):
+                            print(f"✅ Created relationship from {parent_of_parent_category_id} ---> {created_parent_id}")
+                        else:
+                            print(f"❌ Creating relationship from {parent_of_parent_category_id} ---> {created_parent_id} was unsuccessfull")
+                            print(f"With error ---> {res['error']}")
+                    else:
+                        print(f"❌ Creating parent category for {parent_name} was unsuccessfull")
+                        print(f"With error ---> {res['error']}") 
+                        
+                else:
+                    print(f"❗️ Parent category node for ---> '{parent_name}' already exists with the id: {node_ids[parent_name]}") 
+                
+                print("\n")
+                   
+                # --- Create child nodes ---
+                for key, child_name in category_data.items():
+                    if key.startswith('childCategory'):
+                        child_key = (parent_name, child_name)  # unique per parent
+                        if child_key not in node_ids:
+                            name_for_id = f"{parent_name}_{child_name}"
+                            child_node_id = self.generate_id_for_category(date, parent_of_parent_category_id, name_for_id)
+                            print(f"id >>>>>>>>>>>>>> {child_node_id}")
+                            print(f"🔄 Creating child node '{child_name}' for parent '{parent_name}'")
+                            date_for_id_u = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+                            year_u = date_for_id_u.strftime("%Y")
+                            month_day_u = date_for_id_u.strftime("%m-%d")
+                            child_name_unique = f"{child_name}_{year_u}_{month_day_u}"
+                            res = self.create_nodes(child_node_id, child_name_unique, key, date)
+                            if res.get("id"):
+                                count += 1
+                                created_child_id = res['id']
+                                node_ids[child_key] = created_child_id
+                                print(f"✅ Created child node '{child_name}' with id: {created_child_id} for parent '{parent_name}'")   
+                                parent_id = node_ids[parent_name]
+                                # --- Create relationship ---
+                                print(f"🔄 Creating relationship from {parent_name} ---> {child_name}")
+                                res = self.create_relationships(parent_id, created_child_id, date)
+                                # Fix: Check if relationships exist and are valid
+                                if res.get('id') and res.get('relationships') and len(res['relationships']) > 0:
+                                    print(f"✅ Created relationship from {parent_name} ---> {child_name}")
+                                    print(f"🔄 Creating attribute for {child_name} ---> {attribute_name}")
+                                    attribute_name_for_table_name = self.format_attribute_name_for_table_name(attribute_name)
+                                    attribute_name_as_human_readable = self.format_attribute_name_as_human_readable(attribute_name)
+                                    print(f"  --Attribute name (Human readable) - {attribute_name_as_human_readable}")
+                                    print(f"  --Formatted attribute name for table name - {attribute_name_for_table_name}")
+                                    attribute_name_for_table_name = f"{attribute_name_for_table_name}_{year_u}_{created_child_id}"
+                                    res = self.create_attribute_to_entity(date, created_child_id, attribute_name_for_table_name, attribute_data)
+                                    if res.get('id'):
+                                        print(f"✅ Created attribute for {child_name} with attribute id {res['id']}")
+                                        print(f"🔄 Storing metadata for {child_name}")
+                                        
+                                        metadata = {
+                                            "key" : attribute_name_for_table_name,
+                                            "value": attribute_name_as_human_readable
+                                        }
+                                        parent_cat = {
+                                            "key": "parent_of_parent_category_id",
+                                            "value": parent_of_parent_category_id
+                                        }
+                                        if created_child_id in metadata_dict:
+                                            metadata_dict[created_child_id].append(metadata)
+                                        else:
+                                            metadata_dict[created_child_id] = [metadata, parent_cat]
+                                            
+                                    
+                                        print(f"✅ Storing metadata for {child_name} successfull")
+                                        
+                                    else:
+                                        print(f"❌ Creating attribute for {child_name} was unsuccessfull")
+                                        print(f"With error ---> {res['error']}")     
+                                else:
+                                    print(f"❌ Creating relationship from {parent_name} ---> {child_name} was unsuccessfull")
+                                    print(f"With error ---> {res.get('error', 'Unknown error')}")
+                            else:
+                                print(f"❌ Creating child node {child_name} was unsuccessfull")
+                                print(f"With error ---> {res['error']}")  
+                        else:
+                            print(f"❗️ Child node '{child_name}' for parent '{parent_name}' already exists with id: {node_ids[child_key]}")    
+                            
+                print("=" * 200)   
+                
+            else:
+                # Handle items without categoryData (existing logic)
+                if 'minister' in item and 'department' in item:
+                    parent_of_attribute = item["department"]
+                    print("❗️ Attribute directly connects to a Department") 
+                elif 'minister' in item:
+                    parent_of_attribute = item["minister"]
+                    print("❗️ Attribute directly connected to a Ministry")
+                else:
+                    print("❌ No minister or department found in item")
+                    continue
+                     
+                attribute_name = item['attributeName']
+                attribute_data = item['attributeData']
+                attribute_name_for_table_name = self.format_attribute_name_for_table_name(attribute_name)
+                attribute_name_as_human_readable = self.format_attribute_name_as_human_readable(attribute_name)
+                print(f"  --Attribute name (Human readable) - {attribute_name_as_human_readable}")
+                print(f"  --Formatted attribute name for table name - {attribute_name_for_table_name}")
+                print(f"🔄 Creating attribute for {parent_of_attribute} ---> {attribute_name}")
+                date_for_id_u = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+                year_u = date_for_id_u.strftime("%Y")
+                month_day_u = date_for_id_u.strftime("%m-%d")
+                attribute_name_for_table_name = f"{attribute_name_for_table_name}_{year_u}_{parent_of_attribute}"
+                res = self.create_attribute_to_entity(date, parent_of_attribute, attribute_name_for_table_name, attribute_data)
+                if res.get('id'):
+                    print(f"✅ Created attribute for {parent_of_attribute} with attribute id {res['id']}")
+                    print(f"🔄 Storing metadata for {parent_of_attribute}")
+                    metadata = {
+                         "key": attribute_name_for_table_name,
+                         "value": attribute_name_as_human_readable
+                    }
+                    parent_cat = {
+                        "key": "parent_of_parent_category_id",
+                        "value": parent_of_attribute
+                    }
+                    # If entity already exists, append; else create a new list
+                    if parent_of_attribute in metadata_dict:
+                        metadata_dict[parent_of_attribute].append(metadata)
+                    else:
+                        metadata_dict[parent_of_attribute] = [metadata, parent_cat]
+                        
+                    print(f"✅ Storing metadata for {parent_of_attribute} successfull")
+                    
+                else:
+                    print(f"❌ Creating attribute for {parent_of_attribute} was unsuccessfull")
+                    print(f"With error ---> {res['error']}")
+                    
+                print("=" * 200) 
+            
+        self.create_metadata_to_entities(metadata_dict)
+                 
+        return
 
