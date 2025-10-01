@@ -36,7 +36,7 @@ class IncomingServiceAttributes:
         }
 
         try:
-            response = requests.post(url, json=payload, headers=headers)
+            response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
             response.raise_for_status()  
             attributes = response.json()
             
@@ -87,7 +87,7 @@ class IncomingServiceAttributes:
                     }
                 
                     try:
-                        response = requests.post(url, json=payload, headers=headers)
+                        response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
                         response.raise_for_status()  
                         output = response.json()
                         item["name"] =  output["body"][0]["name"]
@@ -100,7 +100,7 @@ class IncomingServiceAttributes:
                             # "Authorization": f"Bearer {token}"  
                         }
                         try:
-                            response = requests.get(url, headers=headers)
+                            response = requests.get(url, headers=headers, timeout=(30, 90))
                             response.raise_for_status()  
                             metadata = response.json()
                             for k, v in metadata.items():
@@ -166,7 +166,7 @@ class IncomingServiceAttributes:
         }
         
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=(30, 90))
             response.raise_for_status()  
             metadata = response.json()
             
@@ -198,7 +198,7 @@ class IncomingServiceAttributes:
         }
         
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=(30, 90))
             response.raise_for_status()  
             attribute_data = response.json()
             
@@ -236,7 +236,7 @@ class IncomingServiceAttributes:
         }
         
         try:
-            response = requests.post(url, json=payload, headers=headers)
+            response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
             response.raise_for_status()  
             all_attributes = response.json()
             
@@ -264,7 +264,7 @@ class IncomingServiceAttributes:
                     # "Authorization": f"Bearer {token}"  
                 }
                 try:
-                    response = requests.get(url, headers=headers)
+                    response = requests.get(url, headers=headers, timeout=(30, 90))
                     response.raise_for_status()  
                     metadata = response.json()
                     for key, value in metadata.items():
@@ -322,7 +322,7 @@ class IncomingServiceAttributes:
         }
         
         try:
-            response = requests.post(url, json=payload, headers=headers)
+            response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
             response.raise_for_status()  
             all_attributes = response.json()
             
@@ -350,7 +350,7 @@ class IncomingServiceAttributes:
                     # "Authorization": f"Bearer {token}"  
                 }
                 try:
-                    response = requests.get(url, headers=headers)
+                    response = requests.get(url, headers=headers, timeout=(30, 90))
                     response.raise_for_status()  
                     metadata = response.json()
                     for key, value in metadata.items():
@@ -399,7 +399,7 @@ class IncomingServiceAttributes:
                     }
                     
                     try:
-                        response = requests.post(url, json=payload, headers=headers)
+                        response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
                         response.raise_for_status()  
                         parent_entity = response.json()
                                                 
@@ -461,7 +461,7 @@ class IncomingServiceAttributes:
             print("\nSending the request........")
             
             start_time = time.perf_counter()
-            response = requests.post(url, json=payload, headers=headers)
+            response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
             response.raise_for_status()  
             
             end_time = time.perf_counter()
@@ -502,7 +502,7 @@ class IncomingServiceAttributes:
                 try:
                     print("Sending the request........")
                     start_time = time.perf_counter()
-                    response = requests.get(url, headers=headers)
+                    response = requests.get(url, headers=headers, timeout=(30, 90))
                     response.raise_for_status()  
                     end_time = time.perf_counter()
                     elapsed_time = end_time - start_time
@@ -558,7 +558,7 @@ class IncomingServiceAttributes:
                     try:
                         print("\nSending the request to find the previous parent........")
                         start_time = time.perf_counter()
-                        response = requests.post(url, json=payload, headers=headers)
+                        response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
                         response.raise_for_status()  
                         end_time = time.perf_counter()
                         elapsed_time = end_time - start_time
@@ -594,7 +594,7 @@ class IncomingServiceAttributes:
                             try:
                                 print("\nSending the request to find the base (main) parent........")
                                 start_time = time.perf_counter()
-                                response = requests.post(url, json=payload, headers=headers)
+                                response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
                                 response.raise_for_status() 
                                 end_time = time.perf_counter()
                                 elapsed_time = end_time - start_time
@@ -636,7 +636,7 @@ class IncomingServiceAttributes:
                     try:
                         print("Sending the request to find the name of the base (main) parent........")
                         start_time = time.perf_counter()
-                        response = requests.post(url, json=payload, headers=headers)
+                        response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
                         response.raise_for_status()  
                         end_time = time.perf_counter()
                         elapsed_time = end_time - start_time
