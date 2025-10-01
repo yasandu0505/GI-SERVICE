@@ -1,3 +1,4 @@
+from traceback import print_tb
 from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
 import requests
 from datetime import datetime
@@ -6,7 +7,7 @@ import binascii
 from google.protobuf.wrappers_pb2 import StringValue
 import string
 import re
-
+import time
 class IncomingServiceAttributes:
     def __init__(self, config : dict):
         self.config = config
@@ -136,10 +137,8 @@ class IncomingServiceAttributes:
     
     def decode_protobuf_attribute_name(self, name : str) -> str:
         try:
-            print(f"[DEBUG decode] input name: {name!r}")
             data = json.loads(name)
             hex_value = data.get("value")
-            print(f"[DEBUG decode] hex_value: {hex_value!r}")
             if not hex_value:
                 return ""
 
@@ -441,6 +440,9 @@ class IncomingServiceAttributes:
             }
     
     def expose_all_attributes(self):
+        
+        print("\nStarting collecting all the dataset data - 35 Datasets expected........")
+        
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
         
         payload = {
@@ -456,8 +458,18 @@ class IncomingServiceAttributes:
         }
         
         try:
+            print("\nSending the request........")
+            
+            start_time = time.perf_counter()
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()  
+            
+            end_time = time.perf_counter()
+            elapsed_time = end_time - start_time
+            
+            print(f"Time taken for request + response: {elapsed_time:.4f} seconds")
+            print("=" * 200)
+
             all_attributes = response.json()
             
             # access only the body
@@ -478,6 +490,8 @@ class IncomingServiceAttributes:
                 hash_to_the_attribute_name = self.decode_protobuf_attribute_name(raw_name)
                 sliced_id = item_id.split("_attr")[0]
                 
+                print(f"\nStart gathering metadata for {sliced_id}.......")
+                
                 url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{sliced_id}/metadata"
                 
                 headers = {
@@ -486,8 +500,13 @@ class IncomingServiceAttributes:
                 }
                 
                 try:
+                    print("Sending the request........")
+                    start_time = time.perf_counter()
                     response = requests.get(url, headers=headers)
                     response.raise_for_status()  
+                    end_time = time.perf_counter()
+                    elapsed_time = end_time - start_time
+                    print(f"Time taken for request + response: {elapsed_time:.4f} seconds")
                     metadata = response.json()
                     for key, value in metadata.items():
                         if key == hash_to_the_attribute_name:
@@ -511,12 +530,14 @@ class IncomingServiceAttributes:
                         if m:
                             year_key = m.group(0)
                 
-                
+                # print("\n Start finding the main parent of the each dataset........")
                 if "dep" in sliced_id:
                     parent_of_parent_category_id = sliced_id
-                    print(parent_of_parent_category_id)
+                    print(f"Found the main parent ministry/department (no API call needed) {parent_of_parent_category_id}")
                 else:
+                    print("\nAPI call is needed to find the parent.......")
                     related_parent = {} 
+                    
                     url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{sliced_id}/relations"
                 
                     payload = {
@@ -535,10 +556,14 @@ class IncomingServiceAttributes:
                     }
                     
                     try:
+                        print("\nSending the request to find the previous parent........")
+                        start_time = time.perf_counter()
                         response = requests.post(url, json=payload, headers=headers)
                         response.raise_for_status()  
+                        end_time = time.perf_counter()
+                        elapsed_time = end_time - start_time
+                        print(f"Time taken for request + response: {elapsed_time:.4f} seconds")
                         related_parent = response.json()
-                        print(related_parent)
                             
                     except Exception as e:
                         print(f"Error fetching related_parent: {str(e)}")
@@ -567,10 +592,14 @@ class IncomingServiceAttributes:
                             }
                             
                             try:
+                                print("\nSending the request to find the base (main) parent........")
+                                start_time = time.perf_counter()
                                 response = requests.post(url, json=payload, headers=headers)
-                                response.raise_for_status()  
+                                response.raise_for_status() 
+                                end_time = time.perf_counter()
+                                elapsed_time = end_time - start_time
+                                print(f"Time taken for request + response: {elapsed_time:.4f} seconds") 
                                 parent_response = response.json()
-                                print(f"parent response >>>{parent_response}")
 
                             except Exception as e:
                                 print(f"Error fetching parent_response: {str(e)}")
@@ -583,7 +612,6 @@ class IncomingServiceAttributes:
                           
                     if isinstance(parent_response, list) and len(parent_response) > 0:
                         parent_of_parent_category_id = parent_response[0].get("relatedEntityId")
-                        print(parent_of_parent_category_id)
                     else:
                         parent_of_parent_category_id = "N/A"
                                           
@@ -591,10 +619,9 @@ class IncomingServiceAttributes:
                     decoded_parent_of_parent = "N/A"
                 else:
                     # decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_of_parent_category_id)
+                    print("\nStart finding the actual name of the base parent......")
                     decoded_parent_of_parent = parent_of_parent_category_id
-                    
-                    print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
-                    
+                                        
                     url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
         
                     payload = {
@@ -607,19 +634,20 @@ class IncomingServiceAttributes:
                     }
                     
                     try:
+                        print("Sending the request to find the name of the base (main) parent........")
+                        start_time = time.perf_counter()
                         response = requests.post(url, json=payload, headers=headers)
                         response.raise_for_status()  
+                        end_time = time.perf_counter()
+                        elapsed_time = end_time - start_time
+                        print(f"Time taken for request + response: {elapsed_time:.4f} seconds") 
                         parent_entity = response.json()
                                                 
                         parent_body = parent_entity.get('body', [])
-                        
-                        print(f"Parent entity body: {parent_body}")
-                        
+                                                
                         if len(parent_body) > 0:
                             parent_raw_name = parent_body[0].get("name", "")
-                            print(f"Parent raw name: {parent_raw_name}")
                             decoded_parent_of_parent = self.decode_protobuf_attribute_name(parent_raw_name)
-                            print(f"Decoded parent_of_parent_category_id: {decoded_parent_of_parent}")
                         else:
                             decoded_parent_of_parent = "N/A"        
                     except Exception as e:
@@ -635,11 +663,13 @@ class IncomingServiceAttributes:
                     "name": decoded_name,
                     "created": created
                 }
+                print(f"\nFinal dataset out >>>>>> {simplified}")
+                print("=" * 200)
                 grouped_by_year.setdefault(year_key, []).append(simplified)
             
             return {
                 "attributes": grouped_by_year
-                
+
             }
 
         except Exception as e:
