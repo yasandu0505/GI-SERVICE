@@ -5,13 +5,16 @@ from src.dependencies import get_config
 from chartFactory.utils import transform_data_for_chart
 
 router = APIRouter()
-writer = WriteAttributes() 
+# writer = WriteAttributes() 
 
 def get_orgchart_service(config: dict = Depends(get_config)):
     return IncomingServiceOrgchart(config)
 
 def get_stat_service(config: dict = Depends(get_config)):
     return IncomingServiceAttributes(config)
+
+def get_writer_service(config: dict = Depends(get_config)):
+    return WriteAttributes(config)
 
 @router.get("/allAttributes")
 async def get_all_attributes(statService: IncomingServiceAttributes = Depends(get_stat_service)):
@@ -31,7 +34,7 @@ async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYL
 
 # Write attributes to the entities
 @router.post("/data/writeAttributes")
-async def write_attributes(WRITE_PAYLOAD: WRITE_PAYLOAD):
+async def write_attributes(WRITE_PAYLOAD: WRITE_PAYLOAD, writer: WriteAttributes = Depends(get_writer_service)):
     # Example : base_url = /Users/yasandu/Desktop/datasets/data/2022
     base_url = WRITE_PAYLOAD.base_url
     result = writer.traverse_folder(base_url)
@@ -39,6 +42,17 @@ async def write_attributes(WRITE_PAYLOAD: WRITE_PAYLOAD):
     result = writer.entity_validator(result)
     # return result
     return writer.create_parent_categories_and_children_categories_v2(result)
+
+@router.get("/data/writeMetadata")
+async def write_metadata(writer: WriteAttributes = Depends(get_writer_service)):
+    success, collection_names , db = writer.connect_to_mongodb()
+    if success:
+        documents = writer.get_all_documents_from_nexoan()
+        categorised_documents = writer.categorise_documents_by_year(documents)
+        return writer.add_metadata_to_the_document(categorised_documents, db)
+    else:
+        return "❌ Could not connect to MongoDB"
+    
 
 # Get the timeline for the orgchart
 @router.get("/data/orgchart/timeline")

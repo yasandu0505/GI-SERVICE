@@ -3,8 +3,15 @@ import json
 from datetime import datetime
 import requests
 import hashlib
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
+import binascii
+from google.protobuf.wrappers_pb2 import StringValue
 
 class WriteAttributes:
+    def __init__(self, config : dict):
+        self.config = config
+    
     def generate_id_for_category(self, date, parent_of_parent_category_id, name):
         date_for_id = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
         year = date_for_id.strftime("%Y")
@@ -85,6 +92,8 @@ class WriteAttributes:
             print("error : " +  str(e))
             return False , "Not found - Error occured"
         
+        
+        
     def create_relationships(self, parent_id, child_id, date):
         url = f"http://0.0.0.0:8080/entities/{parent_id}"
         
@@ -126,31 +135,7 @@ class WriteAttributes:
             return {
                 "error": str(e)
             }
-            
-    # def create_metadata_to_attribute(self, attribute_id, attribute_metadata): 
-    #     url = f"http://0.0.0.0:8080/entities/{attribute_id}"
-        
-    #     payload = {
-    #         "id": attribute_id,
-    #         "metadata": attribute_metadata
-    #     }
-        
-    #     headers = {
-    #                 "Content-Type": "application/json",
-    #                 # "Authorization": f"Bearer {token}"  
-    #             }
-        
-    #     try:
-    #         response = requests.put(url, json=payload, headers=headers)
-    #         response.raise_for_status()  
-    #         output = response.json()
-    #         return output
-    #     except Exception as e:
-    #         print(f"error : " +  str(e))
-    #         return {
-    #             "error": str(e)
-    #         }
-
+   
     def create_attribute_to_entity(self, date, entity_id, attribute_name_for_table_name, values): 
         url = f"http://0.0.0.0:8080/entities/{entity_id}"
         payload = {
@@ -750,4 +735,114 @@ class WriteAttributes:
         self.create_metadata_to_entities(metadata_dict)
                  
         return
+    
+    def connect_to_mongodb(self):
+        try:
+            # Create a MongoDB client
+            client = MongoClient(self.config['MONGODB_URI'])
+
+            client.admin.command('ping')
+            db = client.doc_db
+            collection_names = db.list_collection_names()
+            
+            print("✅ Connected to MongoDB successfully!")
+            return True , collection_names , db
+        except ConnectionFailure as e:
+            print(f"❌ Could not connect to MongoDB: {e}")
+            return False
+    
+    def get_all_documents_from_nexoan(self):
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        
+        payload = {
+            "kind": {
+                "major": "Document",
+                "minor": ""
+            }
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            # "Authorization": f"Bearer {token}"  
+        }
+        
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()  
+        documents = response.json()
+        return documents['body']
+    
+    def categorise_documents_by_year(self, documents):
+        grouped_by_year = {}
+        for document in documents:
+            year = document['created'].split('-')[0]
+            grouped_by_year.setdefault(year, []).append(document)
+        return grouped_by_year
+    
+    def add_metadata_to_the_document(self, categorised_documents, db):
+        
+        for year, documents in categorised_documents.items():
+            
+            collection_name = f"gazettes_{year}"
+            collection = db[collection_name]
+            
+            print(f"\nChecking collection: {collection_name}")
+            
+            for doc in documents:
+                doc_id = doc.get("id")
+                print(f"Document id: {doc_id}")
+                
+                document_no = doc.get("name")
+                decoded_document_no = self.decode_protobuf(document_no)
+                print(decoded_document_no)
+                
+                print(f"Extracted document id: {decoded_document_no}")
+                existing_doc = collection.find_one({"document_id": decoded_document_no})
+                metadata_list = []
+                if existing_doc:
+                    print(f"Document exists in collection: {collection_name} with id: {decoded_document_no}")
+                    
+                    for key, value in existing_doc.items():
+                        if key == "_id" or key == "document_id" or key == "document_date":
+                            continue
+                        metadata_list.append({"key": key, "value": value})
+                    
+                    print(metadata_list)
+                    
+                    print(f"Creating metadata for document: {doc_id}")
+                    res = self.create_metadata_to_entity(doc_id, metadata_list)
+                    if res.get('metadata') and len(res.get('metadata')) == len(metadata_list):
+                        print(f"✅ Created metadata for document: {doc_id}")
+                    else:
+                        print(f"❌ Creating metadata for document: {doc_id} was unsuccessfull")
+                else:
+                    print(f"Document does not exist in collection: {collection_name}")
+                
+                print("=" * 200)
+            
+            print("=" * 200)
+            
+        return
+    
+    def decode_protobuf(self, name : str) -> str:
+        try:
+            data = json.loads(name)
+            hex_value = data.get("value")
+            if not hex_value:
+                return ""
+
+            decoded_bytes = binascii.unhexlify(hex_value)
+            sv = StringValue()
+            try:
+                sv.ParseFromString(decoded_bytes)
+                return sv.value.strip()
+            except Exception:
+                decoded_str = decoded_bytes.decode("utf-8", errors="ignore")
+                cleaned = ''.join(ch for ch in decoded_str if ch.isprintable())
+                return cleaned.strip()
+        except Exception as e:
+            print(f"[DEBUG decode] outer exception: {e}")
+            return ""
+        
+    
+    
 
