@@ -8,6 +8,11 @@ from google.protobuf.wrappers_pb2 import StringValue
 import string
 import re
 import time
+import asyncio
+import aiohttp
+from datetime import datetime
+from collections import defaultdict
+
 class IncomingServiceAttributes:
     def __init__(self, config : dict):
         self.config = config
@@ -219,7 +224,6 @@ class IncomingServiceAttributes:
                 "error": f"No data found - Error occured - {str(e)}"
             }
     
-
     def expose_all_attributes_v2(self):
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
         
@@ -305,7 +309,6 @@ class IncomingServiceAttributes:
                 "error": f"Error occured - {str(e)}"
             }
 
-    
     def expose_all_attributes_v1(self):
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
         
@@ -439,9 +442,9 @@ class IncomingServiceAttributes:
                 "error": f"Error occured - {str(e)}"
             }
     
-    def expose_all_attributes(self):
-        
+    def expose_all_attributes(self):  
         print("\nStarting collecting all the dataset data - 35 Datasets expected........")
+        global_start_time = time.perf_counter()
         
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
         
@@ -474,6 +477,8 @@ class IncomingServiceAttributes:
             
             # access only the body
             body = all_attributes.get('body', [])
+            print('body')
+            print(body)
             
             if len(body) == 0:
                 return {
@@ -508,6 +513,8 @@ class IncomingServiceAttributes:
                     elapsed_time = end_time - start_time
                     print(f"Time taken for request + response: {elapsed_time:.4f} seconds")
                     metadata = response.json()
+                    print('meta data')
+                    print(metadata)
                     for key, value in metadata.items():
                         if key == hash_to_the_attribute_name:
                             attribute_name_to_decode = value
@@ -666,6 +673,11 @@ class IncomingServiceAttributes:
                 print(f"\nFinal dataset out >>>>>> {simplified}")
                 print("=" * 200)
                 grouped_by_year.setdefault(year_key, []).append(simplified)
+                
+                global_end_time = time.perf_counter()
+                global_elapsed_time = global_end_time - global_start_time
+            
+                print(f"Global time taken for request {global_elapsed_time:.4f} seconds")
             
             return {
                 "attributes": grouped_by_year
@@ -676,5 +688,183 @@ class IncomingServiceAttributes:
             return{
                 "error": f"Error occured - {str(e)}"
             }
+    
+    async def fetch_relation(self,session, id, relationName):
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{id}/relations"
+        headers = {"Content-Type": "application/json"}  
+        payload = {
+            "relatedEntityId": "",
+            "startTime": "",
+            "endTime": "",
+            "id": "",
+            "name": relationName,
+            "activeAt": "",
+            "direction": "OUTGOING",
+        }
+        async with session.post(url, json=payload, headers=headers) as response:
+            response.raise_for_status()
+            data = await response.json()
+            return data
+    
+    async def get_node_data_by_id(self,entityId, session):
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        payload = {
+            "id": entityId
+        }
+        headers = {"Content-Type":"application/json"}
+        
+        try:
+            async with session.post(url, json=payload, headers=headers) as response:
+                response.raise_for_status()
+                res_json = await response.json()
+                response_list = res_json.get("body",[])
+                return response_list[0]
+                    
+        except Exception as e:
+            return {"error": f"Failed to fetch entity data by id {entityId}: {str(e)}"}  
+        
+    async def expose_category_by_id(self, id: str | None):
+        
+        global_start_time = time.perf_counter()
+        
+        headers = {"Content-Type": "application/json"}        
+        finalOutput = { "categories": [], "datasets": defaultdict(list) }
+        
+        try:
+            if id is None:
+                searchList = []
+                url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+                payload_dataset = {
+                    "kind": {
+                        "major": "Category",
+                        "minor": "parentCategory"
+                    }
+                }
 
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, json=payload_dataset, headers=headers) as response:
+                        response.raise_for_status()
+                        res_json = await response.json()
+                        response_list = res_json.get("body",[])
+                        searchList = response_list
+                        finalOutput["categories"] = response_list        
+                            
+            else:
+                # Traverse upward to find department
+                async with aiohttp.ClientSession() as session:
+                    parent_department = await self.find_parent_department(session, id)
+                    print(parent_department)      
+                    metadata_parent = await self.get_metadata_for_entity(session, parent_department['id'])          
+                    print(metadata_parent)      
+                 
+                async with aiohttp.ClientSession() as session:
+                    tasks_for_relations = [
+                        self.fetch_relation(session, id, relationName)
+                        for relationName in ["IS_ATTRIBUTE","AS_CATEGORY"]
+                    ]
+                    results = await asyncio.gather(*tasks_for_relations, return_exceptions=True)
 
+                    searchList = [
+                        item
+                        for sublist in results
+                        if isinstance(sublist, list)
+                        for item in sublist
+                    ]
+                          
+                async with aiohttp.ClientSession() as session:
+                    tasks_for_entity_data = [
+                        self.get_node_data_by_id(item['relatedEntityId'],session)
+                        for item in searchList
+                    ]
+                    results = await asyncio.gather(*tasks_for_entity_data, return_exceptions=True)
+                    
+                    # finalOutput["datasets"] = [item for item in results if item.get("kind", {}).get("major") == "Dataset"]
+                    # finalOutput["categories"] = [item for item in results if item.get("kind",{}).get("major") == "Categories"]
+                    
+                    for item in results:
+                        kind = item.get("kind", {}).get("major", "")
+                        name = item.get("name")
+                        name = self.decode_protobuf_attribute_name(name)
+                        
+                        item["name"] = name                      
+                        
+                        if kind == "Dataset":
+                            created_date = item.get("created")
+                            if created_date:
+                                year = created_date.split("-")[0]
+                            else:
+                                year = "unknown"
+                            finalOutput["datasets"][year].append(item)
+                        
+                        elif kind == "Category":
+                            finalOutput["categories"].append(item)
+                 
+        except Exception as e:
+            return {"error": f"Failed to fetch categories or attributes {id}: {str(e)}"}
+        
+        global_end_time = time.perf_counter()
+        global_elapsed_time = global_end_time - global_start_time
+        print(f"\n Total time taken: {global_elapsed_time:.4f} seconds")
+        return finalOutput   
+
+    async def find_parent_department(self, session, entity_id):
+        """
+        Recursively traverse relations until a parent with kind.major == 'Department' is found.
+        Returns the parent entity data (or None if not found).
+        """
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entity_id}/relations"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "relatedEntityId": "",
+            "startTime": "",
+            "endTime": "",
+            "id": "",
+            "name": "AS_CATEGORY",  # adjust relation name if needed
+            "activeAt": "",
+            "direction": "INCOMING"
+        }
+
+        async with session.post(url, json=payload, headers=headers) as response:
+            response.raise_for_status()
+            relations = await response.json()
+
+        if not relations:
+            return None
+
+        for rel in relations:
+            related_id = rel.get("relatedEntityId")
+            if not related_id:
+                continue
+
+            parent_entity = await self.get_node_data_by_id(related_id, session)
+            if not parent_entity:
+                continue
+
+            kind_major = parent_entity.get("kind", {}).get("minor")
+            if kind_major == "department":
+                return parent_entity
+            else:
+                # Recurse upward
+                return await self.find_parent_department(session, related_id)
+
+        return None
+      
+    async def get_metadata_for_entity(self, session, entityId):
+        
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/metadata"
+                
+        headers = {
+            "Content-Type": "application/json",
+        }
+                
+        try:
+            async with session.get(url, headers=headers) as response:
+                response.raise_for_status()
+                data = await response.json()
+                print('metadata')
+                print(data)
+        except Exception as e:
+            return f"failed to get metadata for {entityId} : {e}"    
+        
+            
+    

@@ -17,6 +17,10 @@ def get_stat_service(config: dict = Depends(get_config)):
 async def get_all_attributes(statService: IncomingServiceAttributes = Depends(get_stat_service)):
     return statService.expose_all_attributes()
 
+@router.get("/categoriesById")
+async def get_all_categories(id: str | None = None, statService: IncomingServiceAttributes = Depends(get_stat_service)):
+    return await statService.expose_category_by_id(id)
+
 # Get the relevant attributes for the entity
 @router.post("/data/entity/{entityId}")
 async def get_relevant_attributes_for_entity(ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId : str, statService: IncomingServiceAttributes = Depends(get_stat_service)):
