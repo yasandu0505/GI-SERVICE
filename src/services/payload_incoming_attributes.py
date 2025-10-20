@@ -304,6 +304,7 @@ class IncomingServiceAttributes:
                         response_list = res_json.get("body",[])
                         
                         for item in response_list:
+                            item["nameExact"] = None
                             item["name"] = self.decode_protobuf_attribute_name(item["name"])
                         
                         finalOutput["categories"] = response_list        
@@ -329,9 +330,6 @@ class IncomingServiceAttributes:
                         for item in searchList
                     ]
                     results = await asyncio.gather(*tasks_for_entity_data, return_exceptions=True)
-                    
-                    # finalOutput["datasets"] = [item for item in results if item.get("kind", {}).get("major") == "Dataset"]
-                    # finalOutput["categories"] = [item for item in results if item.get("kind",{}).get("major") == "Categories"]
                     
                     parent_department = await self.find_parent_department(session, id)    
                     
