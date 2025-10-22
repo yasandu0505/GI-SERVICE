@@ -168,6 +168,8 @@ class IncomingServiceAttributes:
             "Content-Type": "application/json",
         }
         
+        actualName = None
+        
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
@@ -331,7 +333,7 @@ class IncomingServiceAttributes:
                     ]
                     results = await asyncio.gather(*tasks_for_entity_data, return_exceptions=True)
                     
-                    parent_department = await self.find_parent_department(session, id)    
+                    parent_department = await self.find_parent_department(session, id)   
                     
                     for item in results:
                         kind = item.get("kind", {}).get("major", "")
@@ -344,6 +346,7 @@ class IncomingServiceAttributes:
                         item["source"] = ""
                         
                         if kind == "Dataset":
+                            
                             created_date = item.get("created")
                             if created_date:
                                 year = created_date.split("-")[0]
@@ -368,5 +371,75 @@ class IncomingServiceAttributes:
         print(f"\n Total time taken: {global_elapsed_time:.4f} seconds")
         return finalOutput   
         
-            
+    async def datacategoriesbyyear(self, name: str | None, parentId: str):
+        global_start_time = time.perf_counter()
+        finalOutput = {"datasets": defaultdict(list)}
+
+        try:
+            if not name:
+                return finalOutput
+
+            async with aiohttp.ClientSession() as session:
+                # Step 1: Fetch relations
+                relation_results = await asyncio.gather(
+                    self.fetch_relation(session, parentId, "IS_ATTRIBUTE"),
+                    return_exceptions=True
+                )
+
+                searchList = [
+                    item
+                    for sublist in relation_results
+                    if isinstance(sublist, list)
+                    for item in sublist
+                ]
+
+                # Step 2: Get node data by ID
+                node_data_results = await asyncio.gather(
+                    *[self.get_node_data_by_id(item['relatedEntityId'], session) for item in searchList],
+                    return_exceptions=True
+                )
+
+                # Step 3: Get parent department
+                parent_department = await self.find_parent_department(session, parentId)
+
+                # Step 4: Get metadata once
+                metadata_parent = await self.get_metadata_for_entity(session, parentId)
+
+                for item in node_data_results:
+                    if isinstance(item, Exception):
+                        continue
+
+                    kind = item.get("kind", {}).get("major", "")
+                    raw_name = item.get("name")
+                    decoded_name = self.decode_protobuf_attribute_name(raw_name)
+                    
+                    if decoded_name != name:
+                        continue
+
+                    # Set base fields
+                    item["name"] = decoded_name
+                    item["nameExact"] = None
+                    item["parentId"] = parentId
+                    item["source"] = ""
+
+                    if kind == "Dataset":
+                        created_date = item.get("created")
+                        year = created_date.split("-")[0] if created_date else "unknown"
+                        finalOutput["datasets"][year].append(item)
+
+                        # Handle metadata_parent mapping
+                        if metadata_parent and decoded_name in metadata_parent:
+                            item["nameExact"] = self.decode_protobuf_attribute_name(metadata_parent[decoded_name])
+
+                        # Set source from parent department
+                        if parent_department:
+                            item["source"] = self.decode_protobuf_attribute_name(parent_department.get("name", ""))
+
+        except Exception as e:
+            return {"error": f"Failed to fetch categories or attributes for parentId {parentId}: {str(e)}"}
+
+        global_end_time = time.perf_counter()
+        print(f"\nTotal time taken: {global_end_time - global_start_time:.4f} seconds")
+        return finalOutput
+               
     
