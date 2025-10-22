@@ -8,6 +8,8 @@ from google.protobuf.wrappers_pb2 import StringValue
 import string
 import re
 import time
+import statistics
+
 class IncomingServiceAttributes:
     def __init__(self, config : dict):
         self.config = config
@@ -676,5 +678,153 @@ class IncomingServiceAttributes:
             return{
                 "error": f"Error occured - {str(e)}"
             }
+    
+    def test_req(self):
+        
+        print("\nStarting collecting all the dataset data - 35 Datasets expected........")
+        
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        
+        payload = {
+            "kind": {
+                "major": "Dataset",
+                "minor": "tabular"
+            }
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            # "Authorization": f"Bearer {token}"    
+        }
+        
+        try:
+            print("\nSending the request........")
+            
+            start_time = time.perf_counter()
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            
+            end_time = time.perf_counter()
+            elapsed_time = end_time - start_time
+            
+            print(f"Time taken for request + response: {elapsed_time:.4f} seconds")
+            print("=" * 200)
+
+            all_attributes = response.json()
+            
+            # access only the body
+            body = all_attributes.get('body', [])
+            
+            if len(body) == 0:
+                return {
+                    "message": "No attributes found"
+                }
+            
+            return body
+                
+        except Exception as e:
+            return{
+                "error": f"Error occured - {str(e)}"
+            }
+    
+    # def test_req_40_times(self):
+        
+    #     url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        
+    #     payload = {
+    #         "kind": {
+    #             "major": "Dataset",
+    #             "minor": "tabular"
+    #         }
+    #     }
+    #     headers = {
+    #         "Content-Type": "application/json",
+    #     }
+
+    #     times = []
+    #     for i in range(40):
+    #         try:
+    #             start = time.perf_counter()
+    #             response = requests.post(url, json=payload, headers=headers)
+    #             response.raise_for_status()
+    #             end = time.perf_counter()
+    #             elapsed = end - start
+    #             print(f"Request {i+1}: {elapsed:.4f} seconds")
+    #             times.append(elapsed)
+    #         except Exception as e:
+    #             print(f"Request {i+1} failed: {e}")
+
+    #     if times:
+    #         avg_time = statistics.mean(times)
+    #         print(f"\nAverage time across {len(times)} successful requests: {avg_time:.4f} seconds")
+    #         return avg_time
+    #     else:
+    #         print("All requests failed.")
+    #         return None
+
+
+    def test_req_40_times(self):
+        urls = [
+            ("BASE_URL_QUERY", f"{self.config['BASE_URL_QUERY']}/v1/entities/search"),
+            ("BASE_URL_QUERY_TWO", f"{self.config['BASE_URL_QUERY_TWO']}/v1/entities/search")
+        ]
+
+        payload = {
+            "kind": {
+                "major": "Dataset",
+                "minor": "tabular"
+            }
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        results = {}
+
+        for label, url in urls:
+            print(f"\n--- Testing {label} ---")
+
+            # 🔥 Warm-up request (not included in timing)
+            try:
+                print(f"Performing warm-up request for {label}...")
+                warm_start = time.perf_counter()
+                warm_response = requests.post(url, json=payload, headers=headers)
+                warm_response.raise_for_status()
+                warm_end = time.perf_counter()
+                print(f"Warm-up request completed in {warm_end - warm_start:.4f} seconds\n")
+            except Exception as e:
+                print(f"Warm-up request for {label} failed: {e}\n")
+
+            # Actual 40 test requests
+            times = []
+            for i in range(40):
+                try:
+                    start = time.perf_counter()
+                    response = requests.post(url, json=payload, headers=headers)
+                    response.raise_for_status()
+                    end = time.perf_counter()
+                    elapsed = end - start
+                    print(f"Request {i+1} ({label}): {elapsed:.4f} seconds")
+                    times.append(elapsed)
+                except Exception as e:
+                    print(f"Request {i+1} ({label}) failed: {e}")
+
+            if times:
+                avg_time = statistics.mean(times)
+                results[label] = avg_time
+                print(f"\nAverage time for {label} (excluding warm-up): {avg_time:.4f} seconds\n")
+            else:
+                results[label] = None
+                print(f"All requests to {label} failed.\n")
+
+        print("=== Final Results ===")
+        for label, avg in results.items():
+            if avg is not None:
+                print(f"{label}: {avg:.4f} seconds")
+            else:
+                print(f"{label}: No successful requests")
+
+        return results
 
 

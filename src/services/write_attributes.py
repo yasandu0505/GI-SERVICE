@@ -7,20 +7,15 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 import binascii
 from google.protobuf.wrappers_pb2 import StringValue
+import time
 
 class WriteAttributes:
     def __init__(self, config : dict):
         self.config = config
     
-    def generate_id_for_category(self, date, parent_of_parent_category_id, name):
-        date_for_id = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
-        year = date_for_id.strftime("%Y")
-        month_day = date_for_id.strftime("%m-%d")
-
-        raw = f"{parent_of_parent_category_id}-{name}-{year}-{month_day}"
-
+    def generate_id_for_category(self, parent_of_parent_category_id, parent_category_name):
+        raw = f"{parent_of_parent_category_id}-{parent_category_name}"
         short_hash = hashlib.sha1(raw.encode()).hexdigest()[:10]
-
         node_id = f"cat_{short_hash}"
         return node_id
 
@@ -49,6 +44,10 @@ class WriteAttributes:
                     "Content-Type": "application/json",
                     # "Authorization": f"Bearer {token}"  
                 }
+        
+        print(f"    [DEBUG] Create payload: {payload}")
+        print(f"    [DEBUG] Create URL: {url}")
+        
         try:
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()  
@@ -64,14 +63,44 @@ class WriteAttributes:
         url = "http://0.0.0.0:8081/v1/entities/search"
         
         payload = {
-            "id": "",
             "kind": {
                 "major": majorKind,
                 "minor": minorKind
             },
-            "name": entity_name,
-            "created": "",
-            "terminated": ""
+            "name": entity_name
+            }
+        
+        headers = {
+                    "Content-Type": "application/json",
+                    # "Authorization": f"Bearer {token}"  
+                }
+        
+        time.sleep(1)
+        print(f"    [DEBUG] Search payload: {payload}")
+        print(f"    [DEBUG] Search URL: {url}")
+        
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()  
+            output = response.json()
+            if output and "body" in output and len(output["body"]) > 0:
+                entity_id = output["body"][0]["id"]
+                return True, entity_id
+            else:
+                return False, "No data found"
+        except Exception as e:
+            print("error : " +  str(e))
+            return False , "Not found - Error occured"
+        
+    def get_created_date_of_node(self, entity_name, minorKind, majorKind) -> tuple[bool, str]:
+        url = "http://0.0.0.0:8081/v1/entities/search"
+        
+        payload = {
+            "kind": {
+                "major": majorKind,
+                "minor": minorKind
+            },
+            "name": entity_name
             }
         
         headers = {
@@ -84,15 +113,12 @@ class WriteAttributes:
             response.raise_for_status()  
             output = response.json()
             if output and "body" in output and len(output["body"]) > 0:
-                entity_id = output["body"][0]["id"]
-                return True, entity_id
+                return True, output["body"][0]["created"]
             else:
-                return False, "Not found"
+                return False, "No data found"
         except Exception as e:
             print("error : " +  str(e))
             return False , "Not found - Error occured"
-        
-        
         
     def create_relationships(self, parent_id, child_id, date):
         url = f"http://0.0.0.0:8080/entities/{parent_id}"
@@ -194,10 +220,12 @@ class WriteAttributes:
             return {
                 "error" : str(e)
             }
-    
-    
-    def format_attribute_name_for_table_name(self, name):
+
+    def format_attribute_name_for_table_name(self, name, date):
         formatted = name.replace(" ", "_").replace("-", "_")
+        date_for_id_u = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+        year_u = date_for_id_u.strftime("%Y")
+        formatted = f"{formatted}_{year_u}"
         hashed = hashlib.md5(formatted.encode()).hexdigest()[:10] 
         return hashed
     
@@ -343,7 +371,7 @@ class WriteAttributes:
     
     def entity_validator(self, result):
         for item in result:
-            for data in item:
+            for data in list(item.keys()):
                 if data == "government":
                     minorKind = "government"
                     majorKind = "Organisation"
@@ -355,7 +383,7 @@ class WriteAttributes:
                 elif data == "president":
                     minorKind = "citizen"
                     majorKind = "Person"
-                    is_valid, entity_id  = self.validate_node(item[data], minorKind, majorKind)
+                    is_valid, entity_id   = self.validate_node(item[data], minorKind, majorKind)
                     if is_valid:
                         item[data] = entity_id
                     else:
@@ -376,6 +404,170 @@ class WriteAttributes:
                         item[data] = entity_id
                     else:
                         item[data] = entity_id
+                elif data == "relatedEntityName":
+                    related_entity_name = item[data]
+                    if '(' in related_entity_name and ')' in related_entity_name:
+                        minorKind = related_entity_name.split('(')[1].split(')')[0]
+                        clean_name = related_entity_name.split('(')[0].strip()
+                    else:
+                        # Default to department if no parentheses found
+                        minorKind = "department"
+                        clean_name = related_entity_name
+                    
+                    majorKind = "Organisation"
+                    
+                    is_valid, entity_id = self.validate_node(clean_name, minorKind, majorKind)
+                    if is_valid:
+                        item[data] = entity_id
+                        is_valid_related_entity_created_date, related_entity_created_date = self.get_created_date_of_node(clean_name, minorKind, majorKind)
+                        if is_valid_related_entity_created_date:
+                            item["relatedEntityCreatedDate"] = related_entity_created_date
+                        else:
+                            item["relatedEntityCreatedDate"] = related_entity_created_date
+                    else:
+                        item[data] = entity_id
+                        item["relatedEntityCreatedDate"] = "Not found date"
+        return result
+     
+    def _insert_dataset_for_category(self, category_id, category_name, attributeReleaseDate, attributeData, attribute_name_for_table_name):
+        """Helper function to insert dataset for a category (parent or child)"""
+        print(f"  --Inserting dataset for category ---> {category_name}")
+        print(f"  --Formatted dataset name for table name - {attribute_name_for_table_name}")
+        # date_for_id_u = datetime.strptime(attributeReleaseDate, "%Y-%m-%dT%H:%M:%SZ")
+        # year_u = date_for_id_u.strftime("%Y")
+        # attribute_name_for_table_name = f"{attribute_name_for_table_name}_{year_u}_{category_id}"
+        time.sleep(1)
+        res = self.create_attribute_to_entity(attributeReleaseDate, category_id, attribute_name_for_table_name, attributeData)
+        time.sleep(1)
+        if res.get('id'):
+            print(f"  --✅ Inserted dataset for {category_name} with attribute id {res['id']}")
+        else:
+            print(f"  --Inserting dataset for {category_name} was unsuccessfull")
+            print(f"  --Error ---> {res['error']}")
+
+    def create_categories_and_insert_datasets(self, result):   
+        metadata_dict = {}         
+
+        print(f"Total items to process: {len(result)}")
+        
+        print("=" * 200)
+        
+        for item in result:
+            attributeReleaseDate = item["attributeReleaseDate"]
+            attributeName = item["attributeName"]
+            relatedEntityName = item["relatedEntityName"]
+            relatedEntityCreatedDate = item["relatedEntityCreatedDate"]
+            attribute_name_for_table_name = self.format_attribute_name_for_table_name(attributeName, attributeReleaseDate)
+            attribute_name_as_human_readable = self.format_attribute_name_as_human_readable(attributeName)
+    
+            print(f"🔄 Processing item ---> {attributeName}")
+            print(f"  --Dataset name: {attributeName}")
+            print(f"  --Dataset name (Human readable) - {attribute_name_as_human_readable}")
+            print(f"  --Formatted dataset name for table name - {attribute_name_for_table_name}")
+            print(f"  --Dataset release date: {attributeReleaseDate}")
+            print(f"  --Related entity Id: {relatedEntityName}")
+            print(f"  --Related entity created date: {relatedEntityCreatedDate}")
+            parent_category_name = item["categoryData"]["parentCategory"]
+            print(f"  --Parent category name: {parent_category_name}")
+            print(f"  --Checking if parent category exists ---> {parent_category_name}")
+            time.sleep(1)
+            is_valid_parent_category, parent_category_id = self.validate_node(parent_category_name, "parentCategory", "Category")
+            time.sleep(1)
+            if is_valid_parent_category:
+                print(f"  --Parent category found ---> {parent_category_name} with id: {parent_category_id}")
+            else:
+                print(f"  --Parent category not found")
+                print(f"  --Start creating parent category ---> {parent_category_name}")
+                parent_category_id = self.generate_id_for_category(relatedEntityName, parent_category_name) 
+                res = self.create_nodes(parent_category_id, parent_category_name, "parentCategory", relatedEntityCreatedDate)
+                time.sleep(1)
+                if res.get('id'):
+                    print(f"  --Parent category created ---> {parent_category_name} with id: {parent_category_id}")
+                    print(f"  --Creating relationship from {relatedEntityName} ---> {parent_category_id}")
+                    res = self.create_relationships(relatedEntityName, parent_category_id, relatedEntityCreatedDate)
+                    time.sleep(1)
+                    if res.get('id'):
+                        print(f"  --Relationship created ---> {relatedEntityName} ---> {parent_category_id}")
+                    else:
+                        print(f"  --Relationship creation failed ---> {relatedEntityName} ---> {parent_category_id}")
+                        print(f"  --Error ---> {res['error']}")
+                else:
+                    print(f"  --Parent category creation failed ---> {parent_category_name}")
+                    print(f"  --Error ---> {res['error']}")
+                    continue  # Skip child category creation if parent failed
+                time.sleep(1)
+            
+            print("\n")
+            
+            # Create child categories (only if parent category was successfully created)
+            category_data = item['categoryData']
+            child_categories_found = False
+            
+            for key, child_category_name in category_data.items():
+                if key.startswith('childCategory'):
+                    child_categories_found = True
+                    print(f"  --Child category name: {child_category_name}")
+                    print(f"  --Checking if child category exists ---> {child_category_name}")
+                    time.sleep(1)
+                    is_valid_child_category, child_category_id = self.validate_node(child_category_name, "childCategory", "Category")
+                    if is_valid_child_category:
+                        print(f"  --Child category found ---> {child_category_name} with id: {child_category_id}")
+                    else:
+                        print(f"  --Child category not found")
+                        print(f"  --Creating child category ---> {child_category_name}")
+                        child_category_id = self.generate_id_for_category(parent_category_id, child_category_name)
+                        res = self.create_nodes(child_category_id, child_category_name, "childCategory", relatedEntityCreatedDate)
+                        time.sleep(1)
+                        if res.get('id'):
+                            print(f"  --Child category created ---> {child_category_name} with id: {child_category_id}")
+                            print(f"  --Creating relationship from parent category {parent_category_id} ---> child category {child_category_id}")
+                            res = self.create_relationships(parent_category_id, child_category_id, relatedEntityCreatedDate)
+                            time.sleep(1)
+                            if res.get('id'):
+                                print(f"  --Child relationship created ---> {parent_category_id} ---> {child_category_id}")
+                            else:
+                                print(f"  --Child relationship creation failed ---> {parent_category_id} ---> {child_category_id}")
+                                print(f"  --Error ---> {res['error']}")
+                                continue
+                        else:
+                            print(f"  --Child category creation failed ---> {child_category_name}")
+                            print(f"  --Error ---> {res['error']}")
+                            continue
+
+                    
+                    # Create dataset for the child category (only if child category exists or was created successfully)
+                    self._insert_dataset_for_category(child_category_id, child_category_name, attributeReleaseDate, item['attributeData'], attribute_name_for_table_name)
+                    print(f"  --Storing metadata for {child_category_name}")
+                    metadata = {
+                        "key" : attribute_name_for_table_name,
+                        "value": attribute_name_as_human_readable
+                    }
+                    if child_category_id in metadata_dict:
+                        metadata_dict[child_category_id].append(metadata)
+                    else:
+                        metadata_dict[child_category_id] = [metadata]
+            
+            # Check if no child categories were found
+            if not child_categories_found:
+                print(f"  --No child categories found for parent category: {parent_category_name}")
+                print(f"  --Parent category ID: {parent_category_id}")
+                # Insert dataset into parent category when no child categories exist
+                self._insert_dataset_for_category(parent_category_id, parent_category_name, attributeReleaseDate, item['attributeData'], attribute_name_for_table_name)
+                print(f"  --Storing metadata for {parent_category_name}")
+                metadata = {
+                    "key" : attribute_name_for_table_name,
+                    "value": attribute_name_as_human_readable
+                }
+                if parent_category_id in metadata_dict:
+                    metadata_dict[parent_category_id].append(metadata)
+                else:
+                    metadata_dict[parent_category_id] = [metadata]
+        
+            print("=" * 200)
+            
+        print(f"Metadata dictionary: {metadata_dict}")
+        self.create_metadata_to_entities(metadata_dict)
+        
         return result
 
     def create_parent_categories_and_children_categories(self, result):
@@ -412,7 +604,7 @@ class WriteAttributes:
                     date_for_id_u = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
                     year_u = date_for_id_u.strftime("%Y")
                     month_day_u = date_for_id_u.strftime("%m-%d")
-                    parent_name_unique = f"{parent_of_parent_category_id}_{year_u}_{month_day_u}"
+                    parent_name_unique = f"{parent_name}_{year_u}_{month_day_u}"
                     res = self.create_nodes(node_id.lower(), parent_name_unique, 'parentCategory', date)
                     if res.get('id'):
                         count += 1
@@ -542,10 +734,45 @@ class WriteAttributes:
                  
         return
     
+    def extract_existing_metadata_from_entity(self, entity_id):
+        url = f"http://0.0.0.0:8081/v1/entities/{entity_id}/metadata"
+        
+        headers = {
+            "Content-Type": "application/json",
+            # "Authorization": f"Bearer {token}"  
+        }
+        time.sleep(1)
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()  
+            metadata = response.json()
+            return metadata
+        
+        except Exception as e:
+            print(f"Error extracting existing metadata from entity {entity_id}")
+            print(f"Error: {e}")
+            return {}
+    
     def create_metadata_to_entities(self, metadata_dict):
         for entity_id, metadata in metadata_dict.items():
             print(f"🔄 Creating metadata for entity {entity_id}")
+            print(f"Extracting existing metadata from entity {entity_id}")
+            existing_metadata = self.extract_existing_metadata_from_entity(entity_id)
+            print(f"Existing metadata: {existing_metadata}")
+            
+            # Handle case where existing_metadata is empty
+            if existing_metadata:
+                for key, value in existing_metadata.items():
+                    decoded_value = self.decode_protobuf(value)
+                    existing_metadata[key] = decoded_value
+                existing_metadata_list = [{'key': key, 'value': value} for key, value in existing_metadata.items()]
+            else:
+                print("No existing metadata found - using empty list")
+                existing_metadata_list = []
+
             print(f"Metadata to be added: {metadata}")
+            metadata = existing_metadata_list + metadata
+            print(f"Concatenated Metadata: {metadata}")
             res = self.create_metadata_to_entity(entity_id, metadata)
             if res.get('id'):
                 print(f"✅ Created metadata for entity {entity_id} successfully")

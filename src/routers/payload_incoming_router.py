@@ -20,6 +20,10 @@ def get_writer_service(config: dict = Depends(get_config)):
 async def get_all_attributes(statService: IncomingServiceAttributes = Depends(get_stat_service)):
     return statService.expose_all_attributes()
 
+@router.get("/test-req")
+async def get_all_attributes(statService: IncomingServiceAttributes = Depends(get_stat_service)):
+    return statService.test_req_40_times()
+
 # Get the relevant attributes for the entity
 @router.post("/data/entity/{entityId}")
 async def get_relevant_attributes_for_entity(ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId : str, statService: IncomingServiceAttributes = Depends(get_stat_service)):
@@ -41,7 +45,7 @@ async def write_attributes(WRITE_PAYLOAD: WRITE_PAYLOAD, writer: WriteAttributes
     result = writer.pre_process_traverse_result(result)
     result = writer.entity_validator(result)
     # return result
-    return writer.create_parent_categories_and_children_categories_v2(result)
+    return writer.create_categories_and_insert_datasets(result)
 
 @router.get("/data/writeMetadata")
 async def write_metadata(writer: WriteAttributes = Depends(get_writer_service)):
