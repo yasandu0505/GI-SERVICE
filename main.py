@@ -37,8 +37,8 @@ async def load_config():
         
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],            
-    allow_credentials=True,
+    allow_origins=["*"],            # or ["*"] for all
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
