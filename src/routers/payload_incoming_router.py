@@ -40,6 +40,11 @@ async def write_attributes(WRITE_PAYLOAD: WRITE_PAYLOAD):
     # return result
     return writer.create_parent_categories_and_children_categories_v2(result)
 
+@router.get("/data/yearswithdata")
+async def yearswithdata(name: str, parentId: str, statService: IncomingServiceAttributes = Depends(get_stat_service)):
+    years = await statService.datacategoriesbyyear(name, parentId)
+    return years
+
 # Get the timeline for the orgchart
 # @router.get("/data/orgchart/timeline")
 # async def get_timeline_for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_orgchart_service)):
