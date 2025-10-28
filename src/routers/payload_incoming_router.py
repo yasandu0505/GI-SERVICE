@@ -1,14 +1,11 @@
 from fastapi import APIRouter, Depends
 from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD, WRITE_PAYLOAD
-from src.services import IncomingServiceAttributes, IncomingServiceOrgchart, WriteAttributes
+from src.services import IncomingServiceAttributes, WriteAttributes
 from src.dependencies import get_config
 from chartFactory.utils import transform_data_for_chart
 
 router = APIRouter()
 # writer = WriteAttributes() 
-
-def get_orgchart_service(config: dict = Depends(get_config)):
-    return IncomingServiceOrgchart(config)
 
 def get_stat_service(config: dict = Depends(get_config)):
     return IncomingServiceAttributes(config)
@@ -19,10 +16,6 @@ def get_writer_service(config: dict = Depends(get_config)):
 @router.get("/allAttributes")
 async def get_all_attributes(statService: IncomingServiceAttributes = Depends(get_stat_service)):
     return statService.expose_all_attributes()
-
-@router.get("/test-req")
-async def get_all_attributes(statService: IncomingServiceAttributes = Depends(get_stat_service)):
-    return statService.test_req_40_times()
 
 # Get the relevant attributes for the entity
 @router.post("/data/entity/{entityId}")
@@ -57,21 +50,3 @@ async def write_metadata(writer: WriteAttributes = Depends(get_writer_service)):
     else:
         return "❌ Could not connect to MongoDB"
     
-
-# Get the timeline for the orgchart
-@router.get("/data/orgchart/timeline")
-async def get_timeline_for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_orgchart_service)):
-    documentData = await orgchartService.get_documents()
-    presidentData = await orgchartService.get_presidents()
-    timeLine = orgchartService.get_timeline(documentData, presidentData)
-    return timeLine
-
-# Get ministries for the selected date
-@router.post("/data/orgchart/ministries")
-async def get__for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_orgchart_service)):
-    return
-
-# Get departments for the selected ministry at the selected date
-@router.post("/data/orgchart/departments")
-async def get__for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_orgchart_service)):
-    return

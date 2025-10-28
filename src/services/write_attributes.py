@@ -499,43 +499,66 @@ class WriteAttributes:
             
             print("\n")
             
-            # Create child categories (only if parent category was successfully created)
+            # Create child categories in hierarchical order (only if parent category was successfully created)
             category_data = item['categoryData']
             child_categories_found = False
             
+            # Collect and sort child categories by their numeric suffix
+            child_categories_list = []
             for key, child_category_name in category_data.items():
                 if key.startswith('childCategory'):
                     child_categories_found = True
-                    print(f"  --Child category name: {child_category_name}")
-                    print(f"  --Checking if child category exists ---> {child_category_name}")
+                    # Extract the number from childCategory_N
+                    try:
+                        num = int(key.split('_')[1]) if '_' in key else 0
+                        child_categories_list.append((num, key, child_category_name))
+                    except (ValueError, IndexError):
+                        child_categories_list.append((0, key, child_category_name))
+            
+            # Sort by numeric suffix to maintain hierarchy
+            child_categories_list.sort(key=lambda x: x[0])
+            
+            # Track the current parent for the hierarchy chain
+            current_parent_id = parent_category_id
+            current_parent_name = parent_category_name
+            
+            # Process child categories in order, creating hierarchical relationships
+            for num, key, child_category_name in child_categories_list:
+                print(f"  --Child category name: {child_category_name} (Level {num})")
+                print(f"  --Checking if child category exists ---> {child_category_name}")
+                time.sleep(1)
+                is_valid_child_category, child_category_id = self.validate_node(child_category_name, "childCategory", "Category")
+                if is_valid_child_category:
+                    print(f"  --Child category found ---> {child_category_name} with id: {child_category_id}")
+                else:
+                    print(f"  --Child category not found")
+                    print(f"  --Creating child category ---> {child_category_name}")
+                    child_category_id = self.generate_id_for_category(current_parent_id, child_category_name)
+                    res = self.create_nodes(child_category_id, child_category_name, "childCategory", relatedEntityCreatedDate)
                     time.sleep(1)
-                    is_valid_child_category, child_category_id = self.validate_node(child_category_name, "childCategory", "Category")
-                    if is_valid_child_category:
-                        print(f"  --Child category found ---> {child_category_name} with id: {child_category_id}")
-                    else:
-                        print(f"  --Child category not found")
-                        print(f"  --Creating child category ---> {child_category_name}")
-                        child_category_id = self.generate_id_for_category(parent_category_id, child_category_name)
-                        res = self.create_nodes(child_category_id, child_category_name, "childCategory", relatedEntityCreatedDate)
+                    if res.get('id'):
+                        print(f"  --Child category created ---> {child_category_name} with id: {child_category_id}")
+                        print(f"  --Creating relationship from {current_parent_name} ({current_parent_id}) ---> {child_category_name} ({child_category_id})")
+                        res = self.create_relationships(current_parent_id, child_category_id, relatedEntityCreatedDate)
                         time.sleep(1)
                         if res.get('id'):
-                            print(f"  --Child category created ---> {child_category_name} with id: {child_category_id}")
-                            print(f"  --Creating relationship from parent category {parent_category_id} ---> child category {child_category_id}")
-                            res = self.create_relationships(parent_category_id, child_category_id, relatedEntityCreatedDate)
-                            time.sleep(1)
-                            if res.get('id'):
-                                print(f"  --Child relationship created ---> {parent_category_id} ---> {child_category_id}")
-                            else:
-                                print(f"  --Child relationship creation failed ---> {parent_category_id} ---> {child_category_id}")
-                                print(f"  --Error ---> {res['error']}")
-                                continue
+                            print(f"  --Child relationship created ---> {current_parent_id} ---> {child_category_id}")
                         else:
-                            print(f"  --Child category creation failed ---> {child_category_name}")
+                            print(f"  --Child relationship creation failed ---> {current_parent_id} ---> {child_category_id}")
                             print(f"  --Error ---> {res['error']}")
                             continue
-
-                    
-                    # Create dataset for the child category (only if child category exists or was created successfully)
+                    else:
+                        print(f"  --Child category creation failed ---> {child_category_name}")
+                        print(f"  --Error ---> {res['error']}")
+                        continue
+                
+                # Update current parent for next iteration (to create chain: parent -> child1 -> child2)
+                current_parent_id = child_category_id
+                current_parent_name = child_category_name
+                
+                # Only insert dataset to the last child category in the chain
+                if num == child_categories_list[-1][0]:  # Last child category
+                    print(f"  --This is the last child category in the chain, inserting dataset here")
                     self._insert_dataset_for_category(child_category_id, child_category_name, attributeReleaseDate, item['attributeData'], attribute_name_for_table_name)
                     print(f"  --Storing metadata for {child_category_name}")
                     metadata = {
