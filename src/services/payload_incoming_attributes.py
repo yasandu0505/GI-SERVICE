@@ -148,6 +148,8 @@ class IncomingServiceAttributes:
             sv = StringValue()
             try:
                 sv.ParseFromString(decoded_bytes)
+                if(sv.value.strip() == ""):
+                    return decoded_bytes.decode("utf-8", errors="ignore").strip()
                 return sv.value.strip()
             except Exception:
                 decoded_str = decoded_bytes.decode("utf-8", errors="ignore")
@@ -281,7 +283,7 @@ class IncomingServiceAttributes:
             return f"failed to get metadata for {entityId} : {e}" 
         
     async def expose_category_by_id(self, id: str | None):
-        
+
         global_start_time = time.perf_counter()
         
         headers = {"Content-Type": "application/json"}        
