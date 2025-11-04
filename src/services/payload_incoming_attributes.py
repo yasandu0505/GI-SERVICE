@@ -94,9 +94,7 @@ class IncomingServiceAttributes:
                         response.raise_for_status()  
                         output = response.json()
                         item["name"] =  output["body"][0]["name"]
-                        print(item["name"])
                         decoded_name = self.decode_protobuf_attribute_name(item["name"])
-                        print(f"Decoded name : {decoded_name}")
                         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/metadata"
                         headers = {
                             "Content-Type": "application/json",
@@ -146,6 +144,7 @@ class IncomingServiceAttributes:
                 return ""
 
             decoded_bytes = binascii.unhexlify(hex_value)
+            
             sv = StringValue()
             try:
                 sv.ParseFromString(decoded_bytes)
@@ -335,20 +334,20 @@ class IncomingServiceAttributes:
                     ]
                     results = await asyncio.gather(*tasks_for_entity_data, return_exceptions=True)
                     
-                    parent_department = await self.find_parent_department(session, id)   
+                    parent_department = await self.find_parent_department(session, id) 
                     
                     for item in results:
                         kind = item.get("kind", {}).get("major", "")
                         name = item.get("name")
+                        
                         name = self.decode_protobuf_attribute_name(name)
 
                         item["name"] = name
                         item["nameExact"] = None
                         item["parentId"] = id
                         item["source"] = ""
-                        
+
                         if kind == "Dataset":
-                            
                             created_date = item.get("created")
                             if created_date:
                                 year = created_date.split("-")[0]
@@ -356,13 +355,16 @@ class IncomingServiceAttributes:
                                 year = "unknown"
                             finalOutput["datasets"][year].append(item)
                             async with aiohttp.ClientSession() as session:
-                                metadata_parent = await self.get_metadata_for_entity(session, id) 
+                                metadata_parent = await self.get_metadata_for_entity(session, id)
                                 if(metadata_parent):
                                     item["nameExact"]= self.decode_protobuf_attribute_name(metadata_parent[item["name"]]) 
-                                source = self.decode_protobuf_attribute_name(parent_department["name"])
-                                item["source"] = source
+                                if(parent_department):
+                                    source = self.decode_protobuf_attribute_name(parent_department["name"])
+                                    item["source"] = source
+                                    item["sourceId"] = parent_department["id"]
+                                    item["sourceType"] = parent_department["kind"].get("minor")
                         
-                        elif kind == "Category":
+                        if kind == "Category":
                             finalOutput["categories"].append(item)
                  
         except Exception as e:
