@@ -1,18 +1,21 @@
 from fastapi import APIRouter, Depends
 from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD, WRITE_PAYLOAD
-from src.services import IncomingServiceAttributes, IncomingServiceOrgchart, WriteAttributes
+from src.services import IncomingServiceAttributes, WriteAttributes
 from src.dependencies import get_config
 from chartFactory.utils import transform_data_for_chart
 
 router = APIRouter()
-writer = WriteAttributes() 
-
-def get_orgchart_service(config: dict = Depends(get_config)):
-    return IncomingServiceOrgchart(config)
+# writer = WriteAttributes() 
 
 def get_stat_service(config: dict = Depends(get_config)):
     return IncomingServiceAttributes(config)
 
+def get_writer_service(config: dict = Depends(get_config)):
+    return WriteAttributes(config)
+
+@router.get("/allAttributes")
+async def get_all_attributes(statService: IncomingServiceAttributes = Depends(get_stat_service)):
+    return statService.expose_all_attributes()
 @router.get("/categories")
 async def get_all_categories(id: str | None = None, statService: IncomingServiceAttributes = Depends(get_stat_service)):
     return await statService.expose_category_by_id(id)
@@ -31,13 +34,25 @@ async def get_relevant_attributes_for_datasets(ATTRIBUTE_PAYLOAD: ATTRIBUTE_PAYL
 
 # Write attributes to the entities
 @router.post("/data/writeAttributes")
-async def write_attributes(WRITE_PAYLOAD: WRITE_PAYLOAD):
+async def write_attributes(WRITE_PAYLOAD: WRITE_PAYLOAD, writer: WriteAttributes = Depends(get_writer_service)):
     # Example : base_url = /Users/yasandu/Desktop/datasets/data/2022
     base_url = WRITE_PAYLOAD.base_url
     result = writer.traverse_folder(base_url)
     result = writer.pre_process_traverse_result(result)
     result = writer.entity_validator(result)
     # return result
+    return writer.create_categories_and_insert_datasets(result)
+
+@router.get("/data/writeMetadata")
+async def write_metadata(writer: WriteAttributes = Depends(get_writer_service)):
+    success, collection_names , db = writer.connect_to_mongodb()
+    if success:
+        documents = writer.get_all_documents_from_nexoan()
+        categorised_documents = writer.categorise_documents_by_year(documents)
+        return writer.add_metadata_to_the_document(categorised_documents, db)
+    else:
+        return "❌ Could not connect to MongoDB"
+    
     return writer.create_parent_categories_and_children_categories_v2(result)
 
 @router.get("/data/yearswithdata")
