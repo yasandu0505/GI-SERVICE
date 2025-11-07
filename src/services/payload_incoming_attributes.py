@@ -258,11 +258,18 @@ class IncomingServiceAttributes:
                 if related_id:
                     parent_entity = await self.get_node_data_by_id(related_id, session)
                     if parent_entity:
-                        kind_major = parent_entity.get("kind", {}).get("minor")
-                        if kind_major == "department" or kind_major == "minister":
+                        kind_minor = parent_entity.get("kind", {}).get("minor")
+                        if kind_minor == "department" or kind_minor == "minister":
                             return parent_entity
                         else:
                             return await self.find_parent_department(session, related_id)
+        else:
+            parent_entity = await self.get_node_data_by_id(entity_id, session)
+            if parent_entity:
+                kind_minor = parent_entity.get("kind", {}).get("minor")
+                if kind_minor == "department" or kind_minor == "minister":
+                    return parent_entity
+                
 
         return None
       
@@ -336,6 +343,8 @@ class IncomingServiceAttributes:
                     
                     parent_department = await self.find_parent_department(session, id) 
                     
+                    print(f'parent department {parent_department}')
+                    
                     for item in results:
                         kind = item.get("kind", {}).get("major", "")
                         name = item.get("name")
@@ -365,6 +374,12 @@ class IncomingServiceAttributes:
                                     item["sourceType"] = parent_department["kind"].get("minor")
                         
                         if kind == "Category":
+                            if(parent_department):
+                                source = self.decode_protobuf_attribute_name(parent_department["name"])
+                                item["source"] = source
+                                item["sourceId"] = parent_department["id"]
+                                item["sourceType"] = parent_department["kind"].get("minor")
+                                
                             finalOutput["categories"].append(item)
                  
         except Exception as e:
