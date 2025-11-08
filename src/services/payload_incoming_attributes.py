@@ -14,6 +14,28 @@ from collections import defaultdict
 class IncomingServiceAttributes:
     def __init__(self, config : dict):
         self.config = config
+    
+    def _normalize_timestamp(self, time_stamp: str | None) -> str | None:
+        """
+        Ensure timestamp is in ISO format expected by downstream services.
+        Accepts dates like '2022-05-05' and converts to '2022-05-05T00:00:00Z'.
+        """
+        if not time_stamp:
+            return time_stamp
+
+        ts = time_stamp.strip()
+
+        try:
+            # Convert to standard ISO with Z suffix
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            # Fallback for date without time component
+            if "T" not in ts:
+                return f"{ts}T00:00:00Z"
+            if ts.endswith("Z"):
+                return ts
+            return f"{ts}Z"
             
     async def expose_relevant_attributes(self, ENTITY_PAYLOAD: ENTITY_PAYLOAD , entityId):
         
@@ -461,4 +483,113 @@ class IncomingServiceAttributes:
         print(f"\nTotal time taken: {global_end_time - global_start_time:.4f} seconds")
         return finalOutput
                
-    
+    async def get_active_ministers(self, entityId, dateActive, session):
+        normalized_timestamp = self._normalize_timestamp(dateActive)
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/relations"
+        
+        headers = {"Content-Type": "application/json"}
+        
+        payload = {
+            "name": "AS_MINISTER",
+            "activeAt": normalized_timestamp,
+            "direction": "OUTGOING"
+        }
+
+        activeMinisterIds = []
+
+        try:
+            async with session.post(url, json=payload, headers=headers) as response:
+                response.raise_for_status()
+                res_json = await response.json()
+                # print(f"Res JSON: {res_json}")
+                
+                # Handle both direct list and wrapped response
+                if isinstance(res_json, dict):
+                    response_list = res_json.get("body", [])
+                else:
+                    response_list = res_json
+                
+                # print(f"Response list: {response_list}")
+                for item in response_list:
+                    activeMinisterIds.append(item["relatedEntityId"])
+
+        except Exception as e:
+            return {"error": f"Failed to get active ministers for {entityId}: {str(e)}"}
+
+        return activeMinisterIds
+
+    async def get_active_departments(self, entityId, dateActive, session):
+        normalized_timestamp = self._normalize_timestamp(dateActive)
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/relations"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "name": "AS_DEPARTMENT",
+            "activeAt": normalized_timestamp,
+            "direction": "OUTGOING"
+        }
+        
+        activeDepartments = []
+
+        try:
+            async with session.post(url, json=payload, headers=headers) as response:
+                response.raise_for_status()
+                res_json = await response.json()
+                
+                # Handle both direct list and wrapped response
+                if isinstance(res_json, dict):
+                    response_list = res_json.get("body", [])
+                else:
+                    response_list = res_json
+                
+                for item in response_list:
+                    activeDepartments.append({
+                        "ministerId": entityId,
+                        "departmentId": item["relatedEntityId"]
+                    })
+
+        except Exception as e:
+            return {"error": f"Failed to get active departments for {entityId}: {str(e)}"}
+
+        return activeDepartments
+
+    async def get_ministers_and_departments(self, entityId, dateActive, session):
+        """
+        Get active ministers and their departments for a given entity and timestamp.
+        
+        Step 1: Get active ministers
+        Step 2: For each minister, get their departments in parallel
+        """
+
+        departments_results = []
+
+        try:
+            # Step 1: Get active ministers (sequential, must happen first)
+            minister_ids = await self.get_active_ministers(entityId, dateActive, session)
+
+            print(f"Minister IDs: {minister_ids}")
+
+            if len(minister_ids) == 0:
+                return departments_results
+
+                        
+            # Step 2: Get departments for each minister in parallel
+            tasks_for_departments = [
+                self.get_active_departments(minister_id, dateActive, session)
+                for minister_id in minister_ids
+            ]
+            
+            # Execute all department fetches in parallel
+            departments_results = await asyncio.gather(*tasks_for_departments, return_exceptions=True)
+
+            # Step 3: Flatten the nested list
+            flattened_results = []
+            for result in departments_results:
+                if isinstance(result, list):
+                    flattened_results.extend(result)
+
+            print(f"Flattened results length: {len(flattened_results)}")
+            
+            return flattened_results
+            
+        except Exception as e:
+            return {"error": f"Failed to get ministers and departments for {entityId}: {str(e)}"}

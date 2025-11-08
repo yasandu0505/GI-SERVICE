@@ -60,6 +60,20 @@ async def yearswithdata(name: str, parentId: str, statService: IncomingServiceAt
     years = await statService.datacategoriesbyyear(name, parentId)
     return years
 
+@router.get("/data/orgchart/{entityId}/ministers-departments")
+async def get_ministers_and_departments(entityId: str, activeDate: str, statService: IncomingServiceAttributes = Depends(get_stat_service)):
+    """
+    Test endpoint for get_ministers_and_departments function.
+    
+    Parameters:
+    - entityId: The entity ID to get ministers for (e.g., president ID)
+    - activeDate: Date active (e.g., "2023-05-15")
+    """
+    import aiohttp
+    async with aiohttp.ClientSession() as session:
+        result = await statService.get_ministers_and_departments(entityId, activeDate, session)
+    return result
+
 # Get the timeline for the orgchart
 # @router.get("/data/orgchart/timeline")
 # async def get_timeline_for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_orgchart_service)):
