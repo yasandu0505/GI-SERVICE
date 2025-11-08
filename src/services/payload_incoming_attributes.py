@@ -605,8 +605,7 @@ class IncomingServiceAttributes:
         departments_by_ministers = {}
         expected_slots = len(dates)
         nodes: list[dict[str, str]] = []
-        seen_nodes: set[tuple[str | None, int]] = set()
-        # dates_list = list(dates)
+        node_indices: dict[tuple[str, int], int] = {} # key: (minister_id, date_index), value: node_index
 
         for date_index, result in enumerate(dates_gov_struct):
             if isinstance(result, Exception):
@@ -629,21 +628,27 @@ class IncomingServiceAttributes:
                     continue
 
                 # create nodes dict
-                node_key = (minister_id, date_index)
-                if minister_id and node_key not in seen_nodes:
-                    seen_nodes.add(node_key)
-                    nodes.append({
-                        "name": minister_id,
-                        "time": dates[date_index]
-                    })
+                node_index = None
+                if minister_id:
+                    node_key = (minister_id, date_index)
+                    node_index = node_indices.get(node_key)
+                    if node_index is None:
+                        node_index = len(nodes)
+                        node_indices[node_key] = node_index
+                        nodes.append({
+                            "name": minister_id,
+                            "time": dates[date_index]
+                        })
 
-                # create departments_by_ministers dict for comparison
+                # create departments_by_ministers dict for comparison:
+                #  key is the department
+                # value is the ministers index in the nodes list (for each date)
                 timeline = departments_by_ministers.get(department_id) # check if dept already in dict
                 if timeline is None:
                     timeline = [None] * expected_slots
                     departments_by_ministers[department_id] = timeline
 
-                timeline[date_index] = minister_id
+                timeline[date_index] = node_index
                 
                 
             
