@@ -1,6 +1,5 @@
 from traceback import print_tb
 from src.models import ENTITY_PAYLOAD, ATTRIBUTE_PAYLOAD
-import requests
 from datetime import datetime
 import json
 import binascii
@@ -61,90 +60,92 @@ class IncomingServiceAttributes:
         }
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
-            response.raise_for_status()  
-            attributes = response.json()
-            
-            if len(attributes) > 0:
-                for item in attributes:
-                    startTime = item["startTime"]
-                    if "endTime" in item and item["endTime"]:
-                        endTime = item["endTime"]
-                    else:
-                        endTime = startTime
-                    if startTime and endTime:
-                        start_year = datetime.fromisoformat(startTime.replace("Z", "")).year
-                        end_year = datetime.fromisoformat(endTime.replace("Z", "")).year
+            timeout = aiohttp.ClientTimeout(
+                total=90,
+                connect=30,
+                sock_connect=30,
+                sock_read=90
+            )
 
-                        # Check if req_year is between start and end year
-                        if int(start_year) <= int(req_year) <= int(end_year):
-                            data_list_for_req_year.append({
-                                "id" : item["relatedEntityId"],
-                                "startTime" : item["startTime"],
-                                "endTime" : item["endTime"]
-                            })  
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(url, json=payload, headers=headers) as response:
+                    response.raise_for_status()
+                    attributes = await response.json()
                 
-                if len(data_list_for_req_year) == 0:
+                if len(attributes) > 0:
+                    for item in attributes:
+                        startTime = item["startTime"]
+                        if "endTime" in item and item["endTime"]:
+                            endTime = item["endTime"]
+                        else:
+                            endTime = startTime
+                        if startTime and endTime:
+                            start_year = datetime.fromisoformat(startTime.replace("Z", "")).year
+                            end_year = datetime.fromisoformat(endTime.replace("Z", "")).year
+
+                            # Check if req_year is between start and end year
+                            if int(start_year) <= int(req_year) <= int(end_year):
+                                data_list_for_req_year.append({
+                                    "id" : item["relatedEntityId"],
+                                    "startTime" : item["startTime"],
+                                    "endTime" : item["endTime"]
+                                })  
+                    
+                    if len(data_list_for_req_year) == 0:
+                        return {
+                            "year": req_year,
+                            "attributes": {
+                                "message": "No attributes found in the requested time range"
+                            }
+                        } 
+                    
+                    for item in data_list_for_req_year:
+                        search_url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+                    
+                        search_payload = {
+                            "id": item["id"],
+                            "kind": {
+                                "major": "",
+                                "minor": ""
+                                },
+                            "name": "",
+                            "created": "",
+                            "terminated": ""
+                        }
+                    
+                        try:
+                            async with session.post(search_url, json=search_payload, headers=headers) as response:
+                                response.raise_for_status()
+                                output = await response.json()
+
+                            item["name"] =  output["body"][0]["name"]
+                            decoded_name = self.decode_protobuf_attribute_name(item["name"])
+                            metadata_url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/metadata"
+
+                            try:
+                                async with session.get(metadata_url, headers=headers) as response:
+                                    response.raise_for_status()
+                                    metadata = await response.json()
+
+                                for k, v in metadata.items():
+                                    if k == decoded_name:
+                                        item["human_readable_name"] = v
+                                        break
+                            except Exception as e:
+                                metadata = {}
+                                print(f"Error fetching metadata: {str(e)}")
+                                item["human_readable_name"] = "No description available"
+                                
+                        except Exception as e:
+                            item["name"] = f"error : {str(e)}"
+                else:
                     return {
                         "year": req_year,
                         "attributes": {
-                            "message": "No attributes found in the requested time range"
+                            "message": "No attributes found for the entity"
                         }
-                    } 
-                
-                for item in data_list_for_req_year:
-                    url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
-                
-                    payload = {
-                        "id": item["id"],
-                        "kind": {
-                            "major": "",
-                            "minor": ""
-                            },
-                        "name": "",
-                        "created": "",
-                        "terminated": ""
                     }
-                
-                    headers = {
-                        "Content-Type": "application/json",
-                        # "Authorization": f"Bearer {token}"  
-                    }
-                
-                    try:
-                        response = requests.post(url, json=payload, headers=headers, timeout=(30, 90))
-                        response.raise_for_status()  
-                        output = response.json()
-                        item["name"] =  output["body"][0]["name"]
-                        decoded_name = self.decode_protobuf_attribute_name(item["name"])
-                        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/metadata"
-                        headers = {
-                            "Content-Type": "application/json",
-                            # "Authorization": f"Bearer {token}"  
-                        }
-                        try:
-                            response = requests.get(url, headers=headers, timeout=(30, 90))
-                            response.raise_for_status()  
-                            metadata = response.json()
-                            for k, v in metadata.items():
-                                if k == decoded_name:
-                                    item["human_readable_name"] = v
-                                    break
-                        except Exception as e:
-                            metadata = {}
-                            print(f"Error fetching metadata: {str(e)}")
-                            item["human_readable_name"] = "No description available"
-                            
-                    except Exception as e:
-                        item["name"] = f"error : {str(e)}"
-            else:
-                return {
-                    "year": req_year,
-                    "attributes": {
-                        "message": "No attributes found for the entity"
-                    }
-                }
-                               
+                              
         except Exception as e:
             return {
                 "year": req_year,
