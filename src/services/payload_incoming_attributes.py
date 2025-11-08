@@ -593,15 +593,20 @@ class IncomingServiceAttributes:
         # [
         #     [
         #         {"ministerId": "minister-123", "departmentId": "dept-456"},
-        #         {"ministerId": "minister-123", "departmentId": "dept-789"},
+        #         {"ministerId": "minister-123", "departmentId": "dept-457"},
+        #         {"ministerId": "minister-456", "departmentId": "dept-789"},
         #     ],
         #     [
         #         {"ministerId": "minister-321", "departmentId": "dept-654"}
         #     ]
         # ]
         
+        # create comparison dictionary of departments by ministers
         departments_by_ministers = {}
         expected_slots = len(dates)
+        nodes: list[dict[str, str]] = []
+        seen_nodes: set[tuple[str | None, int]] = set()
+        # dates_list = list(dates)
 
         for date_index, result in enumerate(dates_gov_struct):
             if isinstance(result, Exception):
@@ -623,12 +628,25 @@ class IncomingServiceAttributes:
                 if not department_id:
                     continue
 
-                timeline = departments_by_ministers.get(department_id)
+                # create nodes dict
+                node_key = (minister_id, date_index)
+                if minister_id and node_key not in seen_nodes:
+                    seen_nodes.add(node_key)
+                    nodes.append({
+                        "name": minister_id,
+                        "time": dates[date_index]
+                    })
+
+                # create departments_by_ministers dict for comparison
+                timeline = departments_by_ministers.get(department_id) # check if dept already in dict
                 if timeline is None:
                     timeline = [None] * expected_slots
                     departments_by_ministers[department_id] = timeline
 
                 timeline[date_index] = minister_id
-
+                
+                
+            
+        print(f"Nodes: {nodes}")
         return departments_by_ministers
 
