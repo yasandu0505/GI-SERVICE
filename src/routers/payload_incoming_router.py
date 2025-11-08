@@ -4,7 +4,7 @@ from src.services import IncomingServiceAttributes, WriteAttributes
 from src.dependencies import get_config
 from chartFactory.utils import transform_data_for_chart
 from aiohttp import ClientSession, ClientTimeout
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Sequence
 
 router = APIRouter()
 # writer = WriteAttributes() 
@@ -101,6 +101,16 @@ async def get_ministers_and_departments(
     - activeDate: Date active (e.g., "2023-05-15")
     """
     result = await statService.get_ministers_and_departments(entityId, activeDate, session)
+    return result
+
+@router.post("/data/orgchart/sankey/{entityId}")
+async def get_sankey_data(
+    entityId: str,
+    dates: Sequence[str],
+    statService: IncomingServiceAttributes = Depends(get_stat_service),
+    session: ClientSession = Depends(get_http_session),
+):
+    result = await statService.get_sankey_data(session, entityId, dates)
     return result
 
 # Get the timeline for the orgchart

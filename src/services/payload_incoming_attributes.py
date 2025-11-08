@@ -9,6 +9,7 @@ import asyncio
 import aiohttp
 from datetime import datetime
 from collections import defaultdict
+from typing import Sequence
 
 class IncomingServiceAttributes:
     def __init__(self, config : dict):
@@ -578,3 +579,56 @@ class IncomingServiceAttributes:
             
         except Exception as e:
             return {"error": f"Failed to get ministers and departments for {entityId}: {str(e)}"}
+
+    async def get_sankey_data(self,session, entityId, dates: Sequence[str]):
+        # first assume theres only two dates
+        
+        tasks_for_dates = [
+            self.get_ministers_and_departments(entityId, date, session)
+            for date in dates
+        ]
+        dates_gov_struct = await asyncio.gather(*tasks_for_dates, return_exceptions=True)
+
+        # example format of dates_gov_struct:
+        # [
+        #     [
+        #         {"ministerId": "minister-123", "departmentId": "dept-456"},
+        #         {"ministerId": "minister-123", "departmentId": "dept-789"},
+        #     ],
+        #     [
+        #         {"ministerId": "minister-321", "departmentId": "dept-654"}
+        #     ]
+        # ]
+        
+        departments_by_ministers = {}
+        expected_slots = len(dates)
+
+        for date_index, result in enumerate(dates_gov_struct):
+            if isinstance(result, Exception):
+                continue
+
+            if isinstance(result, dict) and "error" in result:
+                continue
+
+            if not isinstance(result, list):
+                continue
+
+            for relation in result:
+                if not isinstance(relation, dict):
+                    continue
+
+                department_id = relation.get("departmentId")
+                minister_id = relation.get("ministerId")
+
+                if not department_id:
+                    continue
+
+                timeline = departments_by_ministers.get(department_id)
+                if timeline is None:
+                    timeline = [None] * expected_slots
+                    departments_by_ministers[department_id] = timeline
+
+                timeline[date_index] = minister_id
+
+        return departments_by_ministers
+
