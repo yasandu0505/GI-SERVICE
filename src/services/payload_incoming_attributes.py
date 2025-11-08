@@ -606,6 +606,7 @@ class IncomingServiceAttributes:
         expected_slots = len(dates)
         nodes: list[dict[str, str]] = []
         node_indices: dict[tuple[str, int], int] = {} # key: (minister_id, date_index), value: node_index
+        links_counter: dict[tuple[int, int], int] = {}
 
         for date_index, result in enumerate(dates_gov_struct):
             if isinstance(result, Exception):
@@ -641,17 +642,30 @@ class IncomingServiceAttributes:
                         })
 
                 # create departments_by_ministers dict for comparison:
-                #  key is the department
-                # value is the ministers index in the nodes list (for each date)
+                #   key is the department
+                #   value is the ministers index in the nodes list (for each date)
                 timeline = departments_by_ministers.get(department_id) # check if dept already in dict
                 if timeline is None:
                     timeline = [None] * expected_slots
                     departments_by_ministers[department_id] = timeline
 
+                # get previous and current minister index the department is under
+                previous_index = timeline[date_index - 1] if date_index > 0 else None
                 timeline[date_index] = node_index
-                
-                
-            
-        print(f"Nodes: {nodes}")
-        return departments_by_ministers
+
+                # if we not on the first date only then we can create a link between the previous and current minister
+                if previous_index is not None and node_index is not None:
+                    key = (previous_index, node_index)
+                    links_counter[key] = links_counter.get(key, 0) + 1 # increment the number of departments moved from m1->m2
+                   
+        links = [
+            {"source": source, "target": target, "value": value}
+            for (source, target), value in links_counter.items()
+        ]
+        
+        return {
+            # "departmentsByMinisters": departments_by_ministers,
+            "nodes": nodes,
+            "links": links,
+        }
 
