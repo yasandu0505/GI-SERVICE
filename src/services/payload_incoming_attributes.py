@@ -552,7 +552,7 @@ class IncomingServiceAttributes:
             # Step 1: Get active ministers (sequential, must happen first)
             minister_ids = await self.get_active_ministers(entityId, dateActive, session)
 
-            print(f"Minister IDs: {minister_ids}")
+            # print(f"Minister IDs: {minister_ids}")
 
             if len(minister_ids) == 0:
                 return departments_results
@@ -573,7 +573,7 @@ class IncomingServiceAttributes:
                 if isinstance(result, list):
                     flattened_results.extend(result)
 
-            print(f"Flattened results length: {len(flattened_results)}")
+            # print(f"Flattened results length: {len(flattened_results)}")
             
             return flattened_results
             
@@ -662,10 +662,22 @@ class IncomingServiceAttributes:
             {"source": source, "target": target, "value": value}
             for (source, target), value in links_counter.items()
         ]
-        
+
         return {
             # "departmentsByMinisters": departments_by_ministers,
             "nodes": nodes,
             "links": links,
         }
 
+    async def get_president_tenure(self,presidentId, session):
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{presidentId}/relations"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "name": "AS_PRESIDENT",
+        }
+        
+        async with session.post(url, json=payload, headers=headers) as response:
+            response.raise_for_status()
+            res_json = await response.json()
+            
+        return res_json

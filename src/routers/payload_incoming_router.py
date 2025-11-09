@@ -113,6 +113,15 @@ async def get_sankey_data(
     result = await statService.get_sankey_data(session, entityId, dates)
     return result
 
+@router.get("/data/orgchart/president/{presidentId}")
+async def get_president_tenure(
+    presidentId: str,
+    statService: IncomingServiceAttributes = Depends(get_stat_service),
+    session: ClientSession = Depends(get_http_session),
+):
+    result = await statService.get_president_tenure(presidentId, session)
+    return result
+
 # Get the timeline for the orgchart
 # @router.get("/data/orgchart/timeline")
 # async def get_timeline_for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_orgchart_service)):
