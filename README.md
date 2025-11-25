@@ -15,7 +15,7 @@ A FastAPI-based service that provides data processing and API endpoints for gove
 
 ## 📋 Prerequisites
 
-- Python 3.8 or higher
+- Python 3.8 to 3.13
 - pip (Python package installer)
 - Git
 
