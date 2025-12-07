@@ -33,44 +33,7 @@ paths:
                   body:
                     type: array
                     items:
-                      allOf:
-                      - type: object
-                        allOf:
-                        - type: object
-                          required:
-                          - name
-                          - id
-                          properties:
-                            name:
-                              type: string
-                            id:
-                              type: string
-                      - type: object
-                        required:
-                        - terms
-                        properties:
-                          terms:
-                            type: array
-                            items:
-                              type: object
-                              required:
-                              - startDate
-                              - endDate
-                              properties:
-                                startDate:
-                                  type: object
-                                  required:
-                                  - date
-                                  properties:
-                                    date:
-                                      type: string
-                                endDate:
-                                  type: object
-                                  required:
-                                  - date
-                                  properties:
-                                    date:
-                                      type: string
+                      $ref: '#/components/schemas/President'
               example:
                 body:
                 - name: Anura Kumara Dissanayake
@@ -130,7 +93,7 @@ paths:
     get:
       tags:
       - Organization
-      summary: get prime minister Data
+      summary: Get prime minister Data
       description: returns the prime minister details based on the given date
       operationId: getPrimeMinister
       parameters:
@@ -148,6 +111,7 @@ paths:
                 type: object
                 properties:
                   body:
+                    type: object
                     required:
                     - name
                     - id
@@ -156,7 +120,6 @@ paths:
                         type: string
                       id:
                         type: string
-                    type: object
         "400":
           description: Bad request
         "404":
@@ -309,8 +272,10 @@ paths:
                                     type: string
               example:
                 body:
-                - startDate: 2024-11-18
-                  endDate: Present
+                - startDate: 
+                    date: 2024-11-18
+                  endDate: 
+                    date: Present
                   portfolio:
                     name: Minister of Plantation and Community Infrastructure
                     id: 2434-min-2
@@ -564,6 +529,11 @@ paths:
                 body:
                 - name: Anura Kumara Dissanayake
                   id: 2403-03-01_cit_1
+                  terms:  
+                  - startDate:  
+                      date: 2024-09-23T00:00:00Z  
+                    endDate:  
+                      date: ""
         "500":
           description: Server Error
 
@@ -573,7 +543,7 @@ paths:
       - Organization
       summary: get active departments for a portfolio
       description: returns a list of departments under a given portfolio and a given date
-      operationId: getDepartmentsByMinistry
+      operationId: getDepartmentsByPortfolio
       parameters:
       - name: portfolioId
         in: path
@@ -623,15 +593,15 @@ paths:
         "500":
           description: Server Error
 
-  /persons-by-portfolio/{personId}:
+  /persons-by-portfolio/{portfolioId}:
     post:
       tags:
       - Organization
-      summary: get active persons for a portfolio
-      description: returns a list of persons under a given portfolio and a given date
+      summary: Get active persons for a portfolio
+      description: Returns a list of persons under a given portfolio and a given date
       operationId: getPersonsByMinistry
       parameters:
-      - name: personId
+      - name: portfolioId
         in: path
         required: true
         schema:
@@ -800,7 +770,7 @@ components:
               id:
                 type: string
                 
-    Departments:
+    Department:
       type: object
       required:
       - name
