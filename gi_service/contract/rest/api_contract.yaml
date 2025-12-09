@@ -455,7 +455,7 @@ paths:
       operationId: getPresidentsForRange
       requestBody:
         required: true
-        description: This request body corresponds to the date range used to retrieve the president list
+        description: This request body corresponds to the date range used to retrieve the president list.
         content:
           application/json:
             schema:
