@@ -132,7 +132,7 @@ paths:
       tags:
       - Organization
       summary: get person history
-      description: returns the history of the person
+      description: Returns the history of the person.
       operationId: getPersonHistory
       parameters:
       - name: personId
