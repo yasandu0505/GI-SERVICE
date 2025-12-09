@@ -361,7 +361,7 @@ paths:
     post:
       tags:
       - Organization
-      summary: Get a list of gazettes for a given time range and president
+      summary: Get a list of gazettes for a given time range and president.
       description: "Returns a list of gazettes for a given time range and president, sort the values according to the date"
       operationId: getGazettesByPresident
       parameters:
