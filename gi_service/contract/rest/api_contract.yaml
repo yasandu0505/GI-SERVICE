@@ -552,7 +552,7 @@ paths:
           type: string
       requestBody:
         required: true
-        description: This request body corresponds to the date used to retrive the list of active departments
+        description: This request body corresponds to the date used to retrive the list of active departments.
         content:
           application/json:
             schema:
