@@ -608,7 +608,7 @@ paths:
           type: string
       requestBody:
         required: true
-        description: This request body corresponds to the date used to retrive the list of active persons
+        description: This request body corresponds to the date used to retrieve the list of active persons.
         content:
           application/json:
             schema:
