@@ -294,7 +294,7 @@ paths:
       tags:
       - Organization
       summary: Get active portfolio list.
-      description: returns a list of portfolios under a given president and a given date
+      description: Returns a list of portfolios under a given president and a given date.
       operationId: getActivePortfolioList
       parameters:
       - name: presidentId
