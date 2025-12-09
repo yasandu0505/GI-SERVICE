@@ -377,7 +377,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: required both startDate and endDate for the range
+              description: Required both startDate and endDate for the range.
               properties:
                 startDate:
                   type: object
