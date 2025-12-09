@@ -212,7 +212,7 @@ paths:
     get:
       tags:
       - Organization
-      summary: get department history
+      summary: Get department history.
       description: returns the history of the department
       operationId: getDepartmentHistory
       parameters:
