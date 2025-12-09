@@ -24,7 +24,7 @@ paths:
       operationId: getPresidents
       responses:
         "200":
-          description: Successfully returned
+          description: OK
           content:
             application/json:
               schema:
