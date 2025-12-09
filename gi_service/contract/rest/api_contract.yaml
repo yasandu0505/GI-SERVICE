@@ -542,7 +542,7 @@ paths:
       tags:
       - Organization
       summary: get active departments for a portfolio
-      description: returns a list of departments under a given portfolio and a given date
+      description: Returns a list of departments under a given portfolio and a given date.
       operationId: getDepartmentsByPortfolio
       parameters:
       - name: portfolioId
