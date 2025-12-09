@@ -94,7 +94,7 @@ paths:
       tags:
       - Organization
       summary: Get prime minister Data
-      description: returns the prime minister details based on the given date
+      description: Returns the prime minister details based on the given date.
       operationId: getPrimeMinister
       parameters:
       - name: date
