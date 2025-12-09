@@ -557,7 +557,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: required date
+              description: Required date.
               properties:
                 activeDate:
                   type: object
