@@ -51,7 +51,7 @@ paths:
       tags:
       - Organization
       summary: Get all published gazettes
-      description: Returns a list of sorted date objects that are related to gazette published
+      description: Returns a list of sorted date objects that are related to gazette published.
       operationId: getGazettes
       responses:
         "200":
