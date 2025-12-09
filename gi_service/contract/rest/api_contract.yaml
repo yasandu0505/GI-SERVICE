@@ -20,7 +20,7 @@ paths:
       tags:
       - Organization
       summary: Get all president list with terms
-      description: Returns the list of presidents and terms
+      description: Returns the list of presidents and terms.
       operationId: getPresidents
       responses:
         "200":
