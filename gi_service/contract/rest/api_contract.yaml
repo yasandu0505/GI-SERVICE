@@ -304,7 +304,7 @@ paths:
           type: string
       requestBody:
         required: true
-        description: This request body corresponds to the date used to retrive the list of active portfolios
+        description: This request body corresponds to the date used to retrive the list of active portfolios.
         content:
           application/json:
             schema:
