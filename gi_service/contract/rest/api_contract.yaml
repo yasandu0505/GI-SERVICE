@@ -372,7 +372,7 @@ paths:
           type: string
       requestBody:
         required: true
-        description: This request body corresponds to the date range used to retrieve the gazette list for the given president term and date range
+        description: This request body corresponds to the date range used to retrieve the gazette list for the given president term and date range.
         content:
           application/json:
             schema:
