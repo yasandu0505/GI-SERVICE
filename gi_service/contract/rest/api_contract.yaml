@@ -598,7 +598,7 @@ paths:
       tags:
       - Organization
       summary: Get active persons for a portfolio
-      description: Returns a list of persons under a given portfolio and a given date
+      description: Returns a list of persons under a given portfolio and a given date.
       operationId: getPersonsByMinistry
       parameters:
       - name: portfolioId
