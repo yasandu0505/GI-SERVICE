@@ -451,7 +451,7 @@ paths:
       tags:
       - Organization
       summary: Get a list of presidents for a given time range.
-      description: Returns a list of presidents for a given time range
+      description: Returns a list of presidents for a given time range.
       operationId: getPresidentsForRange
       requestBody:
         required: true
