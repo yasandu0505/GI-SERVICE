@@ -1,8 +1,8 @@
 openapi: 3.1.0
 
 info:
-  title: OpenAPI General Information Service
-  description: This document gives the structure of APIs for the GI Service
+  title: OpenGIN Service API
+  description: This document gives the structure of APIs for the OpenGIN Services.
   version: 1.0.0
 
 servers:
@@ -20,11 +20,11 @@ paths:
       tags:
       - Organization
       summary: Get all president list with terms
-      description: Returns the list of presidents and terms
+      description: Returns the list of presidents and terms.
       operationId: getPresidents
       responses:
         "200":
-          description: Successfully returned
+          description: OK
           content:
             application/json:
               schema:
@@ -51,7 +51,7 @@ paths:
       tags:
       - Organization
       summary: Get all published gazettes
-      description: Returns a list of sorted date objects that are related to gazette published
+      description: Returns a list of sorted date objects that are related to gazette published.
       operationId: getGazettes
       responses:
         "200":
@@ -94,7 +94,7 @@ paths:
       tags:
       - Organization
       summary: Get prime minister Data
-      description: returns the prime minister details based on the given date
+      description: Returns the prime minister details based on the given date.
       operationId: getPrimeMinister
       parameters:
       - name: date
@@ -132,7 +132,7 @@ paths:
       tags:
       - Organization
       summary: get person history
-      description: returns the history of the person
+      description: Returns the history of the person.
       operationId: getPersonHistory
       parameters:
       - name: personId
@@ -142,7 +142,7 @@ paths:
           type: string
       responses:
         "200":
-          description: Successfully returned
+          description: Successfully returned.
           content:
             application/json:
               schema:
@@ -212,8 +212,8 @@ paths:
     get:
       tags:
       - Organization
-      summary: get department history
-      description: returns the history of the department
+      summary: Get department history.
+      description: Returns the history of the department.
       operationId: getDepartmentHistory
       parameters:
       - name: departmentId
@@ -223,7 +223,7 @@ paths:
           type: string
       responses:
         "200":
-          description: Successfully returned
+          description: Successfully returned.
           content:
             application/json:
               schema:
@@ -293,8 +293,8 @@ paths:
     post:
       tags:
       - Organization
-      summary: get active portfolio list
-      description: returns a list of portfolios under a given president and a given date
+      summary: Get active portfolio list.
+      description: Returns a list of portfolios under a given president and a given date.
       operationId: getActivePortfolioList
       parameters:
       - name: presidentId
@@ -304,7 +304,7 @@ paths:
           type: string
       requestBody:
         required: true
-        description: This request body corresponds to the date used to retrive the list of active portfolios
+        description: This request body corresponds to the date used to retrive the list of active portfolios.
         content:
           application/json:
             schema:
@@ -361,8 +361,8 @@ paths:
     post:
       tags:
       - Organization
-      summary: Get a list of gazettes for a given time range and president
-      description: "Returns a list of gazettes for a given time range and president, sort the values according to the date"
+      summary: Get a list of gazettes for a given time range and president.
+      description: Returns a list of gazettes for a given time range and president, sort the values according to the date.
       operationId: getGazettesByPresident
       parameters:
       - name: presidentId
@@ -372,12 +372,12 @@ paths:
           type: string
       requestBody:
         required: true
-        description: This request body corresponds to the date range used to retrieve the gazette list for the given president term and date range
+        description: This request body corresponds to the date range used to retrieve the gazette list for the given president term and date range.
         content:
           application/json:
             schema:
               type: object
-              description: required both startDate and endDate for the range
+              description: Required both startDate and endDate for the range.
               properties:
                 startDate:
                   type: object
@@ -450,12 +450,12 @@ paths:
     post:
       tags:
       - Organization
-      summary: Get a list of presidents for a given time range
-      description: Returns a list of presidents for a given time range
+      summary: Get a list of presidents for a given time range.
+      description: Returns a list of presidents for a given time range.
       operationId: getPresidentsForRange
       requestBody:
         required: true
-        description: This request body corresponds to the date range used to retrieve the president list
+        description: This request body corresponds to the date range used to retrieve the president list.
         content:
           application/json:
             schema:
@@ -541,8 +541,8 @@ paths:
     post:
       tags:
       - Organization
-      summary: get active departments for a portfolio
-      description: returns a list of departments under a given portfolio and a given date
+      summary: Get active departments for a portfolio.
+      description: Returns a list of departments under a given portfolio and a given date.
       operationId: getDepartmentsByPortfolio
       parameters:
       - name: portfolioId
@@ -552,12 +552,12 @@ paths:
           type: string
       requestBody:
         required: true
-        description: This request body corresponds to the date used to retrive the list of active departments
+        description: This request body corresponds to the date used to retrive the list of active departments.
         content:
           application/json:
             schema:
               type: object
-              description: required date
+              description: Required date.
               properties:
                 activeDate:
                   type: object
@@ -604,8 +604,8 @@ paths:
     post:
       tags:
       - Organization
-      summary: Get active persons for a portfolio
-      description: Returns a list of persons under a given portfolio and a given date
+      summary: Get active persons for a portfolio.
+      description: Returns a list of persons under a given portfolio and a given date.
       operationId: getPersonsByMinistry
       parameters:
       - name: portfolioId
@@ -615,7 +615,7 @@ paths:
           type: string
       requestBody:
         required: true
-        description: This request body corresponds to the date used to retrive the list of active persons
+        description: This request body corresponds to the date used to retrieve the list of active persons.
         content:
           application/json:
             schema:
