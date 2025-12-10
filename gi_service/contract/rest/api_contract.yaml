@@ -330,34 +330,35 @@ paths:
                     type: object
                     properties:
                       portfolioList:
-                          items:
-                            type: object
-                            required:
-                            - name
-                            - id
-                            properties:
-                              name:
-                                type: string
-                              id:
-                                type: string
-                              isNew:
-                                type: boolean
-                              ministers:
-                                type: array
-                                items:
-                                  type: object
-                                  required:
-                                  - name
-                                  - id
-                                  properties:
-                                    name:
-                                      type: string
-                                    id:
-                                      type: string
-                                    isPresident:
-                                      type: boolean
-                                    isNew:
-                                      type: boolean
+                        type: array
+                        items:
+                          type: object
+                          required:
+                          - name
+                          - id
+                          properties:
+                            name:
+                              type: string
+                            id:
+                              type: string
+                            isNew:
+                              type: boolean
+                            ministers:
+                              type: array
+                              items:
+                                type: object
+                                required:
+                                - name
+                                - id
+                                properties:
+                                  name:
+                                    type: string
+                                  id:
+                                    type: string
+                                  isPresident:
+                                    type: boolean
+                                  isNew:
+                                    type: boolean
                       activeMinistries:
                         type: integer
                       newMinistries:
