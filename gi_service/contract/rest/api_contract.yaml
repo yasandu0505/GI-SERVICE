@@ -327,19 +327,9 @@ paths:
                 type: object
                 properties:
                   body:
-                    type: array
-                    items:
-                      type: object
-                      required:
-                      - name
-                      - id
-                      properties:
-                        name:
-                          type: string
-                        id:
-                          type: string
-                        ministers:
-                          type: array
+                    type: object
+                    properties:
+                      portfolioList:
                           items:
                             type: object
                             required:
@@ -350,6 +340,32 @@ paths:
                                 type: string
                               id:
                                 type: string
+                              isNew:
+                                type: boolean
+                              ministers:
+                                type: array
+                                items:
+                                  type: object
+                                  required:
+                                  - name
+                                  - id
+                                  properties:
+                                    name:
+                                      type: string
+                                    id:
+                                      type: string
+                                    isPresident:
+                                      type: boolean
+                                    isNew:
+                                      type: boolean
+                      activeMinistries:
+                        type: integer
+                      newMinistries:
+                        type: integer
+                      newMinisters:
+                        type: integer
+                      ministriesUnderPresident:
+                        type: integer
         "400":
           description: Bad request
         "404":
@@ -586,13 +602,17 @@ paths:
                           type: string
                         id:
                           type: string
+                        isNew:
+                          type: boolean
               
               example:
                 body:
                 - name: National Police Academy
                   id: 2187-27_dep_4
+                  isNew: false
                 - name: Assets vested to the Secretary to the Treasury, under the Act, No. 43 of 2011
                   id: 2153-12_dep_437
+                  isNew: false
         "400":
           description: Bad request
         "404":
@@ -649,13 +669,21 @@ paths:
                           type: string
                         id:
                           type: string
+                        isPresident:
+                          type: boolean
+                        isNew:
+                          type: boolean
 
               example:
                 body:
                 - name: Anura Kumara Dissanayake
                   id: 2403-03_cit_1
+                  isPresident: true
+                  isNew: false
                 - name: Gotabaya Rajapaksa
                   id: 2149-34_cit_1
+                  isPresident: false
+                  isNew: false
                   
         "400":
           description: Bad request
