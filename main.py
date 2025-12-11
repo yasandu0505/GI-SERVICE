@@ -1,11 +1,9 @@
 from fastapi import FastAPI
 from src.routers import payload_incoming_router
+from src.routers.organisation_v1_router import router as organisation_v1_router
 from dotenv import load_dotenv
 import os
 from fastapi.middleware.cors import CORSMiddleware
-
-
-
 
 app = FastAPI(
     title="GI - Service",     
@@ -45,3 +43,4 @@ app.add_middleware(
 
         
 app.include_router(payload_incoming_router.router)
+app.include_router(organisation_v1_router)
