@@ -1,7 +1,5 @@
 from fastapi import APIRouter, Depends, Query, Body
-from aiohttp import ClientSession
 from src.services.organisation_v1_service import OrganisationService
-from src.utils.util_functions import get_http_session
 from src.dependencies import get_config
 from src.models.organisation_v1_schemas import Date
 
@@ -14,8 +12,7 @@ def getOrganisationService(config: dict = Depends(get_config)):
 async def activePortfolioList(
     presidentId: str = Query(..., description="ID of the president"),
     body: Date = Body(...),
-    service: OrganisationService = Depends(getOrganisationService),
-    session: ClientSession = Depends(get_http_session),
+    service: OrganisationService = Depends(getOrganisationService)
     ):
-    service_response = await service.activePortfolioList(session, presidentId, body.date)
+    service_response = await service.activePortfolioList(presidentId, body.date)
     return service_response

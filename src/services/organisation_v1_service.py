@@ -2,26 +2,31 @@ import asyncio
 import time 
 from src.utils.util_functions import decode_protobuf_attribute_name
 from src.services.core_opengin_service import OpenGINService
+from aiohttp import ClientSession
+from src.utils.http_client import http_client
 
 class OrganisationService:
     def __init__(self, config: dict):
         self.config = config
 
-    async def activePortfolioList(self, session, presidentId, selectedDate):
+    @property
+    def session(self) -> ClientSession:
+        """Access the global session"""
+        return http_client.session
+
+    async def activePortfolioList(self, presidentId, selectedDate):
        
         # eg item -> single portfolio object with id, appointedMinisters -> list of people for portfolio with ids
         async def enrich_portfolio_item(portfolio, appointedMinisters):
             portfolio_task = OpenGINService.get_node_data_by_id(
                 self,
                 entityId=portfolio.get('relatedEntityId'),
-                session=session
             )
             
             minister_tasks = [
                 OpenGINService.get_node_data_by_id(
                     self,
                     entityId=m.get("relatedEntityId"),
-                    session=session
                 )
                 for  m in appointedMinisters
             ]
@@ -30,9 +35,6 @@ class OrganisationService:
             
             portfolio_data = results[0]
             minister_data_list = results[1:]
-
-            print('portfoilio data')
-            print(portfolio_data)
             
             if isinstance(portfolio_data, dict) and "error" not in portfolio_data:
                 portfolio["decodedName"] = decode_protobuf_attribute_name(
@@ -66,16 +68,14 @@ class OrganisationService:
             "activeAt": f"{selectedDate}T00:00:00Z"
         }
         
-        global_start_time = time.perf_counter()
-        
         activePortfolioList = [] # portfolio ids
         
-        async with session.post(url, headers=headers, json=payload) as response:
+        async with self.session.post(url, headers=headers, json=payload) as response:
             response.raise_for_status()
             activePortfolioList = await response.json()
         
         # get ids of people for each minister (in parallel)
-        tasksforMinistersAppointed = [OpenGINService.fetch_relation(self,id=portfolio.get('relatedEntityId'), relationName="AS_APPOINTED", activeAt=f"{selectedDate}T00:00:00Z", session=session) for portfolio in activePortfolioList]                  
+        tasksforMinistersAppointed = [OpenGINService.fetch_relation(self,id=portfolio.get('relatedEntityId'), relationName="AS_APPOINTED", activeAt=f"{selectedDate}T00:00:00Z") for portfolio in activePortfolioList]                  
         appointedList = await asyncio.gather(*tasksforMinistersAppointed, return_exceptions=True)
 
         await asyncio.gather(*[
@@ -83,8 +83,4 @@ class OrganisationService:
             for i in range(len(activePortfolioList))
         ])
 
-        global_end_time = time.perf_counter()
-        global_elapsed_time = global_end_time - global_start_time 
-        print(f"Global Elapsed Time: {global_elapsed_time:.4f} seconds")
-        print(len(activePortfolioList))
         return activePortfolioList
