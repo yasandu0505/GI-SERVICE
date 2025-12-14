@@ -37,7 +37,7 @@ def decode_protobuf_attribute_name(name : str) -> str:
             data = json.loads(name)
             hex_value = data.get("value")
             if not hex_value:
-                return ""
+                return "Unknown"
 
             decoded_bytes = binascii.unhexlify(hex_value)
             
@@ -53,4 +53,4 @@ def decode_protobuf_attribute_name(name : str) -> str:
                 return cleaned.strip()
         except Exception as e:
             print(f"[DEBUG decode] outer exception: {e}")
-            return ""
+            return "Unknown"
