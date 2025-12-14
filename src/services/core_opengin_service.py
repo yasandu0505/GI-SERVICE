@@ -25,14 +25,14 @@ class OpenGINService:
         except Exception as e:
             return {"error": f"Failed to fetch entity data by id {entityId}: {str(e)}"}  
     
-    async def fetch_relation(self, id, relationName, activeAt, direction="OUTGOING"):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{id}/relations"
+    async def fetch_relation(self, entityId, relationName, activeAt, relatedEntityId="", startTime="", endTIme="", id="", direction="OUTGOING"):
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/relations"
         headers = {"Content-Type": "application/json"}  
         payload = {
-            "relatedEntityId": "",
-            "startTime": "",
-            "endTime": "",
-            "id": "",
+            "relatedEntityId": relatedEntityId,
+            "startTime": startTime,
+            "endTime": endTIme,
+            "id": id,
             "name": relationName,
             "activeAt": activeAt,
             "direction": direction,
