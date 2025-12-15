@@ -4,9 +4,12 @@ from aiohttp import ClientSession
 from src.utils.http_client import http_client
 
 class OrganisationService:
-    def __init__(self, config: dict, openginservice):
+    """
+    This service is responsible for executing aggregate functions by calling the OpenGINService and processing the returned data.
+    """
+    def __init__(self, config: dict, opengin_service):
         self.config = config
-        self.open_gin_service = openginservice
+        self.opengin_service = opengin_service
 
     @property
     def session(self) -> ClientSession:
@@ -14,34 +17,28 @@ class OrganisationService:
         return http_client.session
     
     # enrich person data
-    async def enrich_person_data(self, person, selectedDate):
-        """ Enrich person data when the personId and selectedData given
+    async def enrich_person_data(self, person, selected_date, president_id=None):
+        """ Enrich person data when the personId and selected_data given
             - isNew attribute explains if the person is new person or not
             - isPresident attribute explains if the person is/was a president on the given selected date
         """
 
-        person_node_data = self.open_gin_service.get_node_data_by_id(
+        person_node_data = self.opengin_service.get_entity_by_id(
             entityId=person.get("relatedEntityId")
         )
 
-        person_is_president_relation = self.open_gin_service.fetch_relation(
-                entityId=person.get("relatedEntityId"),
-                relationName="AS_PRESIDENT",
-                activeAt=f"{selectedDate}T00:00:00Z",
-                direction="INCOMING"
-        )
-
-        result = await asyncio.gather(person_node_data, person_is_president_relation, return_exceptions=True)
+        result = await asyncio.gather(person_node_data, return_exceptions=True)
 
         person_data = result[0]
-        person_is_president = result[1]
 
+        # check if the person is president or not
+        is_president = False
+        if person_data.get("id","") == president_id:
+            is_president = True
+
+        # check if the person is newly appointed or not
         minister_start_date = person.get("startTime","")
-        is_new = minister_start_date == f"{selectedDate}T00:00:00Z"
-        if person_is_president and len(person_is_president) > 0:
-            is_president = len(person_is_president[0]) > 0
-        else:
-            is_president = False
+        is_new = minister_start_date == f"{selected_date}T00:00:00Z"
 
         return {
             "id": person.get("relatedEntityId"),
@@ -53,13 +50,13 @@ class OrganisationService:
         }
 
     # eg item -> single portfolio object with id, appointedMinisters -> list of people for portfolio with ids
-    async def enrich_portfolio_item(self,portfolio, appointedMinisters,selectedDate):
+    async def enrich_portfolio_item(self,portfolio, appointedMinisters, president_id, selected_date):
         """This function takes one portolio, appointed minister list and a selected date
             - Output the portfolio by adding the ministers list with other details
         """
 
         # task for get node details
-        portfolio_task = self.open_gin_service.get_node_data_by_id(
+        portfolio_task = self.opengin_service.get_entity_by_id(
             entityId=portfolio.get('relatedEntityId'),
         )
 
@@ -69,7 +66,8 @@ class OrganisationService:
             minister_data = [
                 self.enrich_person_data(
                     person=minister,
-                    selectedDate=selectedDate
+                    president_id=president_id,
+                    selected_date=selected_date
                     ) for  minister in appointedMinisters
             ]
             # result contains portfolio_task result and minister_data results respectively
@@ -79,10 +77,10 @@ class OrganisationService:
             minister_data_list = results[1:]
         else:
             # if the appointed minister list is empty, assign the president for that selected date
-            minister_data = self.open_gin_service.fetch_relation(
+            minister_data = self.opengin_service.fetch_relation(
                 entityId="gov_01",
                 relationName="AS_PRESIDENT",
-                activeAt=f"{selectedDate}T00:00:00Z",
+                activeAt=f"{selected_date}T00:00:00Z",
                 direction="OUTGOING"
             )
             results = await asyncio.gather(portfolio_task, minister_data, return_exceptions=True)
@@ -91,8 +89,9 @@ class OrganisationService:
 
             # enrich person data
             president_enrich_task = self.enrich_person_data(
+                president_id=president_id,
                 person=president_relation[0][0],
-                selectedDate=selectedDate
+                selected_date=selected_date
             )
             results_president_enrich = await asyncio.gather(president_enrich_task, return_exceptions=True)
             minister_data_list = results_president_enrich
@@ -105,7 +104,7 @@ class OrganisationService:
             )
             # check if the portfolio is newly created or not
             start_time = portfolio.get("startTime","")
-            portfolio["isNew"] = start_time == f"{selectedDate}T00:00:00Z"
+            portfolio["isNew"] = start_time == f"{selected_date}T00:00:00Z"
         else:
             print(f"Error fetching portfolio data: {portfolio_data}")
             portfolio["name"] = "Unknown"
@@ -120,12 +119,12 @@ class OrganisationService:
         portfolio["ministers"].extend(minister_data_list)
 
     # active portfolio list
-    async def active_portfolio_list(self, presidentId, selectedDate):
+    async def active_portfolio_list(self, president_id, selected_date):
         """
         Docstring for activePortfolioList
         
-        :param presidentId: President Id
-        :param selectedDate: Selected Date
+        :param president_id: President Id
+        :param selected_date: Selected Date
 
         output type: 
         {
@@ -151,11 +150,11 @@ class OrganisationService:
         }
         """
         # First retrieve the relation list of the active portfolios under given president and given date    
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{presidentId}/relations"
+        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{president_id}/relations"
         headers = {"Content-Type": "application/json"}
         payload = {
             "name": "AS_MINISTER",
-            "activeAt": f"{selectedDate}T00:00:00Z"
+            "activeAt": f"{selected_date}T00:00:00Z"
         }
         
         #portfolio relations
@@ -166,12 +165,12 @@ class OrganisationService:
             activePortfolioList = await response.json()
         
         # get relations of people for each portfolio (in parallel)
-        tasksforMinistersAppointed = [self.open_gin_service.fetch_relation(entityId=portfolio.get('relatedEntityId'), relationName="AS_APPOINTED", activeAt=f"{selectedDate}T00:00:00Z") for portfolio in activePortfolioList]                  
+        tasksforMinistersAppointed = [self.opengin_service.fetch_relation(entityId=portfolio.get('relatedEntityId'), relationName="AS_APPOINTED", activeAt=f"{selected_date}T00:00:00Z") for portfolio in activePortfolioList]                  
         appointedList = await asyncio.gather(*tasksforMinistersAppointed, return_exceptions=True)
 
         # enrich all portfolios (in parallel)
         await asyncio.gather(*[
-            self.enrich_portfolio_item(activePortfolioList[i], appointedList[i], selectedDate)
+            self.enrich_portfolio_item(activePortfolioList[i], appointedList[i], president_id, selected_date)
             for i in range(len(activePortfolioList))
         ])
 
@@ -182,8 +181,9 @@ class OrganisationService:
             newMinistries += portfolio.get("isNew", False)
             ministers = portfolio.get("ministers",[])
             for minister in ministers:
-                newMinisters += minister.get("isNew", False)
-                ministriesUnderPresident += minister.get("isPresident",False)
+                if minister:
+                    newMinisters += minister.get("isNew", False)
+                    ministriesUnderPresident += minister.get("isPresident",False)
 
         # final result to return
         finalResult = {

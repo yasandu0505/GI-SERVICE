@@ -1,7 +1,10 @@
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientError
 from src.utils.http_client import http_client
 
 class OpenGINService:
+    """
+    The OpenGINService directly interfaces with the OpenGIN APIs to retrieve data.
+    """
     def __init__(self, config: dict):
         self.config = config
 
@@ -9,7 +12,7 @@ class OpenGINService:
     def session(self) -> ClientSession:
         return http_client.session
         
-    async def get_node_data_by_id(self,entityId):
+    async def get_entity_by_id(self,entityId):
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
         payload = {
             "id": entityId
@@ -21,9 +24,15 @@ class OpenGINService:
                 response.raise_for_status()
                 res_json = await response.json()
                 response_list = res_json.get("body",[])
+                if not response_list:
+                    return {"error": f"Entity with id {entityId} not found."}
                 return response_list[0]                        
-        except Exception as e:
-            return {"error": f"Failed to fetch entity data by id {entityId}: {str(e)}"}  
+        except ClientError as e:
+            # Consider logging the error
+            return {"error": f"Failed to fetch entity data by id {entityId} due to a network error: {str(e)}"}
+        except (KeyError, IndexError) as e:
+            # Consider logging the error
+            return {"error": f"Failed to parse response for entity {entityId}: {str(e)}"}
     
     async def fetch_relation(self, entityId, relationName, activeAt, relatedEntityId="", startTime="", endTIme="", id="", direction="OUTGOING"):
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/relations"
