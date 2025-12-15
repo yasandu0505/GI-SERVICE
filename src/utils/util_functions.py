@@ -2,13 +2,6 @@ import binascii
 from datetime import datetime
 import json
 from google.protobuf.wrappers_pb2 import StringValue
-from aiohttp import ClientSession, ClientTimeout
-from typing import AsyncGenerator
-
-async def get_http_session() -> AsyncGenerator[ClientSession, None]:
-    timeout = ClientTimeout(total=90, connect=30, sock_connect=30, sock_read=90)
-    async with ClientSession(timeout=timeout) as session:
-        yield session
 
 def normalize_timestamp(time_stamp: str | None) -> str | None:
         """

@@ -1,12 +1,12 @@
 import asyncio
 from src.utils.util_functions import decode_protobuf_attribute_name
-from src.services.core_opengin_service import OpenGINService
 from aiohttp import ClientSession
 from src.utils.http_client import http_client
 
 class OrganisationService:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, openginservice):
         self.config = config
+        self.open_gin_service = openginservice
 
     @property
     def session(self) -> ClientSession:
@@ -20,13 +20,11 @@ class OrganisationService:
             - isPresident attribute explains if the person is/was a president on the given selected date
         """
 
-        person_node_data = OpenGINService.get_node_data_by_id(
-            self,
+        person_node_data = self.open_gin_service.get_node_data_by_id(
             entityId=person.get("relatedEntityId")
         )
 
-        person_is_president_relation = OpenGINService.fetch_relation(
-                self,
+        person_is_president_relation = self.open_gin_service.fetch_relation(
                 entityId=person.get("relatedEntityId"),
                 relationName="AS_PRESIDENT",
                 activeAt=f"{selectedDate}T00:00:00Z",
@@ -61,8 +59,7 @@ class OrganisationService:
         """
 
         # task for get node details
-        portfolio_task = OpenGINService.get_node_data_by_id(
-            self,
+        portfolio_task = self.open_gin_service.get_node_data_by_id(
             entityId=portfolio.get('relatedEntityId'),
         )
 
@@ -82,8 +79,7 @@ class OrganisationService:
             minister_data_list = results[1:]
         else:
             # if the appointed minister list is empty, assign the president for that selected date
-            minister_data = OpenGINService.fetch_relation(
-                self,
+            minister_data = self.open_gin_service.fetch_relation(
                 entityId="gov_01",
                 relationName="AS_PRESIDENT",
                 activeAt=f"{selectedDate}T00:00:00Z",
@@ -124,7 +120,7 @@ class OrganisationService:
         portfolio["ministers"].extend(minister_data_list)
 
     # active portfolio list
-    async def activePortfolioList(self, presidentId, selectedDate):
+    async def active_portfolio_list(self, presidentId, selectedDate):
         """
         Docstring for activePortfolioList
         
@@ -170,7 +166,7 @@ class OrganisationService:
             activePortfolioList = await response.json()
         
         # get relations of people for each portfolio (in parallel)
-        tasksforMinistersAppointed = [OpenGINService.fetch_relation(self,entityId=portfolio.get('relatedEntityId'), relationName="AS_APPOINTED", activeAt=f"{selectedDate}T00:00:00Z") for portfolio in activePortfolioList]                  
+        tasksforMinistersAppointed = [self.open_gin_service.fetch_relation(entityId=portfolio.get('relatedEntityId'), relationName="AS_APPOINTED", activeAt=f"{selectedDate}T00:00:00Z") for portfolio in activePortfolioList]                  
         appointedList = await asyncio.gather(*tasksforMinistersAppointed, return_exceptions=True)
 
         # enrich all portfolios (in parallel)
