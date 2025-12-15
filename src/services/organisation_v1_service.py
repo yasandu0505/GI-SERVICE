@@ -13,7 +13,8 @@ class OrganisationService:
         """Access the global session"""
         return http_client.session
     
-    async def enrich_person_data(self, personId, selectedDate):
+    # enrich person data
+    async def enrich_person_data(self, person, selectedDate):
         """ Enrich person data when the personId and selectedData given
             - isNew attribute explains if the person is new person or not
             - isPresident attribute explains if the person is/was a president on the given selected date
@@ -21,12 +22,12 @@ class OrganisationService:
 
         person_node_data = OpenGINService.get_node_data_by_id(
             self,
-            entityId=personId
+            entityId=person.get("relatedEntityId")
         )
 
         person_is_president_relation = OpenGINService.fetch_relation(
                 self,
-                entityId=personId,
+                entityId=person.get("relatedEntityId"),
                 relationName="AS_PRESIDENT",
                 activeAt=f"{selectedDate}T00:00:00Z",
                 direction="INCOMING"
@@ -37,16 +38,16 @@ class OrganisationService:
         person_data = result[0]
         person_is_president = result[1]
 
-        created_date_minister = person_data.get("created","")
-        is_new = created_date_minister == f"{selectedDate}T00:00:00Z"
+        minister_start_date = person.get("startTime","")
+        is_new = minister_start_date == f"{selectedDate}T00:00:00Z"
         if person_is_president and len(person_is_president) > 0:
             is_president = len(person_is_president[0]) > 0
         else:
             is_president = False
 
         return {
-            "personId": personId,
-            "personName": decode_protobuf_attribute_name(
+            "id": person.get("relatedEntityId"),
+            "name": decode_protobuf_attribute_name(
                 person_data.get("name", "Unknown")
             ),
             "isNew": is_new,
@@ -56,7 +57,7 @@ class OrganisationService:
     # eg item -> single portfolio object with id, appointedMinisters -> list of people for portfolio with ids
     async def enrich_portfolio_item(self,portfolio, appointedMinisters,selectedDate):
         """This function takes one portolio, appointed minister list and a selected date
-            - Output the portfolio by adding the ministers list with details
+            - Output the portfolio by adding the ministers list with other details
         """
 
         # task for get node details
@@ -70,7 +71,7 @@ class OrganisationService:
         if(len(appointedMinisters) > 0):
             minister_data = [
                 self.enrich_person_data(
-                    personId=minister.get("relatedEntityId"),
+                    person=minister,
                     selectedDate=selectedDate
                     ) for  minister in appointedMinisters
             ]
@@ -94,32 +95,65 @@ class OrganisationService:
 
             # enrich person data
             president_enrich_task = self.enrich_person_data(
-                personId=president_relation[0][0].get("relatedEntityId"),
+                person=president_relation[0][0],
                 selectedDate=selectedDate
             )
             results_president_enrich = await asyncio.gather(president_enrich_task, return_exceptions=True)
             minister_data_list = results_president_enrich
 
-
         if isinstance(portfolio_data, dict) and "error" not in portfolio_data:
             # retrieve the decoded portfolio name
-            portfolio["decodedName"] = decode_protobuf_attribute_name(
+            portfolio["id"] = portfolio_data.get("id","")
+            portfolio["name"] = decode_protobuf_attribute_name(
                 portfolio_data.get("name", "")
             )
             # check if the portfolio is newly created or not
-            created_date = portfolio_data.get("created","")
-            portfolio["isNew"] = created_date == f"{selectedDate}T00:00:00Z"
+            start_time = portfolio.get("startTime","")
+            portfolio["isNew"] = start_time == f"{selectedDate}T00:00:00Z"
         else:
             print(f"Error fetching portfolio data: {portfolio_data}")
-            portfolio["decodedName"] = "Unknown"
+            portfolio["name"] = "Unknown"
             portfolio["isNew"] = False
+        
+        # arrange the final portfolio details by removing unnecessary keys in the json block
+        for k in ("relatedEntityId", "startTime", "endTime", "direction"):
+            portfolio.pop(k, None)
             
         portfolio["ministers"] = []
         # extend the minister list with enriched person data
         portfolio["ministers"].extend(minister_data_list)
 
+    # active portfolio list
     async def activePortfolioList(self, presidentId, selectedDate):
-       
+        """
+        Docstring for activePortfolioList
+        
+        :param presidentId: President Id
+        :param selectedDate: Selected Date
+
+        output type: 
+        {
+            "activeMinistries": 0,
+            "newMinistries": 0,
+            "newMinisters": 0,
+            "ministriesUnderPresident": 0,
+            "portfolioList": [
+                {
+                "id": "",
+                "name": "",
+                "isNew": false,
+                "ministers": [
+                    {
+                    "id": "",
+                    "name": "",
+                    "isNew": false,
+                    "isPresident": false
+                    }
+                ]
+                },
+            ]
+        }
+        """
         # First retrieve the relation list of the active portfolios under given president and given date    
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{presidentId}/relations"
         headers = {"Content-Type": "application/json"}
