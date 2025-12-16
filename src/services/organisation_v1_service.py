@@ -1,6 +1,6 @@
 import asyncio
 from src.utils.util_functions import decode_protobuf_attribute_name
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientError
 from src.utils.http_client import http_client
 
 class OrganisationService:
@@ -118,6 +118,16 @@ class OrganisationService:
         # extend the minister list with enriched person data
         portfolio_relation["ministers"].extend(person_data_list)
 
+    # this function takes the portfolio relation and get the active minister lists. then arrange the response
+    async def process_portfolio_item(self, portfolio_relation, president_id, selected_date):
+        appointed_ministers = await self.opengin_service.fetch_relation(
+            entityId=portfolio_relation.get('relatedEntityId'),
+            relationName="AS_APPOINTED",
+            activeAt=f"{selected_date}T00:00:00Z"
+        )
+        
+        await self.enrich_portfolio_item(portfolio_relation, appointed_ministers, president_id, selected_date)
+
     # active portfolio list
     async def active_portfolio_list(self, president_id, selected_date):
         """
@@ -149,6 +159,7 @@ class OrganisationService:
             ]
         }
         """
+
         # First retrieve the relation list of the active portfolios under given president and given date    
         url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{president_id}/relations"
         headers = {"Content-Type": "application/json"}
@@ -161,18 +172,24 @@ class OrganisationService:
         activePortfolioList = []
         
         async with self.session.post(url,  headers=headers, json=payload) as response:
-            response.raise_for_status()
-            activePortfolioList = await response.json()
+            try:
+                response.raise_for_status()
+                activePortfolioList = await response.json()
+            except ClientError as e:
+                print(f"Error fetching active portfolios: {e}")
+                return {
+                    "activeMinistries": 0,
+                    "newMinistries": 0,
+                    "newMinisters": 0,
+                    "ministriesUnderPresident": 0,
+                    "portfolioList": []
+                }
         
-        # get relations of people for each portfolio (in parallel)
-        tasksforMinistersAppointed = [self.opengin_service.fetch_relation(entityId=portfolio.get('relatedEntityId'), relationName="AS_APPOINTED", activeAt=f"{selected_date}T00:00:00Z") for portfolio in activePortfolioList]                  
-        appointedList = await asyncio.gather(*tasksforMinistersAppointed, return_exceptions=True)
-
-        # enrich all portfolios (in parallel)
+        # Process each portfolio item in parallel
         await asyncio.gather(*[
-            self.enrich_portfolio_item(activePortfolioList[i], appointedList[i], president_id, selected_date)
-            for i in range(len(activePortfolioList))
-        ])
+            self.process_portfolio_item(portfolio, president_id, selected_date)
+            for portfolio in activePortfolioList
+        ], return_exceptions=True)
 
         # Calculate final counts
         newMinistries = newMinisters = ministriesUnderPresident = 0
