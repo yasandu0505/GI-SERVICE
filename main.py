@@ -14,7 +14,6 @@ def load_config():
     BASE_URL_CRUD = os.getenv("BASE_URL_CRUD")
     BASE_URL_QUERY = os.getenv("BASE_URL_QUERY")
     MONGODB_URI = os.getenv("MONGODB_URI")
-    BASE_URL_QUERY_TWO = os.getenv("BASE_URL_QUERY_TWO")
     
     if BASE_URL_CRUD and BASE_URL_QUERY and MONGODB_URI:
         print(f"BASE_URL_CRUD and BASE_URL_QUERY and MONGODB_URI found: {BASE_URL_QUERY} , {BASE_URL_CRUD} , {MONGODB_URI}...")
@@ -22,7 +21,6 @@ def load_config():
             "BASE_URL_CRUD": BASE_URL_CRUD,
             "BASE_URL_QUERY": BASE_URL_QUERY,
             "MONGODB_URI": MONGODB_URI,
-            "BASE_URL_QUERY_TWO": BASE_URL_QUERY_TWO
         }      
     else:
         print("Environment variables not found")
@@ -44,7 +42,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="GI - Service",     
-    description="API Adapter to the OpenGIn (Open Genaral Information Network)",
+    description="API Adapter to the OpenGIn (Open General Information Network)",
     version="1.0.0",
     lifespan=lifespan
 )

@@ -2,6 +2,7 @@ import asyncio
 from src.utils.util_functions import decode_protobuf_attribute_name
 from aiohttp import ClientSession, ClientError
 from src.utils.http_client import http_client
+from src.core.config import settings
 
 class OrganisationService:
     """
@@ -17,38 +18,34 @@ class OrganisationService:
         return http_client.session
     
     # enrich person data
-    async def enrich_person_data(self, selected_date, person_realtion=None, president_id=None, is_president=False):
-        """ Enrich person data when the person_realtion and selected_data given
+    async def enrich_person_data(self, selected_date, person_relation=None, president_id=None, is_president=False):
+        """ Enrich person data when the person_relation and selected_date given
             - isNew attribute explains if the person is new person or not
             - isPresident attribute explains if the person is/was a president on the given selected date
             - If want to return the president as the default minister, no need a person_relation, just pass president_id and is_president
         """
 
         # handle cases where president is assigned as default
-        if is_president and person_realtion == None:
-            person_node_data = self.opengin_service.get_entity_by_id(
+        if is_president and person_relation == None:
+            person_node_data = await self.opengin_service.get_entity_by_id(
                 entityId=president_id
             )
             id = president_id
             is_new = False
         else:
-            person_node_data = self.opengin_service.get_entity_by_id(
-                entityId=person_realtion.get("relatedEntityId")
+            person_node_data = await self.opengin_service.get_entity_by_id(
+                entityId=person_relation.get("relatedEntityId")
             )
-            id = person_realtion.get("relatedEntityId")
-            person_start_date = person_realtion.get("startTime","")
+            id = person_relation.get("relatedEntityId")
+            person_start_date = person_relation.get("startTime","")
             is_new = person_start_date == f"{selected_date}T00:00:00Z"
 
-        result = await asyncio.gather(person_node_data, return_exceptions=True)
-
-        person_data = result[0]
-
         # check if the person is president or not
-        if person_data.get("id","") == president_id:
+        if person_node_data.get("id","") == president_id:
             is_president = True
 
         # decode name from protobuf
-        name = decode_protobuf_attribute_name(person_data.get("name", "Unknown"))
+        name = decode_protobuf_attribute_name(person_node_data.get("name", "Unknown"))
 
         return {
             "id": id,
@@ -57,7 +54,7 @@ class OrganisationService:
             "isPresident": is_president
         }
 
-    # eg item -> single portfolio relation object with id, appointed_ministers_list -> list of people for portfolio with ids
+    # eg: portfolio_relation -> single portfolio relation object with id, appointed_ministers_list -> list of people for portfolio with ids, president_id -> Id of the president
     async def enrich_portfolio_item(self,portfolio_relation, appointed_ministers_list, president_id, selected_date):
         """This function takes one portolio relation, appointed minister list and a selected date
             - Output the portfolio by adding the ministers list with other details
@@ -72,7 +69,7 @@ class OrganisationService:
         if(len(appointed_ministers_list) > 0):
             person_data = [
                 self.enrich_person_data(
-                    person_realtion=person,
+                    person_relation=person,
                     president_id=president_id,
                     selected_date=selected_date
                     ) for  person in appointed_ministers_list
@@ -83,18 +80,16 @@ class OrganisationService:
             portfolio_data = results[0]
             person_data_list = results[1:]
         else:
-            # if the appointed minister list is empty, assign the president for that selected date
-            results = await asyncio.gather(portfolio_task, return_exceptions=True)
-            portfolio_data = results[0]
-
-            # enrich person data
+            # if the appointed minister list is empty, assign the president(for that date) for that selected date
             president_enrich_task = self.enrich_person_data(
                 president_id=president_id,
                 is_president=True,
                 selected_date=selected_date
             )
-            results_president_enrich = await asyncio.gather(president_enrich_task, return_exceptions=True)
-            person_data_list = results_president_enrich
+            results_president_enrich = await asyncio.gather(portfolio_task, president_enrich_task, return_exceptions=True)
+
+            portfolio_data = results_president_enrich[0]
+            person_data_list = [results_president_enrich[1]]
 
         if isinstance(portfolio_data, dict) and "error" not in portfolio_data:
             # retrieve the decoded portfolio name
@@ -160,30 +155,12 @@ class OrganisationService:
         }
         """
 
-        # First retrieve the relation list of the active portfolios under given president and given date    
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{president_id}/relations"
-        headers = {"Content-Type": "application/json"}
-        payload = {
-            "name": "AS_MINISTER",
-            "activeAt": f"{selected_date}T00:00:00Z"
-        }
-        
-        #portfolio relations
-        activePortfolioList = []
-        
-        async with self.session.post(url,  headers=headers, json=payload) as response:
-            try:
-                response.raise_for_status()
-                activePortfolioList = await response.json()
-            except ClientError as e:
-                print(f"Error fetching active portfolios: {e}")
-                return {
-                    "activeMinistries": 0,
-                    "newMinistries": 0,
-                    "newMinisters": 0,
-                    "ministriesUnderPresident": 0,
-                    "portfolioList": []
-                }
+        # First retrieve the relation list of the active portfolios under given president and given date     
+        activePortfolioList = await self.opengin_service.fetch_relation(
+            entityId=president_id,
+            relationName="AS_MINISTER",
+            activeAt=f"{selected_date}T00:00:00Z"
+        )
         
         # Process each portfolio item in parallel
         await asyncio.gather(*[

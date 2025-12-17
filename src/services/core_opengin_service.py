@@ -1,5 +1,6 @@
 from aiohttp import ClientSession, ClientError
 from src.utils.http_client import http_client
+from src.core.config import settings
 
 class OpenGINService:
     """
@@ -13,7 +14,7 @@ class OpenGINService:
         return http_client.session
         
     async def get_entity_by_id(self,entityId):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/search"
         payload = {
             "id": entityId
         }
@@ -34,8 +35,8 @@ class OpenGINService:
             # Consider logging the error
             return {"error": f"Failed to parse response for entity {entityId}: {str(e)}"}
     
-    async def fetch_relation(self, entityId, relationName, activeAt, relatedEntityId="", startTime="", endTIme="", id="", direction="OUTGOING"):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/relations"
+    async def fetch_relation(self, entityId, relationName="", activeAt="", relatedEntityId="", startTime="", endTIme="", id="", direction="OUTGOING"):
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entityId}/relations"
         headers = {"Content-Type": "application/json"}  
         payload = {
             "relatedEntityId": relatedEntityId,
