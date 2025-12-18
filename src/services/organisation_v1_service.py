@@ -241,6 +241,7 @@ class OrganisationService:
                 "isNew": false,
                 "hasData": false
                 },
+            ]
         }
         """
 
