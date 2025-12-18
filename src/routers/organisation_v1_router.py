@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Body
+from fastapi import APIRouter, Depends, Query, Body, Path
 from src.dependencies import get_config
 from src.models.organisation_v1_schemas import Date
 from src.services import OpenGINService, OrganisationService
@@ -16,4 +16,13 @@ async def active_portfolio_list(
     service: OrganisationService = Depends(get_organisation_service)
     ):
     service_response = await service.active_portfolio_list(presidentId, body.date)
+    return service_response
+
+@router.post('/departments-by-portfolio/{portfolio_id}', summary="Get active departments for a portfolio.", description="Returns a list of departments under a given portfolio and a given date.")
+async def departments_by_portfolio(
+    portfolio_id: str = Path(..., description="ID of the portotfolio"),
+    body: Date = Body(...),
+    service: OrganisationService = Depends(get_organisation_service)
+):  
+    service_response = await service.departments_by_portfolio(portfolio_id=portfolio_id, selected_date=body.date)
     return service_response
