@@ -1,4 +1,5 @@
 import asyncio
+from fastapi import HTTPException
 from src.utils.util_functions import decode_protobuf_attribute_name,normalize_timestamp
 from aiohttp import ClientSession
 from src.utils import http_client
@@ -191,36 +192,33 @@ class OrganisationService:
     
     # helper: enrich department
     async def enrich_department_item(self, department_relation, selected_date):
-        try:
 
-            department_id = department_relation.get("relatedEntityId")
+        department_id = department_relation.get("relatedEntityId")
 
-            department_data_task = self.opengin_service.get_entity_by_id(entityId=department_id)
-            dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relationName="AS_CATEGORY")
+        department_data_task = self.opengin_service.get_entity_by_id(entityId=department_id)
+        dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relationName="AS_CATEGORY")
 
-            # run parallel calls to get department data and parent category relations to ensure the department has data
-            department_data, dataset_relations = await asyncio.gather(department_data_task, dataset_task, return_exceptions=True)
+        # run parallel calls to get department data and parent category relations to ensure the department has data
+        department_data, dataset_relations = await asyncio.gather(department_data_task, dataset_task, return_exceptions=True)
 
-            # decode name
-            name = decode_protobuf_attribute_name(department_data.get("name", "Unknown"))
+        # decode name
+        name = decode_protobuf_attribute_name(department_data.get("name", "Unknown"))
             
-            # check the department is new or not
-            department_start_date = department_relation.get("startTime","")
-            is_new = department_start_date == f"{selected_date}T00:00:00Z"
+        # check the department is new or not
+        department_start_date = department_relation.get("startTime","")
+        is_new = department_start_date == f"{selected_date}T00:00:00Z"
 
-            # check the department has data or not
-            has_data = bool(dataset_relations)
+        # check the department has data or not
+        has_data = bool(dataset_relations)
             
-            final_result = {
-                "id": department_id,
-                "name": name,
-                "isNew": is_new,
-                "hasData": has_data
-            }
+        final_result = {
+            "id": department_id,
+            "name": name,
+            "isNew": is_new,
+            "hasData": has_data
+        }
 
-            return final_result
-        except Exception as e:
-            return e
+        return final_result
 
     # API: departments by portfolio
     async def departments_by_portfolio(self, portfolio_id, selected_date):
@@ -267,17 +265,13 @@ class OrganisationService:
             # Calculate final counts
             new_departments = sum(1 for d in departments if d.get("isNew"))
 
-            # final results to return
+            # final departments to return
             finalResult = {
-                "totalDepartments": len(results),
+                "totalDepartments": len(departments),
                 "newDepartments": new_departments,
-                "departmentList" : results,
+                "departmentList" : departments,
             }
 
             return finalResult
         except Exception as e:
-            return {
-                "body": "",
-                "statusCode": 500,
-                "message": str(e)
-            }
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
