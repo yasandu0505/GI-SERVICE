@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from datetime import datetime
 import requests
 import hashlib
@@ -7,7 +8,7 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 import binascii
 from google.protobuf.wrappers_pb2 import StringValue
-import time
+from src.core.config import settings
 
 class WriteAttributes:
     def __init__(self, config : dict):
@@ -1002,7 +1003,7 @@ class WriteAttributes:
             return False
     
     def get_all_documents_from_nexoan(self):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/search"
         
         payload = {
             "kind": {
