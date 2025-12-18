@@ -197,10 +197,10 @@ class OrganisationService:
             department_id = department_relation.get("relatedEntityId")
 
             department_data_task = self.opengin_service.get_entity_by_id(entityId=department_id)
-            dataset_data_task = self.opengin_service.fetch_relation(entityId=department_id, relationName="AS_CATEGORY")
+            dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relationName="AS_CATEGORY")
 
             # run parallel calls to get department data and parent category relations to ensure the department has data
-            department_data, dataset_relations = await asyncio.gather(department_data_task, dataset_data_task, return_exceptions=True)
+            department_data, dataset_relations = await asyncio.gather(department_data_task, dataset_task, return_exceptions=True)
 
             # decode name
             name = decode_protobuf_attribute_name(department_data.get("name", "Unknown"))
