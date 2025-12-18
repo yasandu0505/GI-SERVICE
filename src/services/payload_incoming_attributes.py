@@ -10,6 +10,7 @@ import aiohttp
 from datetime import datetime
 from collections import defaultdict
 from typing import Sequence
+from src.core.config import settings
 
 class IncomingServiceAttributes:
     def __init__(self, config : dict):
@@ -43,7 +44,7 @@ class IncomingServiceAttributes:
         req_entityId = entityId
         req_year = ENTITY_PAYLOAD.year
        
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{req_entityId}/relations"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{req_entityId}/relations"
         
         payload = {
             "id": "",
@@ -93,7 +94,7 @@ class IncomingServiceAttributes:
                     } 
             
                 for item in data_list_for_req_year:
-                    search_url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+                    search_url = f"{settings.BASE_URL_QUERY}/v1/entities/search"
             
                     search_payload = {
                         "id": item["id"],
@@ -113,7 +114,7 @@ class IncomingServiceAttributes:
 
                         item["name"] =  output["body"][0]["name"]
                         decoded_name = self.decode_protobuf_attribute_name(item["name"])
-                        metadata_url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/metadata"
+                        metadata_url = f"{settings.BASE_URL_QUERY}/v1/entities/{entityId}/metadata"
 
                         try:
                             async with session.get(metadata_url, headers=headers) as response:
@@ -179,7 +180,7 @@ class IncomingServiceAttributes:
         global_start_time = time.perf_counter()
         nameCode = ATTRIBUTE_PAYLOAD.nameCode
         
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/attributes/{nameCode}"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entityId}/attributes/{nameCode}"
         
         headers = {
             "Content-Type": "application/json",
@@ -217,7 +218,7 @@ class IncomingServiceAttributes:
             }
     
     async def fetch_relation(self,session, id, relationName):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{id}/relations"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{id}/relations"
         headers = {"Content-Type": "application/json"}  
         payload = {
             "relatedEntityId": "",
@@ -234,7 +235,7 @@ class IncomingServiceAttributes:
             return data
     
     async def get_node_data_by_id(self,entityId, session):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/search"
         payload = {
             "id": entityId
         }
@@ -251,7 +252,7 @@ class IncomingServiceAttributes:
             return {"error": f"Failed to fetch entity data by id {entityId}: {str(e)}"}     
 
     async def find_parent_department(self, session, entity_id):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entity_id}/relations"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entity_id}/relations"
         headers = {"Content-Type": "application/json"}
         payload = {
             "relatedEntityId": "",
@@ -290,7 +291,7 @@ class IncomingServiceAttributes:
       
     async def get_metadata_for_entity(self, session, entityId):
         
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/metadata"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entityId}/metadata"
                 
         headers = {
             "Content-Type": "application/json",
@@ -314,7 +315,7 @@ class IncomingServiceAttributes:
         try:
             if id is None:
                 searchList = []
-                url = f"{self.config['BASE_URL_QUERY']}/v1/entities/search"
+                url = f"{settings.BASE_URL_QUERY}/v1/entities/search"
                 payload_dataset = {
                     "kind": {
                         "major": "Category",
@@ -471,7 +472,7 @@ class IncomingServiceAttributes:
                
     async def get_active_ministers(self, entityId, dateActive, session):
         normalized_timestamp = self._normalize_timestamp(dateActive)
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/relations"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entityId}/relations"
         
         headers = {"Content-Type": "application/json"}
         
@@ -506,7 +507,7 @@ class IncomingServiceAttributes:
 
     async def get_active_departments(self, entityId, dateActive, session):
         normalized_timestamp = self._normalize_timestamp(dateActive)
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{entityId}/relations"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entityId}/relations"
         headers = {"Content-Type": "application/json"}
         payload = {
             "name": "AS_DEPARTMENT",
@@ -670,7 +671,7 @@ class IncomingServiceAttributes:
         }
 
     async def get_president_tenure(self,presidentId, session):
-        url = f"{self.config['BASE_URL_QUERY']}/v1/entities/{presidentId}/relations"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{presidentId}/relations"
         headers = {"Content-Type": "application/json"}
         payload = {
             "name": "AS_PRESIDENT",

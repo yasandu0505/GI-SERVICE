@@ -1,8 +1,8 @@
 openapi: 3.1.0
 
 info:
-  title: OpenGIN Service API
-  description: This document gives the structure of APIs for the OpenGIN Services.
+  title: OpenGIN Service API - Organization
+  description: This document gives the structure of APIs for the OpenGIN Organization Services.
   version: 1.0.0
 
 servers:
