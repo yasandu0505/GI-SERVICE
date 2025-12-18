@@ -1,8 +1,7 @@
 import asyncio
-from src.utils.util_functions import decode_protobuf_attribute_name
-from aiohttp import ClientSession, ClientError
-from src.utils.http_client import http_client
-from src.core.config import settings
+from src.utils.util_functions import decode_protobuf_attribute_name,normalize_timestamp
+from aiohttp import ClientSession
+from src.utils import http_client
 
 class OrganisationService:
     """
@@ -225,6 +224,26 @@ class OrganisationService:
 
     # API: departments by portfolio
     async def departments_by_portfolio(self, portfolio_id, selected_date):
+        """
+        Docstring for department_by_portfolio
+        
+        :param portfolio_id: Portfolio Id
+        :param selected_date: Selected Date
+
+        output type: 
+        {
+            "totalDepartments": 0,
+            "newDepartments": 0,
+            "departmentList": [
+                {
+                "id": "",
+                "name": "",
+                "isNew": false,
+                "hasData": false
+                },
+        }
+        """
+
         try:
             department_relation_list = await self.opengin_service.fetch_relation(
                 entityId=portfolio_id,
