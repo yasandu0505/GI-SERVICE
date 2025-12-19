@@ -1,0 +1,106 @@
+openapi: 3.1.0
+
+info:
+  title: OpenGIN Service API - Data
+  description: This document gives the structure of APIs for the OpenGIN Data Services.
+  version: 1.0.0
+
+servers:
+- url: http://localhost:8081
+
+tags:
+- name: Data
+  description: APIs for Data
+
+paths:
+  /categories-datasets:
+    get:
+      tags:
+      - Data
+      summary: Get all parent/child categories and datasets.
+      description: "Returns parent/child categories based on the given id. If id is not given it returns the top level parent categories. if id is given, it returns the categories in the below level for the given parent. if any category has a dataset, it returns the dataset as well."
+      operationId: getCategoriesAndDatasets
+      parameters:
+      - name: parentId
+        in: query
+        schema:
+          type: string
+      
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  body:
+                    type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/category'
+                      datasets:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/dataset'
+
+components:
+  schemas:
+    category:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind: 
+          $ref: '#/components/schemas/kind'
+        parentId:
+          type: string
+        source:
+          $ref: '#/components/schemas/source'
+    
+    source:
+      type: object
+      properties:
+        id: 
+          type: string
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/kind'
+
+    kind:
+      type: object
+      properties:
+        major:
+          type: string
+        minor:
+          type: string
+
+    label:
+      type: object
+      properties:
+          name:
+              type: string
+          code: 
+              type: string
+
+    dataset:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          $ref: '#/components/schemas/label'
+        parentId:
+          type: string
+        year:
+          type: string
+        kind: 
+          $ref: '#/components/schemas/kind'
+        source:
+          $ref: '#/components/schemas/source'
+      
