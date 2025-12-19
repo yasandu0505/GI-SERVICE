@@ -60,6 +60,7 @@ class WriteAttributes:
             }
 
     def validate_node(self, entity_name, minorKind, majorKind) -> tuple[bool, str]:
+        time.sleep(3)
         url = "http://0.0.0.0:8081/v1/entities/search"
         
         payload = {
@@ -162,7 +163,9 @@ class WriteAttributes:
                 "error": str(e)
             }
    
-    def create_attribute_to_entity(self, date, entity_id, attribute_name_for_table_name, values): 
+    def create_attribute_to_entity(self, date, entity_id, attribute_name_for_table_name, values):
+        # add a 5 sec sleep before the request
+        time.sleep(5) 
         url = f"http://0.0.0.0:8080/entities/{entity_id}"
         payload = {
             "id": entity_id,
@@ -188,7 +191,7 @@ class WriteAttributes:
                 }
         
         try:
-            response = requests.put(url, json=payload, headers=headers)
+            response = requests.put(url, json=payload, headers=headers, timeout=300)
             response.raise_for_status()  
             output = response.json()
             return output
