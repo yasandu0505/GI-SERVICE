@@ -114,7 +114,7 @@ paths:
                       isAvailableDataByRange:
                         type: boolean
                       years:
-                        description: This is the graph type
+                        description: The list of available years for the dataset.
                         type: array
                         items:
                           type: string
@@ -163,7 +163,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: required start date and end date
+              description: required the encoded name of the dataset.
               properties:
                 name:
                   type: string
@@ -193,9 +193,7 @@ paths:
                       - district
                       - number_of_rooms
                     rows:
-                      - 1
-                      - Colombo
-                      - 8758
+                      - [1, Colombo, 8758]
                         
 
         "400":
@@ -251,10 +249,10 @@ components:
       type: object
       properties:
         startDate:
-          description: This is the start date user select
+          description: This is the start date the user selects.
           type: string
         endDate:
-          description: This is the end date user select
+          description: This is the end date the user selects.
           type: string
 
     dataset:
