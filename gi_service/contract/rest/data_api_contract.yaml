@@ -14,7 +14,7 @@ tags:
 
 paths:
   /categories-datasets:
-    get:
+    post:
       tags:
       - Data
       summary: Get all parent/child categories and datasets.
@@ -25,6 +25,18 @@ paths:
         in: query
         schema:
           type: string
+      
+      requestBody:
+        required: true
+        description: This request body corresponds to the date range used to retrieve the data.
+        content:
+          application/json:
+            schema:
+              type: object
+              description: required date range
+              properties:
+                dateRange:
+                  $ref: '#/components/schemas/dateRange'
       
       responses:
         "200":
@@ -45,6 +57,153 @@ paths:
                         type: array
                         items:
                           $ref: '#/components/schemas/dataset'
+
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+  
+  /data-available-years/{parentId}:
+    post:
+      tags:
+      - Data
+      summary: Get all the years for available datasets in the given time range.
+      description: Returns the list of years for available datasets based on the given date range
+      operationId: getAvailableDataYears
+      parameters:
+      - name: parentId
+        required: true
+        in: path
+        schema:
+          type: string
+
+      requestBody:
+        required: true
+        description: This request body corresponds to the encoded name used to retrieve the data.
+        content:
+          application/json:
+            schema:
+              type: object
+              description: required name code
+              required:
+                - name
+                - dateRange
+                - source
+              properties:
+                name:
+                  description: This is the encoded name for the dataset name
+                  type: string
+                dateRange:
+                  $ref: '#/components/schemas/dateRange'
+                source:
+                  $ref: '#/components/schemas/source'
+      
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  body:
+                    type: object
+                    properties:
+                      isAvailableDataByRange:
+                        type: boolean
+                      years:
+                        description: This is the graph type
+                        type: array
+                        items:
+                          type: string
+                      source:
+                        $ref: '#/components/schemas/source'
+              
+              example:
+                body:
+                  isAvailableDataByRange: true
+                  years: 
+                    - "2021"
+                    - "2022"
+                    - "2023"
+
+        
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+
+  /data-attributes-by-year/{parentId}/{year}:
+    post:
+      tags:
+      - Data
+      summary: Get the data for the given year.
+      description: "Returns the dataset for the given year"
+      operationId: getDataByYear
+      parameters:
+      - name: parentId
+        required: true
+        in: path
+        schema:
+          type: string
+      - name: year
+        required: true
+        in: path
+        schema:
+          type: string
+      
+      requestBody:
+        required: true
+        description: This request body corresponds to the year and the encoded name of the dataset used to retrieve the data.
+        content:
+          application/json:
+            schema:
+              type: object
+              description: required start date and end date
+              properties:
+                name:
+                  type: string
+      
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  body:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      data:
+                        type: object
+              
+              example:
+                body:
+                  type: tabular
+                  data:
+                    columns:
+                      - id
+                      - district
+                      - number_of_rooms
+                    rows:
+                      - 1
+                      - Colombo
+                      - 8758
+                        
+
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
 
 components:
   schemas:
@@ -87,6 +246,16 @@ components:
               type: string
           code: 
               type: string
+
+    dateRange:
+      type: object
+      properties:
+        startDate:
+          description: This is the start date user select
+          type: string
+        endDate:
+          description: This is the end date user select
+          type: string
 
     dataset:
       type: object
