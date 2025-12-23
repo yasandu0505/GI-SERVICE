@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from src.utils.util_functions import decode_protobuf_attribute_name,normalize_timestamp
 from aiohttp import ClientSession
 from src.utils import http_client
+import calendar
 
 class OrganisationService:
     """
@@ -275,3 +276,61 @@ class OrganisationService:
             return finalResult
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+        
+    # helper: term helper
+    async def term(self, startTime, endTime):
+        if startTime == "":
+            return "Unknown"
+        
+        start_date = startTime.split("T")[0]
+        start_year = start_date.split("-")[0]
+        start_month = start_date.split("-")[1]
+        start_month_abbr = calendar.month_abbr[int(start_month)]
+
+        if endTime == "":
+            end_year = "Present"
+            term = f"{start_year} {start_month_abbr} - {end_year}"
+        else:
+            end_date = endTime.split("T")[0]
+            end_year = end_date.split("-")[0]
+            end_month = end_date.split("-")[1]
+            end_month_abbr = calendar.month_abbr[int(end_month)]
+        
+            term = f"{start_year} {start_month_abbr} - {end_year} {end_month_abbr}"
+
+        return term
+
+    # API: prime minister 
+    async def prime_minister(self, selected_date):
+        try:
+            prime_minister_relation = await self.opengin_service.fetch_relation(
+                entityId="gov_01",
+                relationName="AS_PRIME_MINISTER",
+                activeAt=f"{selected_date}T00:00:00Z"
+            )
+
+            prime_minister_relation = prime_minister_relation[0]
+
+            prime_minister_data = await self.enrich_person_data(person_relation=prime_minister_relation, selected_date=selected_date)
+
+            for key in ["isNew","isPresident"]:
+                prime_minister_data.pop(key)
+
+            prime_minister_start_date = prime_minister_relation.get("startTime","")
+            prime_minister_end_date = prime_minister_relation.get("endTime","")
+            
+            term = await self.term(startTime=prime_minister_start_date, endTime=prime_minister_end_date)
+
+            prime_minister_data["term"] = term
+
+            final_result = {
+                "body": prime_minister_data
+            }
+
+            return final_result
+        except Exception as e:
+            return {
+                "body": "",
+                "statusCode": 500,
+                "message": str(e)
+            }
