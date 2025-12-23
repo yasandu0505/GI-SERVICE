@@ -191,6 +191,55 @@ paths:
         "500":
           description: Server Error
 
+  /get-root/{id}:
+    get:
+      tags:
+      - Data
+      summary: Get the root of the given parent.
+      description: Returns the root of the given parent.
+      operationId: getRoobyId
+      parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: string
+
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  body:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      id:
+                        type: object
+                      kind:
+                        $ref: '#/components/schemas/kind'
+              
+              example:
+                body:
+                  name: Minister of Energy
+                  id: 'id-1'
+                  kind:
+                    major: Organization
+                    minor: Minister
+
+                        
+
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+
 components:
   schemas:
     category:
