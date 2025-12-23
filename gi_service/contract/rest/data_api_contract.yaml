@@ -81,24 +81,17 @@ paths:
 
       requestBody:
         required: true
-        description: This request body corresponds to the encoded name used to retrieve the data.
+        description: This request body corresponds to the date range used to retrieve the data.
         content:
           application/json:
             schema:
               type: object
-              description: required name code
+              description: required date range
               required:
-                - name
                 - dateRange
-                - source
               properties:
-                name:
-                  description: This is the encoded name for the dataset name
-                  type: string
                 dateRange:
                   $ref: '#/components/schemas/dateRange'
-                source:
-                  $ref: '#/components/schemas/source'
       
       responses:
         "200":
@@ -111,23 +104,30 @@ paths:
                   body:
                     type: object
                     properties:
+                      name:
+                        type: string
                       isAvailableDataByRange:
                         type: boolean
                       years:
                         description: The list of available years for the dataset.
                         type: array
                         items:
-                          type: string
-                      source:
-                        $ref: '#/components/schemas/source'
+                          type: object
+                          properties:
+                            year: 
+                              type: string
+                            relationId: 
+                              type: string
               
               example:
                 body:
+                  name: SLBFE
                   isAvailableDataByRange: true
                   years: 
-                    - "2021"
-                    - "2022"
-                    - "2023"
+                    - year: "2021"
+                      relationId: "id-1"
+                    - year: "2022"
+                      relationId: "id-2"
 
         
         "400":
@@ -137,7 +137,7 @@ paths:
         "500":
           description: Server Error
 
-  /data-attributes-by-year/{parentId}/{year}:
+  /data-attributes-by-year/{parentId}/{relationId}:
     post:
       tags:
       - Data
@@ -150,23 +150,11 @@ paths:
         in: path
         schema:
           type: string
-      - name: year
+      - name: relationId
         required: true
         in: path
         schema:
           type: string
-      
-      requestBody:
-        required: true
-        description: This request body corresponds to the year and the encoded name of the dataset used to retrieve the data.
-        content:
-          application/json:
-            schema:
-              type: object
-              description: required the encoded name of the dataset.
-              properties:
-                name:
-                  type: string
       
       responses:
         "200":
@@ -216,8 +204,6 @@ components:
           $ref: '#/components/schemas/kind'
         parentId:
           type: string
-        source:
-          $ref: '#/components/schemas/source'
     
     source:
       type: object
@@ -264,10 +250,6 @@ components:
           $ref: '#/components/schemas/label'
         parentId:
           type: string
-        year:
-          type: string
         kind: 
           $ref: '#/components/schemas/kind'
-        source:
-          $ref: '#/components/schemas/source'
       
