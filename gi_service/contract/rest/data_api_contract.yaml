@@ -251,8 +251,6 @@ components:
           type: string
         kind: 
           $ref: '#/components/schemas/kind'
-        parentId:
-          type: string
     
     source:
       type: object
