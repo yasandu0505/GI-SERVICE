@@ -605,15 +605,22 @@ paths:
                           type: string
                         isNew:
                           type: boolean
+                        hasData:
+                          type: boolean
               
               example:
                 body:
-                - name: National Police Academy
-                  id: 2187-27_dep_4
-                  isNew: false
-                - name: Assets vested to the Secretary to the Treasury, under the Act, No. 43 of 2011
-                  id: 2153-12_dep_437
-                  isNew: false
+                - totalDepartments: 2
+                  newDepartments: 2
+                  departmentList:
+                  - name: National Police Academy
+                    id: 2187-27_dep_4
+                    isNew: false
+                    hasData: true
+                  - name: Assets vested to the Secretary to the Treasury, under the Act, No. 43 of 2011
+                    id: 2153-12_dep_437
+                    isNew: false
+                    hasData: false
         "400":
           description: Bad request
         "404":
