@@ -274,12 +274,15 @@ class OrganisationService:
             }
 
             return finalResult
+        
+        except Exception:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
         
     # helper: term helper
-    async def term(self, startTime, endTime):
-        if startTime == "":
+    def term(self, startTime, endTime):
+        if not startTime:
             return "Unknown"
         
         start_date = startTime.split("T")[0]
@@ -321,7 +324,7 @@ class OrganisationService:
             prime_minister_start_date = prime_minister_relation.get("startTime","")
             prime_minister_end_date = prime_minister_relation.get("endTime","")
             
-            term = await self.term(startTime=prime_minister_start_date, endTime=prime_minister_end_date)
+            term = self.term(startTime=prime_minister_start_date, endTime=prime_minister_end_date)
 
             prime_minister_data["term"] = term
 
@@ -330,9 +333,8 @@ class OrganisationService:
             }
 
             return final_result
+        
+        except HTTPException:
+            raise
         except Exception as e:
-            return {
-                "body": "",
-                "statusCode": 500,
-                "message": str(e)
-            }
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
