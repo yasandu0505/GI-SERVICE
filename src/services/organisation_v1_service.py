@@ -309,6 +309,8 @@ class OrganisationService:
                 activeAt=f"{selected_date}T00:00:00Z"
             )
 
+            if not prime_minister_relation:
+                raise HTTPException(status_code=404, detail="Prime minister not found for the given date.")
             prime_minister_relation = prime_minister_relation[0]
 
             prime_minister_data = await self.enrich_person_data(person_relation=prime_minister_relation, selected_date=selected_date)
