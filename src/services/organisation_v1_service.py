@@ -1,8 +1,8 @@
 import asyncio
-from src.utils.util_functions import decode_protobuf_attribute_name
-from aiohttp import ClientSession, ClientError
-from src.utils.http_client import http_client
-from src.core.config import settings
+from fastapi import HTTPException
+from src.utils.util_functions import decode_protobuf_attribute_name,normalize_timestamp
+from aiohttp import ClientSession
+from src.utils import http_client
 
 class OrganisationService:
     """
@@ -189,3 +189,89 @@ class OrganisationService:
         }
 
         return finalResult
+    
+    # helper: enrich department
+    async def enrich_department_item(self, department_relation, selected_date):
+
+        department_id = department_relation.get("relatedEntityId")
+
+        department_data_task = self.opengin_service.get_entity_by_id(entityId=department_id)
+        dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relationName="AS_CATEGORY")
+
+        # run parallel calls to get department data and parent category relations to ensure the department has data
+        department_data, dataset_relations = await asyncio.gather(department_data_task, dataset_task, return_exceptions=True)
+
+        # decode name
+        name = decode_protobuf_attribute_name(department_data.get("name", "Unknown"))
+            
+        # check the department is new or not
+        department_start_date = department_relation.get("startTime","")
+        is_new = department_start_date == f"{selected_date}T00:00:00Z"
+
+        # check the department has data or not
+        has_data = bool(dataset_relations)
+            
+        final_result = {
+            "id": department_id,
+            "name": name,
+            "isNew": is_new,
+            "hasData": has_data
+        }
+
+        return final_result
+
+    # API: departments by portfolio
+    async def departments_by_portfolio(self, portfolio_id, selected_date):
+        """
+        Docstring for department_by_portfolio
+        
+        :param portfolio_id: Portfolio Id
+        :param selected_date: Selected Date
+
+        output type: 
+        {
+            "totalDepartments": 0,
+            "newDepartments": 0,
+            "departmentList": [
+                {
+                "id": "",
+                "name": "",
+                "isNew": false,
+                "hasData": false
+                },
+            ]
+        }
+        """
+
+        try:
+            department_relation_list = await self.opengin_service.fetch_relation(
+                entityId=portfolio_id,
+                relationName="AS_DEPARTMENT",
+                activeAt=f"{selected_date}T00:00:00Z"
+            )
+            
+            # tasks to run in parallel
+            enrich_department_tasks = [
+                self.enrich_department_item(department_relation=department_relation, selected_date=selected_date)
+                for department_relation in department_relation_list
+            ]
+
+            results = await asyncio.gather(*enrich_department_tasks, return_exceptions=True)
+
+            departments = [
+                r for r in results if not isinstance(r, Exception)
+            ]
+
+            # Calculate final counts
+            new_departments = sum(1 for d in departments if d.get("isNew"))
+
+            # final departments to return
+            finalResult = {
+                "totalDepartments": len(departments),
+                "newDepartments": new_departments,
+                "departmentList" : departments,
+            }
+
+            return finalResult
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
