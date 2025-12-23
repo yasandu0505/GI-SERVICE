@@ -314,7 +314,7 @@ class OrganisationService:
             prime_minister_data = await self.enrich_person_data(person_relation=prime_minister_relation, selected_date=selected_date)
 
             for key in ["isNew","isPresident"]:
-                prime_minister_data.pop(key)
+                prime_minister_data.pop(key, None)
 
             prime_minister_start_date = prime_minister_relation.get("startTime","")
             prime_minister_end_date = prime_minister_relation.get("endTime","")
