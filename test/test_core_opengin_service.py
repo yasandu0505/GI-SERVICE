@@ -1,3 +1,5 @@
+from src.exception.exceptions import InternalServerError
+from src.exception.exceptions import BadRequestError
 import pytest
 from unittest.mock import patch, PropertyMock, MagicMock
 from aiohttp import ClientError
@@ -47,3 +49,75 @@ async def test_get_entity_by_id_success(service, mock_session):
 
     assert result == {"id": entity_id, "name": "Test Entity"}
     mock_session.post.assert_called_once()
+
+@pytest.mark.asyncio 
+async def test_get_entity_by_id_empty_entity_id(service, mock_session):
+    entity_id = ""
+    mock_response = MockResponse({"body": []})
+    
+    mock_session.post.return_value = mock_response
+
+    with pytest.raises(BadRequestError):
+        await service.get_entity_by_id(entity_id)
+
+@pytest.mark.asyncio 
+async def test_get_entity_by_id_none_empty_id(service, mock_session):
+    entity_id = None
+    mock_response = MockResponse({"body": []})
+    
+    mock_session.post.return_value = mock_response
+
+    with pytest.raises(BadRequestError):
+        await service.get_entity_by_id(entity_id)
+    
+@pytest.mark.asyncio 
+async def test_get_entity_by_none_response(service, mock_session):
+    entity_id = "entity_123"
+    mock_response = MockResponse({"wrong_body": [{"id": entity_id, "name": "Test Entity"}] })
+
+    mock_session.post.return_value = mock_response
+
+    with pytest.raises(InternalServerError):
+        await service.get_entity_by_id(entity_id)
+
+@pytest.mark.asyncio 
+async def test_get_entity_by_id_empty_response(service, mock_session):
+    entity_id = "entity_123"
+    mock_response = MockResponse({"body": []})
+
+    mock_session.post.return_value = mock_response
+
+    with pytest.raises(InternalServerError):
+        await service.get_entity_by_id(entity_id)
+
+@pytest.mark.asyncio 
+async def test_fetch_relation_success(service, mock_session):
+    entity_id = "entity_123"
+    mock_response = MockResponse({"body": [{"id": entity_id, "name": "Test Entity"}]})
+
+    mock_session.post.return_value = mock_response
+
+    result = await service.fetch_relation(entity_id)
+
+    assert result == {"body":[{"id": entity_id, "name": "Test Entity"}]}
+    mock_session.post.assert_called_once()
+
+@pytest.mark.asyncio 
+async def test_fetch_relation_empty_entity_id(service, mock_session):
+    entity_id = ""
+    mock_response = MockResponse({"body": [{"id": entity_id, "name": "Test Entity"}]})
+    
+    mock_session.post.return_value = mock_response
+
+    with pytest.raises(BadRequestError):
+        await service.fetch_relation(entity_id)
+
+@pytest.mark.asyncio 
+async def test_fetch_relation_none_entity_id(service, mock_session):
+    entity_id = None
+    mock_response = MockResponse({"body": [{"id": entity_id, "name": "Test Entity"}]})
+    
+    mock_session.post.return_value = mock_response
+
+    with pytest.raises(BadRequestError):
+        await service.fetch_relation(entity_id)

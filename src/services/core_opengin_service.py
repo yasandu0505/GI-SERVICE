@@ -37,16 +37,22 @@ class OpenGINService:
                 response.raise_for_status()
                 res_json = await response.json()
                 response_list = res_json.get("body", None)
-                if not response_list:
-                    raise NotFoundError(f"Entity with id {validated_id} not found.")
                 return response_list[0]                        
         except ClientError as e:
             raise ServiceUnavailableError(f"Failed to fetch entity data by id {validated_id} due to a network error: {str(e)}")
         except Exception as e:
-            raise InternalServerError(f"Internal Server Error: {str(e)}")
+            raise InternalServerError(str(e))
     
     async def fetch_relation(self, entityId, relationName="", activeAt="", relatedEntityId="", startTime="", endTIme="", id="", direction="OUTGOING"):
-        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entityId}/relations"
+        
+        if not entityId:
+            raise BadRequestError("Entity ID is required")
+        
+        validated_id = str(entityId).strip()
+        if not validated_id:
+            raise BadRequestError("Entity ID can not be empty")
+        
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{validated_id}/relations"
         headers = {"Content-Type": "application/json"}  
         payload = {
             "relatedEntityId": relatedEntityId,
@@ -63,6 +69,6 @@ class OpenGINService:
                 data = await response.json()
                 return data
         except ClientError as e:
-            raise ServiceUnavailableError(f"Failed to fetch relation data for entity {entityId} due to a network error: {str(e)}")
+            raise ServiceUnavailableError(f"Failed to fetch relation data for entity {validated_id} due to a network error: {str(e)}")
         except Exception as e:
-            raise InternalServerError(f"Internal Server Error: {str(e)}")
+            raise InternalServerError(str(e))
