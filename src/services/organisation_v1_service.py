@@ -89,8 +89,6 @@ class OrganisationService:
                 ]
                 # result contains portfolio_task result and person_data results respectively
                 results = await asyncio.gather(portfolio_task, *person_data, return_exceptions=True)
-
-                print(results)
                 
                 portfolio_data = results[0]
                 person_data_list = results[1:]
