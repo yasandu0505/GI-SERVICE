@@ -11,6 +11,15 @@ class Entity(BaseModel):
     created: str = ""
     terminated: str = ""
 
+class Relation(BaseModel):
+    name: str = ""
+    activeAt: str = ""
+    relatedEntityId: str = ""
+    startTime: str = ""
+    endTime: str = ""
+    id: str = ""
+    direction: str = ""
+
 class Date(BaseModel):
     date: str
 

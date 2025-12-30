@@ -6,6 +6,9 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 from src.utils.http_client import http_client
 from contextlib import asynccontextmanager
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Load config at startup
 def load_config():

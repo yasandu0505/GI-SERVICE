@@ -7,6 +7,11 @@ import asyncio
 from src.utils.util_functions import decode_protobuf_attribute_name,normalize_timestamp
 from aiohttp import ClientSession
 from src.utils import http_client
+from src.models.organisation_v1_schemas import Entity, Relation
+from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 class OrganisationService:
     """
@@ -22,7 +27,7 @@ class OrganisationService:
         return http_client.session
     
     # enrich person data
-    async def enrich_person_data(self, selected_date, person_relation=None, president_id=None, is_president=False):
+    async def enrich_person_data(self, selected_date: str, person_relation: Optional[Relation] = None, president_id: Optional[str] = None, is_president: bool = False):
         """ Enrich person data when the person_relation and selected_date given
             - isNew attribute explains if the person is new person or not
             - isPresident attribute explains if the person is/was a president on the given selected date
@@ -31,7 +36,7 @@ class OrganisationService:
         try:
             # handle cases where president is assigned as default
             if is_president and person_relation == None:
-                entity = {"id": president_id}
+                entity = Entity(id=president_id)
                 person_node_data = await self.opengin_service.get_entity_by_id(
                     entity=entity
                 )
@@ -39,20 +44,21 @@ class OrganisationService:
                 id = president_id
                 is_new = False
             else:
-                entity = {"id": person_relation.get("relatedEntityId")}
+                entity = Entity(id=person_relation.relatedEntityId)
                 person_node_data = await self.opengin_service.get_entity_by_id(
                     entity=entity
                 )
-                id = person_relation.get("relatedEntityId")
-                person_start_date = person_relation.get("startTime","")
+                
+                id = person_relation.relatedEntityId
+                person_start_date = person_relation.startTime
                 is_new = person_start_date == f"{selected_date}T00:00:00Z"
 
             # check if the person is president or not
-            if person_node_data.get("id","") == president_id:
+            if person_node_data.id == president_id:
                 is_president = True
 
             # decode name from protobuf
-            name = decode_protobuf_attribute_name(person_node_data.get("name", "Unknown"))
+            name = decode_protobuf_attribute_name(person_node_data.name)
 
             return {
                 "id": id,
@@ -63,17 +69,19 @@ class OrganisationService:
         except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
             raise
         except Exception as e:
-            print(f'Error fetching person data: {e}')
+            logger.error(f'Error fetching person data: {e}')
             raise InternalServerError(str(e))
 
     # eg: portfolio_relation -> single portfolio relation object with id, appointed_ministers_list -> list of people for portfolio with ids, president_id -> Id of the president
-    async def enrich_portfolio_item(self,portfolio_relation, appointed_ministers_list, president_id, selected_date):
+    async def enrich_portfolio_item(self,portfolio_relation: Relation, appointed_ministers_list: list[Relation], president_id: str, selected_date: str):
         """This function takes one portolio relation, appointed minister list and a selected date
             - Output the portfolio by adding the ministers list with other details
         """
         try:
+            portfolio_dict = portfolio_relation.model_dump()
+
             # task for get node details
-            entity = {"id": portfolio_relation.get('relatedEntityId')}
+            entity = Entity(id=portfolio_relation.relatedEntityId)
             portfolio_task = self.opengin_service.get_entity_by_id(
                 entity=entity,
             )
@@ -104,53 +112,58 @@ class OrganisationService:
                 portfolio_data = results_president_enrich[0]
                 person_data_list = [results_president_enrich[1]]
 
-            if isinstance(portfolio_data, dict) and "error" not in portfolio_data:
+            if isinstance(portfolio_data, Entity) and "error" not in portfolio_data:
                 # retrieve the decoded portfolio name
-                portfolio_relation["id"] = portfolio_data.get("id","")
-                portfolio_relation["name"] = decode_protobuf_attribute_name(
-                    portfolio_data.get("name", "")
+                portfolio_dict["id"] = portfolio_data.id
+                portfolio_dict["name"] = decode_protobuf_attribute_name(
+                    portfolio_data.name
                 )
                 # check if the portfolio is newly created or not
-                start_time = portfolio_relation.get("startTime","")
-                portfolio_relation["isNew"] = start_time == f"{selected_date}T00:00:00Z"
+                start_time = portfolio_relation.startTime
+                portfolio_dict["isNew"] = start_time == f"{selected_date}T00:00:00Z"
             else:
-                print(f"Error fetching portfolio data: {portfolio_data}")
-                portfolio_relation["name"] = "Unknown"
-                portfolio_relation["isNew"] = False
+                logger.error(f"Error fetching portfolio data: {portfolio_data}")
+                portfolio_dict["name"] = "Unknown"
+                portfolio_dict["isNew"] = False
             
             # arrange the final portfolio details by removing unnecessary keys in the json block
-            for k in ("relatedEntityId", "startTime", "endTime", "direction"):
-                portfolio_relation.pop(k, None)
+            for k in ("relatedEntityId", "startTime", "endTime", "direction","activeAt"):
+                portfolio_dict.pop(k, None)
                 
-            portfolio_relation["ministers"] = []
+            portfolio_dict["ministers"] = []
             # extend the minister list with enriched person data
-            portfolio_relation["ministers"].extend(person_data_list)
+            portfolio_dict["ministers"].extend(person_data_list)
+
+            return portfolio_dict
 
         except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
             raise  
         except Exception as e:
-            print(f"Error enriching portfolio item: {e}")
+            logger.error(f"Error enriching portfolio item: {e}")
             raise InternalServerError(str(e))
 
     # this function takes the portfolio relation and get the active minister lists. then arrange the response
-    async def process_portfolio_item(self, portfolio_relation, president_id, selected_date):
+    async def process_portfolio_item(self, portfolio_relation: Relation, president_id: str, selected_date: str):
+
         try:
+            relation = Relation(name="AS_APPOINTED",activeAt=f"{selected_date}T00:00:00Z",direction="OUTGOING")
             appointed_ministers = await self.opengin_service.fetch_relation(
-                entityId=portfolio_relation.get('relatedEntityId'),
-                relationName="AS_APPOINTED",
-                activeAt=f"{selected_date}T00:00:00Z"
+                entityId=portfolio_relation.relatedEntityId,
+                relation=relation
             )
             
-            await self.enrich_portfolio_item(portfolio_relation, appointed_ministers, president_id, selected_date)
+            results = await self.enrich_portfolio_item(portfolio_relation, appointed_ministers, president_id, selected_date)
+
+            return results
 
         except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
             raise
         except Exception as e:
-            print(f"Error fetching portfolio item: {e}")
+            logger.error(f"Error fetching portfolio item: {e}")
             raise InternalServerError(str(e))
 
     # active portfolio list
-    async def active_portfolio_list(self, president_id, selected_date: str):
+    async def active_portfolio_list(self, president_id: str, selected_date: str):
         """
         Docstring for activePortfolioList
         
@@ -185,13 +198,13 @@ class OrganisationService:
 
         if selected_date is None or selected_date == "":
             raise BadRequestError("Selected date is required")
-
+        
         try:
-            # First retrieve the relation list of the active portfolios under given president and given date     
+            # First retrieve the relation list of the active portfolios under given president and given date  
+            relation = Relation(name="AS_MINISTER",activeAt=f"{selected_date}T00:00:00Z",direction="OUTGOING")   
             activePortfolioList = await self.opengin_service.fetch_relation(
                 entityId=president_id,
-                relationName="AS_MINISTER",
-                activeAt=f"{selected_date}T00:00:00Z"
+                relation=relation
             )
             
             # Process each portfolio item in parallel
@@ -207,16 +220,16 @@ class OrganisationService:
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     exceptions.append({
-                        "portfolioId": activePortfolioList[i].get('id', 'unknown'),
+                        "portfolioId": activePortfolioList[i].id,
                         "error": str(result)
                     })
-                    print(f"Error processing portfolio {activePortfolioList[i].get('id')}: {result}")
+                    logger.error(f"Error processing portfolio {activePortfolioList[i].id}: {result}")
                 else:
-                    successful_portfolios.append(activePortfolioList[i])
+                    successful_portfolios.append(results[i])
             
             if len(exceptions) == len(results):
                 raise InternalServerError("Failed to process all portfolios")
-
+            
             # Calculate final counts
             newMinistries = newMinisters = ministriesUnderPresident = 0
 
@@ -230,7 +243,7 @@ class OrganisationService:
 
             # final result to return
             finalResult = {
-                "activeMinistries": len(successful_portfolios),
+                "activeMinistries": len(activePortfolioList),
                 "newMinistries": newMinistries,
                 "newMinisters": newMinisters,
                 "ministriesUnderPresident": ministriesUnderPresident,
@@ -245,22 +258,24 @@ class OrganisationService:
             raise InternalServerError(str(e))
     
     # helper: enrich department
-    async def enrich_department_item(self, department_relation, selected_date):
+    async def enrich_department_item(self, department_relation: Relation, selected_date: str):
 
-        department_id = department_relation.get("relatedEntityId")
+        department_id = department_relation.relatedEntityId
 
-        entity = {"id": department_id}
+        entity = Entity(id=department_id)
         department_data_task = self.opengin_service.get_entity_by_id(entity=entity)
-        dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relationName="AS_CATEGORY")
+        dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relation=Relation(name="AS_CATEGORY", direction="OUTGOING"))
 
         # run parallel calls to get department data and parent category relations to ensure the department has data
         department_data, dataset_relations = await asyncio.gather(department_data_task, dataset_task, return_exceptions=True)
 
+        department_data = department_data
+
         # decode name
-        name = decode_protobuf_attribute_name(department_data.get("name", "Unknown"))
+        name = decode_protobuf_attribute_name(department_data.name)
             
         # check the department is new or not
-        department_start_date = department_relation.get("startTime","")
+        department_start_date = department_relation.startTime
         is_new = department_start_date == f"{selected_date}T00:00:00Z"
 
         # check the department has data or not
@@ -276,7 +291,7 @@ class OrganisationService:
         return final_result
 
     # API: departments by portfolio
-    async def departments_by_portfolio(self, portfolio_id, selected_date):
+    async def departments_by_portfolio(self, portfolio_id: str, selected_date: str):
         """
         Docstring for department_by_portfolio
         
@@ -305,10 +320,10 @@ class OrganisationService:
             raise BadRequestError("Selected date is required")
 
         try:
+            relation = Relation(name="AS_DEPARTMENT",activeAt=f"{selected_date}T00:00:00Z",direction="OUTGOING")
             department_relation_list = await self.opengin_service.fetch_relation(
                 entityId=portfolio_id,
-                relationName="AS_DEPARTMENT",
-                activeAt=f"{selected_date}T00:00:00Z"
+                relation=relation
             )
             
             # tasks to run in parallel
