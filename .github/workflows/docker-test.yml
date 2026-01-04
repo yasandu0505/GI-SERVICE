@@ -1,0 +1,51 @@
+name: Docker Pipeline
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    test-docker-operations:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+            
+            - name: Build docker image
+              run: | 
+                docker build -t gi-service .
+                docker images | grep gi-service || (echo "Image build failed" && exit 1)
+            
+            - name: Run docker container
+              run: |
+                docker run -d gi-service gi-service
+                docker ps | docker gi-service || (echo "Container not running" && exit 1)
+
+            - name: Verify container health
+              run: |
+                sleep 5
+                docker ps | grep gi-service | grep -q "Up" || (echo "Container is not healthy" && exit 1)
+                echo "Container is running successfully"
+
+            - name: Stop docker container
+              run: |
+                docker stop gi-service
+                docker ps | grep gi-service | grep -q "Exited" || (echo "Container stop failed" && exit 1)
+                echo "Container stopped successfully"
+
+            - name: Remove docker container
+              run: |
+                docker rm gi-service 
+                docker ps -a | grep gi-service && (echo "Container removal failed" && exit 1)
+                echo "Container removed successfully""
+
+            - name: Remove docker image
+              run: |
+                docker rmi gi-service
+                docker images | grep gi-service && (echo "Image removal failed" && exit 1)
+                echo "Image removed successfully""
+
