@@ -13,7 +13,7 @@ tags:
   description: APIs for Data
 
 paths:
-  /categories-datasets:
+  /dataset/categories:
     post:
       tags:
       - Data
@@ -65,7 +65,7 @@ paths:
         "500":
           description: Server Error
   
-  /data-available-years/{parentId}:
+  /datasets/availability/{parentId}:
     post:
       tags:
       - Data
@@ -153,6 +153,10 @@ paths:
       - name: relationId
         required: true
         in: path
+        schema:
+          type: string
+      - name: year
+        in: query
         schema:
           type: string
       
