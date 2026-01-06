@@ -1,17 +1,7 @@
-from src.exception.exceptions import BadRequestError
 import pytest
+from src.exception.exceptions import BadRequestError
 from unittest.mock import AsyncMock, patch
-from services.organisation_v1_service import OrganisationService
-from src.models.organisation_v1_schemas import Entity, Relation
-
-@pytest.fixture
-def mock_opengin_service():
-    return AsyncMock()
-
-@pytest.fixture
-def organisation_service(mock_opengin_service):
-    config = {}
-    return OrganisationService(config, mock_opengin_service)
+from src.models.organisation_schemas import Entity, Relation
 
 @pytest.mark.asyncio
 async def test_enrich_person_data_as_president(organisation_service, mock_opengin_service):
@@ -22,7 +12,7 @@ async def test_enrich_person_data_as_president(organisation_service, mock_opengi
     mock_opengin_service.get_entity.return_value = Entity(id=president_id,name="mocked_protobuf_name")
 
     with patch(
-        "services.organisation_v1_service.decode_protobuf_attribute_name",
+        "services.organisation_service.decode_protobuf_attribute_name",
         return_value="John Doe"
     ):
         result = await organisation_service.enrich_person_data(
@@ -49,7 +39,7 @@ async def test_enrich_person_data_as_not_president(organisation_service, mock_op
     mock_opengin_service.get_entity.return_value = Entity(id="person_123",name="mocked_protobuf_name")
 
     with patch(
-        "services.organisation_v1_service.decode_protobuf_attribute_name",
+        "services.organisation_service.decode_protobuf_attribute_name",
         return_value="John Doe"
     ):
         result = await organisation_service.enrich_person_data(
@@ -77,7 +67,7 @@ async def test_enrich_department_item(organisation_service, mock_opengin_service
     mock_opengin_service.fetch_relation.return_value = [ Relation(id="", relatedEntityId="department_123", name= "AS_CATEGORY", startTime="2020-08-09T00:00:00Z", endTime="2022-03-08T00:00:00Z", direction="OUTGOING")]
     
     with patch(
-        "services.organisation_v1_service.decode_protobuf_attribute_name",
+        "services.organisation_service.decode_protobuf_attribute_name",
         return_value="Department_of_security"
     ):
         result = await organisation_service.enrich_department_item(
@@ -104,7 +94,7 @@ async def test_enrich_department_item_with_no_data(organisation_service, mock_op
     mock_opengin_service.fetch_relation.return_value = []
     
     with patch(
-        "services.organisation_v1_service.decode_protobuf_attribute_name",
+        "services.organisation_service.decode_protobuf_attribute_name",
         return_value="Department_of_security"
     ):
         result = await organisation_service.enrich_department_item(
@@ -131,7 +121,7 @@ async def test_enrich_department_item_not_new(organisation_service, mock_opengin
     mock_opengin_service.fetch_relation.return_value = []
     
     with patch(
-        "services.organisation_v1_service.decode_protobuf_attribute_name",
+        "services.organisation_service.decode_protobuf_attribute_name",
         return_value="Department_of_security"
     ):
         result = await organisation_service.enrich_department_item(
@@ -157,7 +147,7 @@ async def test_departments_by_portfolio_id_success(organisation_service, mock_op
 
     # Patch enrich_department_item with AsyncMock returning the department dict
     with patch(
-        "services.organisation_v1_service.OrganisationService.enrich_department_item",
+        "services.organisation_service.OrganisationService.enrich_department_item",
         new_callable=AsyncMock
     ) as mock_enrich_department:
         mock_enrich_department.return_value = {
@@ -198,7 +188,7 @@ async def test_departments_by_portfolio_id_success(organisation_service, mock_op
     )
 
 @pytest.mark.asyncio 
-async def test_departments_by_portfolio_id_empty_portfolio_id(organisation_service, mock_opengin_service):
+async def test_departments_by_portfolio_id_empty_portfolio_id(organisation_service):
     portfolio_id = ""
     selected_date = "2021-10-27"
 
@@ -209,7 +199,7 @@ async def test_departments_by_portfolio_id_empty_portfolio_id(organisation_servi
         )
 
 @pytest.mark.asyncio 
-async def test_departments_by_portfolio_id_none_portfolio_id(organisation_service, mock_opengin_service):
+async def test_departments_by_portfolio_id_none_portfolio_id(organisation_service):
     portfolio_id = None
     selected_date = "2021-10-27"
 
@@ -220,7 +210,7 @@ async def test_departments_by_portfolio_id_none_portfolio_id(organisation_servic
         )
 
 @pytest.mark.asyncio 
-async def test_departments_by_portfolio_id_empty_selected_date(organisation_service, mock_opengin_service):
+async def test_departments_by_portfolio_id_empty_selected_date(organisation_service):
     portfolio_id = "portfolio_123"
     selected_date = ""
 
@@ -231,7 +221,7 @@ async def test_departments_by_portfolio_id_empty_selected_date(organisation_serv
         )
 
 @pytest.mark.asyncio 
-async def test_departments_by_portfolio_id_none_selected_date(organisation_service, mock_opengin_service):
+async def test_departments_by_portfolio_id_none_selected_date(organisation_service):
     portfolio_id = "portfolio_123"
     selected_date = None
 

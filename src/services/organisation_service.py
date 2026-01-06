@@ -51,7 +51,7 @@ class OrganisationService:
                 
                 id = person_relation.relatedEntityId
                 person_start_date = person_relation.startTime
-                is_new = person_start_date == f"{selected_date}T00:00:00Z"
+                is_new = person_start_date == normalize_timestamp(selected_date)
 
             # check if the person is president or not
             if person_node_data.id == president_id:
@@ -112,7 +112,7 @@ class OrganisationService:
                 portfolio_data = results_president_enrich[0]
                 person_data_list = [results_president_enrich[1]]
 
-            if isinstance(portfolio_data, Entity) and "error" not in portfolio_data:
+            if isinstance(portfolio_data, Entity):
                 # retrieve the decoded portfolio name
                 portfolio_dict["id"] = portfolio_data.id
                 portfolio_dict["name"] = decode_protobuf_attribute_name(
@@ -120,7 +120,7 @@ class OrganisationService:
                 )
                 # check if the portfolio is newly created or not
                 start_time = portfolio_relation.startTime
-                portfolio_dict["isNew"] = start_time == f"{selected_date}T00:00:00Z"
+                portfolio_dict["isNew"] = start_time == normalize_timestamp(selected_date)
             else:
                 logger.error(f"Error fetching portfolio data: {portfolio_data}")
                 portfolio_dict["name"] = "Unknown"
@@ -136,7 +136,7 @@ class OrganisationService:
 
             return portfolio_dict
 
-        except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
+        except (BadRequestError, NotFoundError):
             raise  
         except Exception as e:
             logger.error(f"Error enriching portfolio item: {e}")
@@ -146,7 +146,7 @@ class OrganisationService:
     async def process_portfolio_item(self, portfolio_relation: Relation, president_id: str, selected_date: str):
 
         try:
-            relation = Relation(name="AS_APPOINTED",activeAt=f"{selected_date}T00:00:00Z",direction="OUTGOING")
+            relation = Relation(name="AS_APPOINTED",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")
             appointed_ministers = await self.opengin_service.fetch_relation(
                 entityId=portfolio_relation.relatedEntityId,
                 relation=relation
@@ -156,7 +156,7 @@ class OrganisationService:
 
             return results
 
-        except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
+        except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
             logger.error(f"Error fetching portfolio item: {e}")
@@ -201,7 +201,7 @@ class OrganisationService:
         
         try:
             # First retrieve the relation list of the active portfolios under given president and given date  
-            relation = Relation(name="AS_MINISTER",activeAt=f"{selected_date}T00:00:00Z",direction="OUTGOING")   
+            relation = Relation(name="AS_MINISTER",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")   
             activePortfolioList = await self.opengin_service.fetch_relation(
                 entityId=president_id,
                 relation=relation
@@ -276,7 +276,7 @@ class OrganisationService:
             
         # check the department is new or not
         department_start_date = department_relation.startTime
-        is_new = department_start_date == f"{selected_date}T00:00:00Z"
+        is_new = department_start_date == normalize_timestamp(selected_date)
 
         # check the department has data or not
         has_data = bool(dataset_relations)
@@ -320,7 +320,7 @@ class OrganisationService:
             raise BadRequestError("Selected date is required")
 
         try:
-            relation = Relation(name="AS_DEPARTMENT",activeAt=f"{selected_date}T00:00:00Z",direction="OUTGOING")
+            relation = Relation(name="AS_DEPARTMENT",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")
             department_relation_list = await self.opengin_service.fetch_relation(
                 entityId=portfolio_id,
                 relation=relation
