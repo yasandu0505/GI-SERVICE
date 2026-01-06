@@ -1,6 +1,6 @@
 from src.exception.exceptions import GatewayTimeoutError
 from aiohttp.client_exceptions import ClientResponseError
-from src.models.organisation_v1_schemas import Entity, Relation
+from src.models.organisation_schemas import Entity, Relation
 from src.exception.exceptions import BadRequestError
 from src.exception.exceptions import InternalServerError
 from src.exception.exceptions import ServiceUnavailableError
@@ -23,7 +23,7 @@ class OpenGINService:
     def session(self) -> ClientSession:
         return http_client.session
         
-    async def get_entity_by_id(self,entity: Entity):
+    async def get_entity(self,entity: Entity):
 
         if not entity:
             raise BadRequestError("Entity is required")
@@ -72,11 +72,11 @@ class OpenGINService:
         if not entityId:
             raise BadRequestError("Entity ID is required")
         
-        validated_id = str(entityId).strip()
-        if not validated_id:
+        stripped_entity_id = str(entityId).strip()
+        if not stripped_entity_id:
             raise BadRequestError("Entity ID can not be empty")
         
-        url = f"{settings.BASE_URL_QUERY}/v1/entities/{validated_id}/relations"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{stripped_entity_id}/relations"
         headers = {"Content-Type": "application/json"}  
         payload = relation.model_dump()
 

@@ -1,10 +1,12 @@
 from pydantic import BaseModel
 
 class Kind(BaseModel):
+    """Kind refers to the type of entity in the OpenGIN Specification"""
     major: str = ""
     minor: str = ""
     
 class Entity(BaseModel):
+    """Entity refers to the object in the OpenGIN Specification"""
     id: str = ""
     name: str = ""
     kind: Kind = Kind()
@@ -12,6 +14,7 @@ class Entity(BaseModel):
     terminated: str = ""
 
 class Relation(BaseModel):
+    """Relation refers to the relation between two entities in the OpenGIN Specification"""
     name: str = ""
     activeAt: str = ""
     relatedEntityId: str = ""

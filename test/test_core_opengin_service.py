@@ -40,36 +40,36 @@ def service():
     return OpenGINService(config={})
 
 @pytest.mark.asyncio
-async def test_get_entity_by_id_success(service, mock_session):
+async def test_get_entity_success(service, mock_session):
     entity = Entity(id="entity_123")
     mock_response = MockResponse({"body": [Entity(id="entity_123", name="Test Entity")]})
     
     mock_session.post.return_value = mock_response
 
-    result = await service.get_entity_by_id(entity)
+    result = await service.get_entity(entity)
 
     assert result == Entity(id="entity_123", name="Test Entity")
     mock_session.post.assert_called_once()
 
 @pytest.mark.asyncio 
-async def test_get_entity_by_id_empty_entity_id(service, mock_session):
+async def test_get_entity_empty_entity_id(service, mock_session):
     entity = Entity(id="")
     mock_response = MockResponse({"body": []})
     
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await service.get_entity_by_id(entity)
+        await service.get_entity(entity)
 
 @pytest.mark.asyncio 
-async def test_get_entity_by_id_none_empty_id(service, mock_session):
+async def test_get_entity_none_empty_id(service, mock_session):
     entity = None
     mock_response = MockResponse({"body": []})
     
     mock_session.post.return_value = mock_response
 
     with pytest.raises(BadRequestError):
-        await service.get_entity_by_id(entity)
+        await service.get_entity(entity)
     
 @pytest.mark.asyncio 
 async def test_get_entity_by_none_response(service, mock_session):
@@ -79,17 +79,17 @@ async def test_get_entity_by_none_response(service, mock_session):
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await service.get_entity_by_id(entity)
+        await service.get_entity(entity)
 
 @pytest.mark.asyncio 
-async def test_get_entity_by_id_empty_response(service, mock_session):
+async def test_get_entity_empty_response(service, mock_session):
     entity = Entity(id="entity_123")
     mock_response = MockResponse({"body": []})
 
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await service.get_entity_by_id(entity)
+        await service.get_entity(entity)
 
 @pytest.mark.asyncio 
 async def test_fetch_relation_success(service, mock_session):
