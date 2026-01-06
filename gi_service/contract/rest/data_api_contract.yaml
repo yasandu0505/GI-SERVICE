@@ -13,8 +13,8 @@ tags:
   description: APIs for Data
 
 paths:
-  /dataset/categories:
-    post:
+  /data-catalog:
+    get:
       tags:
       - Data
       summary: Get all parent/child categories and datasets.
@@ -25,18 +25,6 @@ paths:
         in: query
         schema:
           type: string
-      
-      requestBody:
-        required: true
-        description: This request body corresponds to the date range used to retrieve the data.
-        content:
-          application/json:
-            schema:
-              type: object
-              description: required date range
-              properties:
-                dateRange:
-                  $ref: '#/components/schemas/dateRange'
       
       responses:
         "200":
@@ -65,33 +53,19 @@ paths:
         "500":
           description: Server Error
   
-  /datasets/availability/{parentId}:
-    post:
+  /categories/{categoryId}/datasets/years:
+    get:
       tags:
       - Data
-      summary: Get all the years for available datasets in the given time range.
-      description: Returns the list of years for available datasets based on the given date range
+      summary: Get all the dataset available years for a category.
+      description: Returns the list of years for available datasets
       operationId: getAvailableDataYears
       parameters:
-      - name: parentId
+      - name: categoryId
         required: true
         in: path
         schema:
           type: string
-
-      requestBody:
-        required: true
-        description: This request body corresponds to the date range used to retrieve the data.
-        content:
-          application/json:
-            schema:
-              type: object
-              description: required date range
-              required:
-                - dateRange
-              properties:
-                dateRange:
-                  $ref: '#/components/schemas/dateRange'
       
       responses:
         "200":
@@ -106,28 +80,25 @@ paths:
                     properties:
                       name:
                         type: string
-                      isAvailableDataByRange:
-                        type: boolean
                       years:
-                        description: The list of available years for the dataset.
+                        description: The list of available years for the dataset with the datasetId.
                         type: array
                         items:
                           type: object
                           properties:
                             year: 
                               type: string
-                            relationId: 
+                            datasetId: 
                               type: string
               
               example:
                 body:
                   name: SLBFE
-                  isAvailableDataByRange: true
                   years: 
                     - year: "2021"
-                      relationId: "id-1"
+                      datasetId: "id-1"
                     - year: "2022"
-                      relationId: "id-2"
+                      datasetId: "id-2"
 
         
         "400":
@@ -137,26 +108,22 @@ paths:
         "500":
           description: Server Error
 
-  /data-attributes-by-year/{parentId}/{relationId}:
-    post:
+  /categories/{categoryId}/datasets/{datasetId}/data:
+    get:
       tags:
       - Data
-      summary: Get the data for the given year.
-      description: "Returns the dataset for the given year"
+      summary: Get the data for the given dataset.
+      description: "Returns the data for the given dataset"
       operationId: getDataByYear
       parameters:
-      - name: parentId
+      - name: categoryId
         required: true
         in: path
         schema:
           type: string
-      - name: relationId
+      - name: datasetId
         required: true
         in: path
-        schema:
-          type: string
-      - name: year
-        in: query
         schema:
           type: string
       
@@ -195,15 +162,15 @@ paths:
         "500":
           description: Server Error
 
-  /get-root/{id}:
+  /categories/{categoryId}/root:
     get:
       tags:
       - Data
       summary: Get the root of the given parent.
       description: Returns the root of the given parent.
-      operationId: getRoobyId
+      operationId: getRootById
       parameters:
-      - name: id
+      - name: categoryId
         required: true
         in: path
         schema:
