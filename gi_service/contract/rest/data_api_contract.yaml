@@ -1,0 +1,273 @@
+openapi: 3.1.0
+
+info:
+  title: OpenGIN Service API - Data
+  description: This document gives the structure of APIs for the OpenGIN Data Services.
+  version: 1.0.0
+
+servers:
+- url: http://localhost:8081
+
+tags:
+- name: Data
+  description: APIs for Data
+
+paths:
+  /data-catalog:
+    get:
+      tags:
+      - Data
+      summary: Get all parent/child categories and datasets.
+      description: "Returns parent/child categories based on the given id. If id is not given it returns the top level parent categories. if id is given, it returns the categories in the below level for the given parent. if any category has a dataset, it returns the dataset as well."
+      operationId: getCategoriesAndDatasets
+      parameters:
+      - name: parentId
+        in: query
+        schema:
+          type: string
+      
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  body:
+                    type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/category'
+                      datasets:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/dataset'
+
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+  
+  /categories/{categoryId}/datasets/years:
+    get:
+      tags:
+      - Data
+      summary: Get all the dataset available years for a category.
+      description: Returns the list of years for available datasets
+      operationId: getAvailableDataYears
+      parameters:
+      - name: categoryId
+        required: true
+        in: path
+        schema:
+          type: string
+      
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  body:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      years:
+                        description: The list of available years for the dataset with the datasetId.
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            year: 
+                              type: string
+                            datasetId: 
+                              type: string
+              
+              example:
+                body:
+                  name: SLBFE
+                  years: 
+                    - year: "2021"
+                      datasetId: "id-1"
+                    - year: "2022"
+                      datasetId: "id-2"
+
+        
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+
+  /categories/{categoryId}/datasets/{datasetId}/data:
+    get:
+      tags:
+      - Data
+      summary: Get the data for the given dataset.
+      description: "Returns the data for the given dataset"
+      operationId: getDataByYear
+      parameters:
+      - name: categoryId
+        required: true
+        in: path
+        schema:
+          type: string
+      - name: datasetId
+        required: true
+        in: path
+        schema:
+          type: string
+      
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  body:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      data:
+                        type: object
+              
+              example:
+                body:
+                  type: tabular
+                  data:
+                    columns:
+                      - id
+                      - district
+                      - number_of_rooms
+                    rows:
+                      - [1, Colombo, 8758]
+                        
+
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+
+  /categories/{categoryId}/root:
+    get:
+      tags:
+      - Data
+      summary: Get the root of the given parent.
+      description: Returns the root of the given parent.
+      operationId: getRootById
+      parameters:
+      - name: categoryId
+        required: true
+        in: path
+        schema:
+          type: string
+
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  body:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      id:
+                        type: object
+                      kind:
+                        $ref: '#/components/schemas/kind'
+              
+              example:
+                body:
+                  name: Minister of Energy
+                  id: 'id-1'
+                  kind:
+                    major: Organization
+                    minor: Minister
+
+                        
+
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+
+components:
+  schemas:
+    category:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind: 
+          $ref: '#/components/schemas/kind'
+    
+    source:
+      type: object
+      properties:
+        id: 
+          type: string
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/kind'
+
+    kind:
+      type: object
+      properties:
+        major:
+          type: string
+        minor:
+          type: string
+
+    label:
+      type: object
+      properties:
+          name:
+              type: string
+          code: 
+              type: string
+
+    dateRange:
+      type: object
+      properties:
+        startDate:
+          description: This is the start date the user selects.
+          type: string
+        endDate:
+          description: This is the end date the user selects.
+          type: string
+
+    dataset:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          $ref: '#/components/schemas/label'
+        parentId:
+          type: string
+        kind: 
+          $ref: '#/components/schemas/kind'
+      
