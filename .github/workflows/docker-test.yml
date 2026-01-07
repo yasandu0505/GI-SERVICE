@@ -22,8 +22,22 @@ jobs:
             
             - name: Run docker container
               run: |
-                docker run -d --name gi-service gi-service
-                docker ps | docker gi-service || (echo "Container not running" && exit 1)
+                # run the container
+                docker run -d --name gi-service \
+                  -e BASE_URL_QUERY="http://localhost:8081" \
+                  -e BASE_URL_CRUD="http://localhost:8082" \
+                  gi-service
+
+                # wait for 3 seconds
+                sleep 3
+
+                if ["$(docker inspect -f '{{.State.Running}}' gi-service)" == "true"]; then
+                  echo "Success: Container is running."
+                else
+                  echo "Error: Container crashed. Showing logs below:"
+                  docker logs gi-service
+                  exit 1
+                fi
 
             - name: Verify container health
               run: |
