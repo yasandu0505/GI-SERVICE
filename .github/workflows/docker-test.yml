@@ -31,7 +31,7 @@ jobs:
                 # wait for 3 seconds
                 sleep 3
 
-                if ["$(docker inspect -f '{{.State.Running}}' gi-service)" == "true"]; then
+                if [ "$(docker inspect -f '{{.State.Running}}' gi-service)" == "true" ]; then
                   echo "Success: Container is running."
                 else
                   echo "Error: Container crashed. Showing logs below:"
