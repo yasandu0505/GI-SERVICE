@@ -10,6 +10,7 @@ from src.utils import http_client
 from src.models.organisation_schemas import Entity, Relation
 from typing import Optional
 import logging
+import calendar
 
 logger = logging.getLogger(__name__)
 
@@ -365,7 +366,7 @@ class OrganisationService:
         start_month = start_date.split("-")[1]
         start_month_abbr = calendar.month_abbr[int(start_month)]
 
-        if endTime == "":
+        if not endTime or endTime == "":
             end_year = "Present"
             term = f"{start_year} {start_month_abbr} - {end_year}"
         else:
@@ -412,6 +413,9 @@ class OrganisationService:
 
             prime_minister_data = await self.enrich_person_data(person_relation=prime_minister_relation, selected_date=selected_date)
             
+            if not prime_minister_data:
+                raise NotFoundError("Prime minister data not found for the given date.")
+
             for key in ["isPresident"]:
                 prime_minister_data.pop(key, None)
 
