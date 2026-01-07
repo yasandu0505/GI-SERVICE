@@ -48,8 +48,15 @@ jobs:
             - name: Stop docker container
               run: |
                 docker stop gi-service
-                docker ps | grep gi-service | grep -q "Exited" || (echo "Container stop failed" && exit 1)
-                echo "Container stopped successfully"
+
+                # check the status
+                if [ "$(docker inspect -f '{{.State.Status}}' gi-service)" == "exited" ]; then
+                  echo "Success: Container stopped."
+                else
+                  echo "Error: Container stop failed. Showing logs below:"
+                  docker logs gi-service
+                  exit 1
+                fi
 
             - name: Remove docker container
               run: |
