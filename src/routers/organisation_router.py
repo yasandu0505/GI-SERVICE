@@ -34,3 +34,6 @@ async def prime_minister(
 ):
     service_response = await service.prime_minister(selected_date=body.date)
     return service_response
+
+
+     

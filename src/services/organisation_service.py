@@ -67,7 +67,7 @@ class OrganisationService:
                 "isNew": is_new,
                 "isPresident": is_president
             }
-        except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
+        except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
             logger.error(f'Error fetching person data: {e}')
@@ -253,7 +253,7 @@ class OrganisationService:
 
             return finalResult
 
-        except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
+        except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
             raise InternalServerError(str(e))
@@ -351,7 +351,7 @@ class OrganisationService:
 
             return finalResult
 
-        except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
+        except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
             raise InternalServerError(str(e))
@@ -436,3 +436,5 @@ class OrganisationService:
             raise
         except Exception as e:
             raise InternalServerError(str(e))
+
+             
