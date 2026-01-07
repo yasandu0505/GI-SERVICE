@@ -26,6 +26,9 @@ jobs:
           pip install -r requirements.txt
           
       - name: Run tests
+        env:
+          BASE_URL_QUERY: "http://localhost:8081"
+          BASE_URL_CRUD: "http://localhost:8082"
         run: |
           pytest
 
