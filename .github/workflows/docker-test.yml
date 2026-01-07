@@ -60,13 +60,26 @@ jobs:
 
             - name: Remove docker container
               run: |
-                docker rm gi-service 
-                docker ps -a | grep gi-service && (echo "Container removal failed" && exit 1)
-                echo "Container removed successfully""
+                docker rm -f gi-service || true 
+
+                # Check if the container ID still exists
+                if [ -z "$(docker ps -aq -f name=^gi-service$)" ]; then
+                  echo "Container removed successfully"
+                else
+                  echo "Container removal failed"
+                  exit 1
+                fi
 
             - name: Remove docker image
               run: |
-                docker rmi gi-service
-                docker images | grep gi-service && (echo "Image removal failed" && exit 1)
-                echo "Image removed successfully""
+                docker rmi -f gi-service || true 
+
+                # Check if the image still exists 
+                if [ -z "$(docker images -q --filter "reference=gi-service")" ]; then
+                  echo "Image removed successfully"
+                else
+                  echo "Image removal failed"
+                  docker images
+                  exit 1
+                fi
 
