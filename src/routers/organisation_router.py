@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Body, Path
 from src.dependencies import get_config
-from src.models.organisation_v1_schemas import Date
+from src.models.organisation_schemas import Date
 from src.services import OpenGINService, OrganisationService
 
 router = APIRouter(prefix="/v1/organisation", tags=["Organisation"])

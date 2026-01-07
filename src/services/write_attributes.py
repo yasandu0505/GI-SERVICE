@@ -990,7 +990,7 @@ class WriteAttributes:
     def connect_to_mongodb(self):
         try:
             # Create a MongoDB client
-            client = MongoClient(self.config['MONGODB_URI'])
+            client = MongoClient()
 
             client.admin.command('ping')
             db = client.doc_db
