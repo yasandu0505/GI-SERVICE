@@ -22,7 +22,7 @@ jobs:
             
             - name: Run docker container
               run: |
-                docker run -d gi-service gi-service
+                docker run -d --name gi-service gi-service
                 docker ps | docker gi-service || (echo "Container not running" && exit 1)
 
             - name: Verify container health
