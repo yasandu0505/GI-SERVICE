@@ -2,6 +2,7 @@ from src.models.organisation_schemas import Entity, Relation
 from src.exception.exceptions import BadRequestError
 from src.exception.exceptions import InternalServerError
 from src.exception.exceptions import NotFoundError
+from tenacity import retry, stop_after_attempt, retry_if_not_exception_type, wait_random
 from aiohttp import ClientSession
 from src.utils.http_client import http_client
 from src.core.config import settings
@@ -19,7 +20,12 @@ class OpenGINService:
     @property
     def session(self) -> ClientSession:
         return http_client.session
-        
+    
+    @retry(
+        stop=stop_after_attempt(3),
+        retry=retry_if_not_exception_type((NotFoundError, BadRequestError)),
+        reraise=True
+    )
     async def get_entity(self,entity: Entity):
 
         if not entity:
@@ -53,6 +59,12 @@ class OpenGINService:
             logger.error(f'Read API Error: {str(e)}')
             raise InternalServerError(f"Read API Error: {str(e)}")
     
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_random(min=1, max=2),
+        retry=retry_if_not_exception_type((NotFoundError, BadRequestError)),
+        reraise=True
+    )
     async def fetch_relation(self, entityId: str, relation: Relation):
         
         if not entityId or not relation:
@@ -60,7 +72,6 @@ class OpenGINService:
         
         stripped_entity_id = str(entityId).strip()
         if not stripped_entity_id:
-            print('no stripped')
             raise BadRequestError("Entity ID can not be empty")
         
         url = f"{settings.BASE_URL_QUERY}/v1/entities/{stripped_entity_id}/relations"
