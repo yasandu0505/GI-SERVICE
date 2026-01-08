@@ -10,6 +10,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+api_retry_decorator = retry(
+    stop=stop_after_attempt(3),
+    wait=wait_random(min=1, max=2),
+    retry=retry_if_not_exception_type((NotFoundError, BadRequestError)),
+    reraise=True
+)
+
 class OpenGINService:
     """
     The OpenGINService directly interfaces with the OpenGIN APIs to retrieve data.
@@ -21,12 +28,7 @@ class OpenGINService:
     def session(self) -> ClientSession:
         return http_client.session
     
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_random(min=1, max=2),
-        retry=retry_if_not_exception_type((NotFoundError, BadRequestError)),
-        reraise=True
-    )
+    @api_retry_decorator
     async def get_entity(self,entity: Entity):
 
         if not entity:
@@ -61,12 +63,7 @@ class OpenGINService:
             logger.error(f'Read API Error: {str(e)}')
             raise InternalServerError(f"Read API Error: {str(e)}")
     
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_random(min=1, max=2),
-        retry=retry_if_not_exception_type((NotFoundError, BadRequestError)),
-        reraise=True
-    )
+    @api_retry_decorator
     async def fetch_relation(self, entityId: str, relation: Relation):
         
         if not entityId or not relation:

@@ -135,30 +135,25 @@ async def test_get_entity_doesnt_retries_on_badrequest_error(mock_service, mock_
     mock_session.post.assert_called_once()
 
 @pytest.mark.asyncio    
-async def test_get_entity_retries_two_times_success(mock_service, mock_session):
-    entity = Entity(id="entity_123")
-    
-    mock_response = MockResponse({"body": [Entity(id="entity_123", name="Test Entity")]})
-
-    mock_session.post.side_effect = [Exception("Internal Server Error"), mock_response]
-
-    result = await mock_service.get_entity(entity)
-
-    assert result == Entity(id="entity_123", name="Test Entity")
-    assert mock_session.post.call_count == 2
-
-@pytest.mark.asyncio    
-async def test_get_entity_retries_three_times_success(mock_service, mock_session):
+@pytest.mark.parametrize(
+    "failures, expected_calls",
+    [
+        (1, 2),
+        (2, 3),
+    ]
+)
+async def test_get_entity_retries_success(mock_service, mock_session, failures, expected_calls):
     entity = Entity(id="entity_123")
     
     mock_response = MockResponse({"body": [Entity(id="entity_123", name="Test Entity")]})
     
-    mock_session.post.side_effect = [Exception("Internal Server Error"), Exception("Internal Server Error"), mock_response]
+    side_effect = [Exception("Internal Server Error")] * failures + [mock_response]
+    mock_session.post.side_effect = side_effect
 
     result = await mock_service.get_entity(entity)
 
     assert result == Entity(id="entity_123", name="Test Entity")
-    assert mock_session.post.call_count == 3
+    assert mock_session.post.call_count == expected_calls
 
 # Test fetch relation
 @pytest.mark.asyncio 
@@ -218,28 +213,36 @@ async def test_fetch_relation_doesnt_retries_on_badrequest_error(mock_service, m
 
     mock_session.post.assert_called_once()
 
-@pytest.mark.asyncio    
-async def test_fetch_relation_retries_two_times_success(mock_service, mock_session):
+@pytest.mark.asyncio 
+async def test_fetch_relation_doesnt_retries_on_notfound_error(mock_service, mock_session):
+    entity_id = "entity_123"
+    relation = Relation(id="relation_123",direction="OUTGOING")
+
+    mock_session.post.side_effect = NotFoundError("Entity not found")
+
+    with pytest.raises(NotFoundError):
+        await mock_service.fetch_relation(entity_id,relation)
+
+    mock_session.post.assert_called_once()
+
+@pytest.mark.asyncio 
+@pytest.mark.parametrize(
+    "failures, expected_calls", 
+    [
+        (1, 2), # 1 failure + 1 success = 2 calls
+        (2, 3)  # 2 failures + 1 success = 3 calls
+    ]
+)   
+async def test_fetch_relation_retries_and_success(mock_service, mock_session, failures, expected_calls):
     entity_id = "entity_123"
     relation = Relation(id="relation_123",direction="OUTGOING")
     mock_response = MockResponse([Relation(id="relation_123",relationName="AS_MINISTER",direction="OUTGOING")])
 
-    mock_session.post.side_effect = [Exception("Internal Server Error"), mock_response]
+    side_effect = [Exception("Internal Server Error")] * failures + [mock_response]
+    mock_session.post.side_effect = side_effect
 
     result = await mock_service.fetch_relation(entity_id,relation)
 
     assert result == [relation]
-    assert mock_session.post.call_count == 2
+    assert mock_session.post.call_count == expected_calls
 
-@pytest.mark.asyncio    
-async def test_fetch_relation_retries_three_times_success(mock_service, mock_session):
-    entity_id = "entity_123"
-    relation = Relation(id="relation_123",direction="OUTGOING")
-    mock_response = MockResponse([Relation(id="relation_123",relationName="AS_MINISTER",direction="OUTGOING")])
-
-    mock_session.post.side_effect = [Exception("Internal Server Error"), Exception("Internal Server Error"), mock_response]
-
-    result = await mock_service.fetch_relation(entity_id,relation)
-
-    assert result == [relation]
-    assert mock_session.post.call_count == 3
