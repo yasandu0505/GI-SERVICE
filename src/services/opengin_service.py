@@ -38,9 +38,10 @@ class OpenGINService:
 
         try:
             async with self.session.post(url, json=payload, headers=headers) as response:
-                
                 if response.status == 404:
                     raise NotFoundError(f"Read API Error: Entity not found for id {entity.id}")
+                if response.status == 400:
+                    raise BadRequestError(f"Read API Error: Bad request for id {entity.id}")
                 
                 response.raise_for_status()
                 res_json = await response.json()
@@ -81,6 +82,10 @@ class OpenGINService:
 
         try:
             async with self.session.post(url, json=payload, headers=headers) as response:
+                if response.status == 404:
+                    raise NotFoundError(f"Read API Error: Relation not found for id {entityId}")
+                if response.status == 400:
+                    raise BadRequestError(f"Read API Error: Bad request for id {entityId}")
                 response.raise_for_status()
                 data = await response.json()
                 result = [Relation.model_validate(item) for item in data]
