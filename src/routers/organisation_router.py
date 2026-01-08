@@ -34,5 +34,3 @@ async def prime_minister(
 ):
     service_response = await service.fetch_prime_minister(selected_date=body.date)
     return service_response
-    
- 

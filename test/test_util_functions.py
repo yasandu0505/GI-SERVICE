@@ -40,4 +40,3 @@ def test_term_success_without_end_date(util):
     result = util.term(start_date,end_date)
 
     assert result == "2022 Jul - Present"
-

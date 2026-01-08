@@ -407,5 +407,4 @@ class OrganisationService:
             raise
         except Exception as e:
             raise InternalServerError("An unexpected error occurred") from e
-
-            
+     

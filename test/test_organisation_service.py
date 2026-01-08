@@ -333,6 +333,3 @@ async def test_prime_minister_with_internal_server_error(organisation_service, m
     root_cause = exc_info.value.__cause__
     assert isinstance(root_cause, Exception)
     assert str(root_cause) == original_error_message
-
-
- 
