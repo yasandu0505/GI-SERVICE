@@ -60,7 +60,6 @@ class OpenGINService:
         
         stripped_entity_id = str(entityId).strip()
         if not stripped_entity_id:
-            print('no stripped')
             raise BadRequestError("Entity ID can not be empty")
         
         url = f"{settings.BASE_URL_QUERY}/v1/entities/{stripped_entity_id}/relations"

@@ -32,8 +32,7 @@ async def prime_minister(
     body: Date = Body(...),
     service: OrganisationService = Depends(get_organisation_service)
 ):
-    service_response = await service.prime_minister(selected_date=body.date)
+    service_response = await service.fetch_prime_minister(selected_date=body.date)
     return service_response
-
-
-     
+    
+ 

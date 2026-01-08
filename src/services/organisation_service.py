@@ -1,16 +1,13 @@
-from src.exception.exceptions import GatewayTimeoutError
-from src.exception.exceptions import ServiceUnavailableError
 from src.exception.exceptions import BadRequestError
 from src.exception.exceptions import NotFoundError
 from src.exception.exceptions import InternalServerError
 import asyncio
-from src.utils.util_functions import decode_protobuf_attribute_name,normalize_timestamp
+from src.utils.util_functions import Util
 from aiohttp import ClientSession
 from src.utils import http_client
 from src.models.organisation_schemas import Entity, Relation
 from typing import Optional
 import logging
-import calendar
 
 logger = logging.getLogger(__name__)
 
@@ -52,14 +49,14 @@ class OrganisationService:
                 
                 id = person_relation.relatedEntityId
                 person_start_date = person_relation.startTime
-                is_new = person_start_date == normalize_timestamp(selected_date)
+                is_new = person_start_date == Util.normalize_timestamp(selected_date)
 
             # check if the person is president or not
             if person_node_data.id == president_id:
                 is_president = True
 
             # decode name from protobuf
-            name = decode_protobuf_attribute_name(person_node_data.name)
+            name = Util.decode_protobuf_attribute_name(person_node_data.name)
 
             return {
                 "id": id,
@@ -116,12 +113,12 @@ class OrganisationService:
             if isinstance(portfolio_data, Entity):
                 # retrieve the decoded portfolio name
                 portfolio_dict["id"] = portfolio_data.id
-                portfolio_dict["name"] = decode_protobuf_attribute_name(
+                portfolio_dict["name"] = Util.decode_protobuf_attribute_name(
                     portfolio_data.name
                 )
                 # check if the portfolio is newly created or not
                 start_time = portfolio_relation.startTime
-                portfolio_dict["isNew"] = start_time == normalize_timestamp(selected_date)
+                portfolio_dict["isNew"] = start_time == Util.normalize_timestamp(selected_date)
             else:
                 logger.error(f"Error fetching portfolio data: {portfolio_data}")
                 portfolio_dict["name"] = "Unknown"
@@ -147,7 +144,7 @@ class OrganisationService:
     async def process_portfolio_item(self, portfolio_relation: Relation, president_id: str, selected_date: str):
 
         try:
-            relation = Relation(name="AS_APPOINTED",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")
+            relation = Relation(name="AS_APPOINTED",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
             appointed_ministers = await self.opengin_service.fetch_relation(
                 entityId=portfolio_relation.relatedEntityId,
                 relation=relation
@@ -202,7 +199,7 @@ class OrganisationService:
         
         try:
             # First retrieve the relation list of the active portfolios under given president and given date  
-            relation = Relation(name="AS_MINISTER",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")   
+            relation = Relation(name="AS_MINISTER",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")   
             activePortfolioList = await self.opengin_service.fetch_relation(
                 entityId=president_id,
                 relation=relation
@@ -273,11 +270,11 @@ class OrganisationService:
         department_data = department_data
 
         # decode name
-        name = decode_protobuf_attribute_name(department_data.name)
+        name = Util.decode_protobuf_attribute_name(department_data.name)
             
         # check the department is new or not
         department_start_date = department_relation.startTime
-        is_new = department_start_date == normalize_timestamp(selected_date)
+        is_new = department_start_date == Util.normalize_timestamp(selected_date)
 
         # check the department has data or not
         has_data = bool(dataset_relations)
@@ -321,7 +318,7 @@ class OrganisationService:
             raise BadRequestError("Selected date is required")
 
         try:
-            relation = Relation(name="AS_DEPARTMENT",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")
+            relation = Relation(name="AS_DEPARTMENT",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
             department_relation_list = await self.opengin_service.fetch_relation(
                 entityId=portfolio_id,
                 relation=relation
@@ -356,37 +353,14 @@ class OrganisationService:
         except Exception as e:
             raise InternalServerError(str(e))
 
-    # helper: term helper
-    def term(self, startTime, endTime):
-        if not startTime:
-            return "Unknown"
-        
-        start_date = startTime.split("T")[0]
-        start_year = start_date.split("-")[0]
-        start_month = start_date.split("-")[1]
-        start_month_abbr = calendar.month_abbr[int(start_month)]
-
-        if not endTime or endTime == "":
-            end_year = "Present"
-            term = f"{start_year} {start_month_abbr} - {end_year}"
-        else:
-            end_date = endTime.split("T")[0]
-            end_year = end_date.split("-")[0]
-            end_month = end_date.split("-")[1]
-            end_month_abbr = calendar.month_abbr[int(end_month)]
-        
-            term = f"{start_year} {start_month_abbr} - {end_year} {end_month_abbr}"
-
-        return term
-
     # API: prime minister data for the given date
-    async def prime_minister(self, selected_date):
+    async def fetch_prime_minister(self, selected_date):
         """
-        Docstring for prime minister
+        Fetch Prime Minister
         
         :param selected_date: Selected Date
 
-        output type: 
+        output format: 
         {
             "body": {
                 "id": "",
@@ -398,10 +372,10 @@ class OrganisationService:
         """
         try:
 
-            if selected_date is None or selected_date.strip() == "":
+            if not selected_date or not selected_date.strip():
                 raise BadRequestError("Selected date is required")
 
-            relation = Relation(name="AS_PRIME_MINISTER",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")
+            relation = Relation(name="AS_PRIME_MINISTER",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
             prime_minister_relation = await self.opengin_service.fetch_relation(
                 entityId="gov_01",
                 relation=relation
@@ -418,11 +392,8 @@ class OrganisationService:
 
             for key in ["isPresident"]:
                 prime_minister_data.pop(key, None)
-
-            prime_minister_start_date = prime_minister_relation.startTime
-            prime_minister_end_date = prime_minister_relation.endTime
             
-            term = self.term(startTime=prime_minister_start_date, endTime=prime_minister_end_date)
+            term = Util.term(startTime=prime_minister_relation.startTime, endTime=prime_minister_relation.endTime)
 
             prime_minister_data["term"] = term
 
@@ -435,6 +406,7 @@ class OrganisationService:
         except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
+
 
              
