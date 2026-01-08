@@ -23,6 +23,7 @@ class OpenGINService:
     
     @retry(
         stop=stop_after_attempt(3),
+        wait=wait_random(min=1, max=2),
         retry=retry_if_not_exception_type((NotFoundError, BadRequestError)),
         reraise=True
     )
