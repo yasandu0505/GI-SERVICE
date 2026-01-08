@@ -51,7 +51,7 @@ class OpenGINService:
             raise
         except Exception as e:
             logger.error(f'Read API Error: {str(e)}')
-            raise InternalServerError(f"Read API Error: {str(e)}")
+            raise InternalServerError("An unexpected error occurred") from e
     
     async def fetch_relation(self, entityId: str, relation: Relation):
         
@@ -79,4 +79,4 @@ class OpenGINService:
             raise   
         except Exception as e:
             logger.error(f'Read API Error: {str(e)}')
-            raise InternalServerError(f'Read API Error: {str(e)}')
+            raise InternalServerError("An unexpected error occurred") from e

@@ -68,7 +68,7 @@ class OrganisationService:
             raise
         except Exception as e:
             logger.error(f'Error fetching person data: {e}')
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
 
     # eg: portfolio_relation -> single portfolio relation object with id, appointed_ministers_list -> list of people for portfolio with ids, president_id -> Id of the president
     async def enrich_portfolio_item(self,portfolio_relation: Relation, appointed_ministers_list: list[Relation], president_id: str, selected_date: str):
@@ -138,7 +138,7 @@ class OrganisationService:
             raise  
         except Exception as e:
             logger.error(f"Error enriching portfolio item: {e}")
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
 
     # this function takes the portfolio relation and get the active minister lists. then arrange the response
     async def process_portfolio_item(self, portfolio_relation: Relation, president_id: str, selected_date: str):
@@ -158,7 +158,7 @@ class OrganisationService:
             raise
         except Exception as e:
             logger.error(f"Error fetching portfolio item: {e}")
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
 
     # active portfolio list
     async def active_portfolio_list(self, president_id: str, selected_date: str):
@@ -253,7 +253,7 @@ class OrganisationService:
         except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
     
     # helper: enrich department
     async def enrich_department_item(self, department_relation: Relation, selected_date: str):
@@ -351,7 +351,7 @@ class OrganisationService:
         except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
 
     # API: prime minister data for the given date
     async def fetch_prime_minister(self, selected_date):
@@ -408,5 +408,4 @@ class OrganisationService:
         except Exception as e:
             raise InternalServerError("An unexpected error occurred") from e
 
-
-             
+            

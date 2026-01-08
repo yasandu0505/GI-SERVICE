@@ -76,5 +76,5 @@ class Util:
             term = f"{start_year} {start_month_abbr} - {end_year} {end_month_abbr}"
 
         return term
+          
 
-        
