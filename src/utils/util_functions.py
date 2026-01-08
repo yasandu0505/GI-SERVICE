@@ -56,6 +56,20 @@ class Util:
     # helper: term helper
     @staticmethod
     def term(startTime, endTime) -> str:
+        """
+        Generate a term string based on start and end dates.
+
+        startDate format: YYYY-MM-DDT00:00:00Z
+        endDate format: YYYY-MM-DDT00:00:00Z
+
+        return format:
+            YYYY MM - YYYY MM
+            YYYY MM - Present
+
+            ex: 2020 Jan - 2022 May
+                2020 Jan - Present
+        """
+
         if not startTime:
             return "Unknown"
         

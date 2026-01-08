@@ -390,8 +390,7 @@ class OrganisationService:
             if not prime_minister_data:
                 raise NotFoundError("Prime minister data not found for the given date.")
 
-            for key in ["isPresident"]:
-                prime_minister_data.pop(key, None)
+            prime_minister_data.pop("isPresident", None)
             
             term = Util.term(startTime=prime_minister_relation.startTime, endTime=prime_minister_relation.endTime)
 

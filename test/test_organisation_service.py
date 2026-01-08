@@ -271,7 +271,7 @@ async def test_prime_minister_success(organisation_service, mock_opengin_service
     )
 
 @pytest.mark.asyncio 
-async def test_prime_minister_without_no_person_data(organisation_service, mock_opengin_service):
+async def test_prime_minister_without_person_data(organisation_service, mock_opengin_service):
     selected_date = "2021-10-27"
 
     mock_response = Relation(name='AS_PRIME_MINISTER', activeAt='', relatedEntityId='cit_3', startTime='2022-07-26T00:00:00Z', endTime='2024-09-23T00:00:00Z', id='person_123', direction='OUTGOING')
