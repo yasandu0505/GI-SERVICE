@@ -376,23 +376,23 @@ class OrganisationService:
                 raise BadRequestError("Selected date is required")
 
             relation = Relation(name="AS_PRIME_MINISTER",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
-            prime_minister_relation = await self.opengin_service.fetch_relation(
+            prime_minister_relations = await self.opengin_service.fetch_relation(
                 entityId="gov_01",
                 relation=relation
             )
 
-            if not prime_minister_relation:
+            if not prime_minister_relations:
                 raise NotFoundError("Prime minister not found for the given date.")
-            prime_minister_relation = prime_minister_relation[0]
+            first_prime_minister_relation = prime_minister_relations[0]
 
-            prime_minister_data = await self.enrich_person_data(person_relation=prime_minister_relation, selected_date=selected_date)
+            prime_minister_data = await self.enrich_person_data(person_relation=first_prime_minister_relation, selected_date=selected_date)
             
             if not prime_minister_data:
                 raise NotFoundError("Prime minister data not found for the given date.")
 
             prime_minister_data.pop("isPresident", None)
             
-            term = Util.term(startTime=prime_minister_relation.startTime, endTime=prime_minister_relation.endTime)
+            term = Util.term(startTime=first_prime_minister_relation.startTime, endTime=first_prime_minister_relation.endTime)
 
             prime_minister_data["term"] = term
 
