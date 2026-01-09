@@ -1,4 +1,7 @@
 import pytest
+from src.exception.exceptions import InternalServerError
+from src.utils.util_functions import Util
+from src.exception.exceptions import NotFoundError
 from src.exception.exceptions import BadRequestError
 from unittest.mock import AsyncMock, patch
 from src.models.organisation_schemas import Entity, Relation
@@ -12,7 +15,7 @@ async def test_enrich_person_data_as_president(organisation_service, mock_opengi
     mock_opengin_service.get_entity.return_value = Entity(id=president_id,name="mocked_protobuf_name")
 
     with patch(
-        "services.organisation_service.decode_protobuf_attribute_name",
+        "services.organisation_service.Util.decode_protobuf_attribute_name",
         return_value="John Doe"
     ):
         result = await organisation_service.enrich_person_data(
@@ -39,7 +42,7 @@ async def test_enrich_person_data_as_not_president(organisation_service, mock_op
     mock_opengin_service.get_entity.return_value = Entity(id="person_123",name="mocked_protobuf_name")
 
     with patch(
-        "services.organisation_service.decode_protobuf_attribute_name",
+        "services.organisation_service.Util.decode_protobuf_attribute_name",
         return_value="John Doe"
     ):
         result = await organisation_service.enrich_person_data(
@@ -67,7 +70,7 @@ async def test_enrich_department_item(organisation_service, mock_opengin_service
     mock_opengin_service.fetch_relation.return_value = [ Relation(id="", relatedEntityId="department_123", name= "AS_CATEGORY", startTime="2020-08-09T00:00:00Z", endTime="2022-03-08T00:00:00Z", direction="OUTGOING")]
     
     with patch(
-        "services.organisation_service.decode_protobuf_attribute_name",
+        "services.organisation_service.Util.decode_protobuf_attribute_name",
         return_value="Department_of_security"
     ):
         result = await organisation_service.enrich_department_item(
@@ -94,7 +97,7 @@ async def test_enrich_department_item_with_no_data(organisation_service, mock_op
     mock_opengin_service.fetch_relation.return_value = []
     
     with patch(
-        "services.organisation_service.decode_protobuf_attribute_name",
+        "services.organisation_service.Util.decode_protobuf_attribute_name",
         return_value="Department_of_security"
     ):
         result = await organisation_service.enrich_department_item(
@@ -121,7 +124,7 @@ async def test_enrich_department_item_not_new(organisation_service, mock_opengin
     mock_opengin_service.fetch_relation.return_value = []
     
     with patch(
-        "services.organisation_service.decode_protobuf_attribute_name",
+        "services.organisation_service.Util.decode_protobuf_attribute_name",
         return_value="Department_of_security"
     ):
         result = await organisation_service.enrich_department_item(
@@ -231,4 +234,102 @@ async def test_departments_by_portfolio_id_none_selected_date(organisation_servi
             selected_date=selected_date
         )
 
+@pytest.mark.asyncio 
+async def test_prime_minister_success(organisation_service, mock_opengin_service):
+    selected_date = "2021-10-27"
+
+    mock_response = Relation(name='AS_PRIME_MINISTER', activeAt='', relatedEntityId='cit_3', startTime='2022-07-26T00:00:00Z', endTime='2024-09-23T00:00:00Z', id='person_123', direction='OUTGOING')
+    mock_opengin_service.fetch_relation.return_value = [mock_response]
+
+    # Patch enrich_department_item with AsyncMock returning the department dict
+    with patch(
+        "services.organisation_service.OrganisationService.enrich_person_data",
+        new_callable=AsyncMock
+    ) as mock_enrich_person:
+        mock_enrich_person.return_value = {
+            "id": "person_123",
+            "name": "Person X",
+            "isNew": False,
+            "isPresident": False
+        }
+
+        result = await organisation_service.fetch_prime_minister(selected_date=selected_date)
+
+    assert result == {
+            "body": {
+                "id": "person_123",
+                "name": "Person X",
+                "isNew": False,
+                "term": "2022 Jul - 2024 Sep"
+            }
+    }
+
+    # Check fetch_relation was called correctly
+    mock_opengin_service.fetch_relation.assert_called_once_with(
+        entityId='gov_01',
+        relation=Relation(name='AS_PRIME_MINISTER', activeAt=Util.normalize_timestamp(selected_date), direction='OUTGOING')
+    )
+
+@pytest.mark.asyncio 
+async def test_prime_minister_without_person_data(organisation_service, mock_opengin_service):
+    selected_date = "2021-10-27"
+
+    mock_response = Relation(name='AS_PRIME_MINISTER', activeAt='', relatedEntityId='cit_3', startTime='2022-07-26T00:00:00Z', endTime='2024-09-23T00:00:00Z', id='person_123', direction='OUTGOING')
+    mock_opengin_service.fetch_relation.return_value = [mock_response]
+
+    # Patch enrich_department_item with AsyncMock returning the department dict
+    with patch(
+        "services.organisation_service.OrganisationService.enrich_person_data",
+        new_callable=AsyncMock
+    ) as mock_enrich_person:
+        mock_enrich_person.return_value = {}
+
+        with pytest.raises(NotFoundError):
+            await organisation_service.fetch_prime_minister(selected_date=selected_date)
+
+    # Check fetch_relation was called correctly
+    mock_opengin_service.fetch_relation.assert_called_once_with(
+        entityId='gov_01',
+        relation=Relation(name='AS_PRIME_MINISTER', activeAt=Util.normalize_timestamp(selected_date), direction='OUTGOING')
+    )
+
+@pytest.mark.asyncio 
+async def test_prime_minister_without_selected_date(organisation_service):
+    selected_date = None
+
+    with pytest.raises(BadRequestError):
+        await organisation_service.fetch_prime_minister(
+            selected_date=selected_date
+        )
+
+@pytest.mark.asyncio 
+async def test_prime_minister_with_empty_selected_date(organisation_service):
+    selected_date = ""
+
+    with pytest.raises(BadRequestError):
+        await organisation_service.fetch_prime_minister(
+            selected_date=selected_date
+        )
+
+@pytest.mark.asyncio 
+async def test_prime_minister_with_no_relation(organisation_service, mock_opengin_service):
+    selected_date = "2021-10-27"
+
+    mock_opengin_service.fetch_relation.return_value = []
+
+    with pytest.raises(NotFoundError):
+        await organisation_service.fetch_prime_minister(selected_date=selected_date)
+
+@pytest.mark.asyncio 
+async def test_prime_minister_with_internal_server_error(organisation_service, mock_opengin_service):
+    selected_date = "2021-10-27"
+    original_error_message = "OpenGIN service error"
+
+    mock_opengin_service.fetch_relation.side_effect = Exception(original_error_message)
+
+    with pytest.raises(InternalServerError) as exc_info:
+        await organisation_service.fetch_prime_minister(selected_date=selected_date)
     
+    root_cause = exc_info.value.__cause__
+    assert isinstance(root_cause, Exception)
+    assert str(root_cause) == original_error_message

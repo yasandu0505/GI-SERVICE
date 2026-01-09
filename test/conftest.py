@@ -6,6 +6,7 @@ from services.opengin_service import OpenGINService
 from src.utils.http_client import HTTPClient
 from services.organisation_service import OrganisationService
 from unittest.mock import AsyncMock
+from src.utils.util_functions import Util
 
 # MockResponse class to simulate aiohttp responses
 class MockResponse:
@@ -51,3 +52,9 @@ def organisation_service(mock_opengin_service):
     """OrganisationService fixture with mocked OpenGINService"""
     config = {}
     return OrganisationService(config, mock_opengin_service)
+
+# Fixtures for Util functions tests
+@pytest.fixture
+def util():
+    return Util()
+

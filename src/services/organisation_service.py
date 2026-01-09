@@ -1,10 +1,8 @@
-from src.exception.exceptions import GatewayTimeoutError
-from src.exception.exceptions import ServiceUnavailableError
 from src.exception.exceptions import BadRequestError
 from src.exception.exceptions import NotFoundError
 from src.exception.exceptions import InternalServerError
 import asyncio
-from src.utils.util_functions import decode_protobuf_attribute_name,normalize_timestamp
+from src.utils.util_functions import Util
 from aiohttp import ClientSession
 from src.utils import http_client
 from src.models.organisation_schemas import Entity, Relation
@@ -51,14 +49,14 @@ class OrganisationService:
                 
                 id = person_relation.relatedEntityId
                 person_start_date = person_relation.startTime
-                is_new = person_start_date == normalize_timestamp(selected_date)
+                is_new = person_start_date == Util.normalize_timestamp(selected_date)
 
             # check if the person is president or not
             if person_node_data.id == president_id:
                 is_president = True
 
             # decode name from protobuf
-            name = decode_protobuf_attribute_name(person_node_data.name)
+            name = Util.decode_protobuf_attribute_name(person_node_data.name)
 
             return {
                 "id": id,
@@ -66,11 +64,11 @@ class OrganisationService:
                 "isNew": is_new,
                 "isPresident": is_president
             }
-        except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
+        except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
             logger.error(f'Error fetching person data: {e}')
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
 
     # eg: portfolio_relation -> single portfolio relation object with id, appointed_ministers_list -> list of people for portfolio with ids, president_id -> Id of the president
     async def enrich_portfolio_item(self,portfolio_relation: Relation, appointed_ministers_list: list[Relation], president_id: str, selected_date: str):
@@ -115,12 +113,12 @@ class OrganisationService:
             if isinstance(portfolio_data, Entity):
                 # retrieve the decoded portfolio name
                 portfolio_dict["id"] = portfolio_data.id
-                portfolio_dict["name"] = decode_protobuf_attribute_name(
+                portfolio_dict["name"] = Util.decode_protobuf_attribute_name(
                     portfolio_data.name
                 )
                 # check if the portfolio is newly created or not
                 start_time = portfolio_relation.startTime
-                portfolio_dict["isNew"] = start_time == normalize_timestamp(selected_date)
+                portfolio_dict["isNew"] = start_time == Util.normalize_timestamp(selected_date)
             else:
                 logger.error(f"Error fetching portfolio data: {portfolio_data}")
                 portfolio_dict["name"] = "Unknown"
@@ -140,13 +138,13 @@ class OrganisationService:
             raise  
         except Exception as e:
             logger.error(f"Error enriching portfolio item: {e}")
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
 
     # this function takes the portfolio relation and get the active minister lists. then arrange the response
     async def process_portfolio_item(self, portfolio_relation: Relation, president_id: str, selected_date: str):
 
         try:
-            relation = Relation(name="AS_APPOINTED",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")
+            relation = Relation(name="AS_APPOINTED",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
             appointed_ministers = await self.opengin_service.fetch_relation(
                 entityId=portfolio_relation.relatedEntityId,
                 relation=relation
@@ -160,7 +158,7 @@ class OrganisationService:
             raise
         except Exception as e:
             logger.error(f"Error fetching portfolio item: {e}")
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
 
     # active portfolio list
     async def active_portfolio_list(self, president_id: str, selected_date: str):
@@ -201,7 +199,7 @@ class OrganisationService:
         
         try:
             # First retrieve the relation list of the active portfolios under given president and given date  
-            relation = Relation(name="AS_MINISTER",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")   
+            relation = Relation(name="AS_MINISTER",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")   
             activePortfolioList = await self.opengin_service.fetch_relation(
                 entityId=president_id,
                 relation=relation
@@ -252,10 +250,10 @@ class OrganisationService:
 
             return finalResult
 
-        except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
+        except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
     
     # helper: enrich department
     async def enrich_department_item(self, department_relation: Relation, selected_date: str):
@@ -272,11 +270,11 @@ class OrganisationService:
         department_data = department_data
 
         # decode name
-        name = decode_protobuf_attribute_name(department_data.name)
+        name = Util.decode_protobuf_attribute_name(department_data.name)
             
         # check the department is new or not
         department_start_date = department_relation.startTime
-        is_new = department_start_date == normalize_timestamp(selected_date)
+        is_new = department_start_date == Util.normalize_timestamp(selected_date)
 
         # check the department has data or not
         has_data = bool(dataset_relations)
@@ -320,7 +318,7 @@ class OrganisationService:
             raise BadRequestError("Selected date is required")
 
         try:
-            relation = Relation(name="AS_DEPARTMENT",activeAt=normalize_timestamp(selected_date),direction="OUTGOING")
+            relation = Relation(name="AS_DEPARTMENT",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
             department_relation_list = await self.opengin_service.fetch_relation(
                 entityId=portfolio_id,
                 relation=relation
@@ -350,7 +348,62 @@ class OrganisationService:
 
             return finalResult
 
-        except (BadRequestError, NotFoundError, ServiceUnavailableError, InternalServerError, GatewayTimeoutError):
+        except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
-            raise InternalServerError(str(e))
+            raise InternalServerError("An unexpected error occurred") from e
+
+    # API: prime minister data for the given date
+    async def fetch_prime_minister(self, selected_date):
+        """
+        Fetch Prime Minister
+        
+        :param selected_date: Selected Date
+
+        output format: 
+        {
+            "body": {
+                "id": "",
+                "name": "",
+                "isNew": false,
+                "term": ""
+            }
+        }
+        """
+        try:
+
+            if not selected_date or not selected_date.strip():
+                raise BadRequestError("Selected date is required")
+
+            relation = Relation(name="AS_PRIME_MINISTER",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
+            prime_minister_relations = await self.opengin_service.fetch_relation(
+                entityId="gov_01",
+                relation=relation
+            )
+
+            if not prime_minister_relations:
+                raise NotFoundError("Prime minister not found for the given date.")
+            first_prime_minister_relation = prime_minister_relations[0]
+
+            prime_minister_data = await self.enrich_person_data(person_relation=first_prime_minister_relation, selected_date=selected_date)
+            
+            if not prime_minister_data:
+                raise NotFoundError("Prime minister data not found for the given date.")
+
+            prime_minister_data.pop("isPresident", None)
+            
+            term = Util.term(startTime=first_prime_minister_relation.startTime, endTime=first_prime_minister_relation.endTime)
+
+            prime_minister_data["term"] = term
+
+            final_result = {
+                "body": prime_minister_data
+            }
+
+            return final_result
+        
+        except (BadRequestError, NotFoundError):
+            raise
+        except Exception as e:
+            raise InternalServerError("An unexpected error occurred") from e
+     
