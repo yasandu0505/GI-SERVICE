@@ -130,3 +130,83 @@ async def test_fetch_relation_none_entity_id(mock_service, mock_session):
 
     with pytest.raises(BadRequestError):
         await mock_service.fetch_relation(entity_id,relation=Relation(id="relation_123"))
+
+# Tests for get_metadata
+@pytest.mark.asyncio
+async def test_get_metadata_success(mock_service, mock_session):
+    """Test get_metadata with successful response"""
+    category_id = "category_123"
+    metadata_response = {
+        "attr1": "value1",
+        "attr2": "value2",
+        "description": "Test metadata"
+    }
+    
+    mock_response = MockResponse(metadata_response)
+    mock_session.get.return_value = mock_response
+    
+    result = await mock_service.get_metadata(category_id)
+    
+    assert result == metadata_response
+    assert result["attr1"] == "value1"
+    assert result["attr2"] == "value2"
+    mock_session.get.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_get_metadata_empty_response(mock_service, mock_session):
+    """Test get_metadata with empty metadata response"""
+    category_id = "category_456"
+    empty_metadata = {}
+    
+    mock_response = MockResponse(empty_metadata)
+    mock_session.get.return_value = mock_response
+    
+    result = await mock_service.get_metadata(category_id)
+    
+    assert result == {}
+    mock_session.get.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_get_metadata_http_error(mock_service, mock_session):
+    """Test get_metadata handles HTTP errors"""
+    from src.exception.exceptions import InternalServerError
+    category_id = "category_error"
+    
+    mock_response = MockResponse({}, status=500)
+    mock_session.get.return_value = mock_response
+    
+    with pytest.raises(InternalServerError) as exc_info:
+        await mock_service.get_metadata(category_id)
+    
+    assert "An unexpected error occurred" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_get_metadata_not_found(mock_service, mock_session):
+    """Test get_metadata handles 404 errors"""
+    from src.exception.exceptions import InternalServerError
+    category_id = "nonexistent_category"
+    
+    mock_response = MockResponse({}, status=404)
+    mock_session.get.return_value = mock_response
+    
+    with pytest.raises(InternalServerError) as exc_info:
+        await mock_service.get_metadata(category_id)
+    
+    assert "An unexpected error occurred" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_get_metadata_with_exception(mock_service, mock_session):
+    """Test get_metadata handles general exceptions"""
+    from src.exception.exceptions import InternalServerError
+    category_id = "category_exception"
+    
+    # Simulate an exception during the request
+    mock_session.get.side_effect = Exception("Network timeout")
+    
+    with pytest.raises(InternalServerError) as exc_info:
+        await mock_service.get_metadata(category_id)
+    
+    assert "An unexpected error occurred" in str(exc_info.value)
+    root_cause = exc_info.value.__cause__
+    assert isinstance(root_cause, Exception)
+    assert str(root_cause) == "Network timeout"
