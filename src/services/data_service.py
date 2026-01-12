@@ -66,7 +66,7 @@ class DataService:
         except (BadRequestError):
             raise
         except Exception as e:
-            logger.error(f"failed to enrich dataset for {dataset_id} : {e}")
+            logger.error(f"failed to enrich dataset {e}")
             raise InternalServerError("An unexpected error occurred") from e
 
 
@@ -98,7 +98,7 @@ class DataService:
         except (BadRequestError):
             raise
         except Exception as e:
-            logger.error(f"failed to enrich category for {category_id} : {e}")
+            logger.error(f"failed to enrich category {e}")
             raise InternalServerError("An unexpected error occurred") from e
 
 
@@ -139,8 +139,8 @@ class DataService:
                 dataset_enrich_tasks = [self.enrich_dataset(dataset_relation=relation, category_id=parent_id) for relation in dataset_relations]
                 
                 category_results, dataset_results = await asyncio.gather(
-                    asyncio.gather(*category_enrich_tasks) if category_enrich_tasks else asyncio.create_task(asyncio.sleep(0)),
-                    asyncio.gather(*dataset_enrich_tasks) if dataset_enrich_tasks else asyncio.create_task(asyncio.sleep(0))
+                    asyncio.gather(*category_enrich_tasks),
+                    asyncio.gather(*dataset_enrich_tasks)
                 )
 
                 return {
@@ -151,7 +151,7 @@ class DataService:
         except (BadRequestError):
             raise
         except Exception as e:
-            logger.error(f"failed to fetch data catalog for {parent_id} : {e}")
+            logger.error(f"failed to fetch data catalog {e}")
             raise InternalServerError("An unexpected error occurred") from e
 
             
