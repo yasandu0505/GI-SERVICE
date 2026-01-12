@@ -2,7 +2,8 @@ from src.models.organisation_schemas import Entity, Relation
 from src.exception.exceptions import BadRequestError
 from src.exception.exceptions import InternalServerError
 from src.exception.exceptions import NotFoundError
-from tenacity import retry, stop_after_attempt, retry_if_not_exception_type, wait_random
+from google.api_core import retry_async
+from google.api_core import exceptions
 from aiohttp import ClientSession
 from src.utils.http_client import http_client
 from src.core.config import settings
@@ -10,11 +11,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-api_retry_decorator = retry(
-    stop=stop_after_attempt(3),
-    wait=wait_random(min=1, max=2),
-    retry=retry_if_not_exception_type((NotFoundError, BadRequestError)),
-    reraise=True
+def should_retry(exception):
+    """
+    Determine if the request should be retried based on the exception type.
+    Returns False for NotFoundError and BadRequestError to skip retries.
+    """
+    if isinstance(exception, (NotFoundError, BadRequestError)):
+        return False
+    return True
+
+api_retry_decorator = retry_async.AsyncRetry(
+    predicate=should_retry,  # custom predicate to skip NotFoundError and BadRequestError
+    initial=1.0,  # initial delay in seconds
+    maximum=5.0, # maximum delay in seconds
+    multiplier=2.0, # delay multiplier
 )
 
 class OpenGINService:
