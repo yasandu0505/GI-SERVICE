@@ -14,7 +14,7 @@ async def test_get_entity_success(mock_service, mock_session):
 
     result = await mock_service.get_entity(entity)
 
-    assert result == Entity(id="entity_123", name="Test Entity")
+    assert result == [Entity(id="entity_123", name="Test Entity")]
     mock_session.post.assert_called_once()
 
 @pytest.mark.asyncio 

@@ -1,4 +1,5 @@
 
+from src.services.data_service import DataService
 import pytest
 from aiohttp import ClientError
 from unittest.mock import patch, PropertyMock, MagicMock
@@ -57,4 +58,11 @@ def organisation_service(mock_opengin_service):
 @pytest.fixture
 def util():
     return Util()
+
+# Fixtures for data service tests
+@pytest.fixture
+def data_service(mock_opengin_service):
+    """DataService fixture with mocked OpenGINService"""
+    config = {}
+    return DataService(config, mock_opengin_service)
 

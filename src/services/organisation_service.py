@@ -52,11 +52,11 @@ class OrganisationService:
                 is_new = person_start_date == Util.normalize_timestamp(selected_date)
 
             # check if the person is president or not
-            if person_node_data.id == president_id:
+            if person_node_data[0].id == president_id:
                 is_president = True
 
             # decode name from protobuf
-            name = Util.decode_protobuf_attribute_name(person_node_data.name)
+            name = Util.decode_protobuf_attribute_name(person_node_data[0].name)
 
             return {
                 "id": id,
@@ -96,7 +96,7 @@ class OrganisationService:
                 # result contains portfolio_task result and person_data results respectively
                 results = await asyncio.gather(portfolio_task, *person_data, return_exceptions=True)
                 
-                portfolio_data = results[0]
+                portfolio_data = results[0][0]
                 person_data_list = results[1:]
             else:
                 # if the appointed minister list is empty, assign the president(for that date) for that selected date
@@ -267,7 +267,7 @@ class OrganisationService:
         # run parallel calls to get department data and parent category relations to ensure the department has data
         department_data, dataset_relations = await asyncio.gather(department_data_task, dataset_task, return_exceptions=True)
 
-        department_data = department_data
+        department_data = department_data[0]
 
         # decode name
         name = Util.decode_protobuf_attribute_name(department_data.name)
@@ -386,7 +386,7 @@ class OrganisationService:
             first_prime_minister_relation = prime_minister_relations[0]
 
             prime_minister_data = await self.enrich_person_data(person_relation=first_prime_minister_relation, selected_date=selected_date)
-            
+
             if not prime_minister_data:
                 raise NotFoundError("Prime minister data not found for the given date.")
 
