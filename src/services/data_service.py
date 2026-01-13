@@ -185,15 +185,18 @@ class DataService:
             if not dataset_relations:
                 raise NotFoundError("No datasets found")
 
-            # get the dataset name
-            dataset_name_task = 
-            
+            # get the dataset name task
+            dataset_name_task = self.enrich_dataset(dataset_relation=dataset_relations[0], category_id=category_id)
+            # get the dataset years task
             enrich_dataset_year_tasks = [self.enrich_dataset_years(dataset_relation=relation) for relation in dataset_relations]
-            dataset_years = await asyncio.gather(*enrich_dataset_year_tasks)
+            dataset_years, dataset_name = await asyncio.gather(
+                asyncio.gather(*enrich_dataset_year_tasks),
+                asyncio.gather(dataset_name_task)
+            )
 
             return {
-                "name": dataset_name,
-                "year": dataset_years
+                "name": dataset_name[0].label.name if len(dataset_name) > 0 else "",
+                "year": dataset_years if len(dataset_years) > 0 else []
             }
 
         except (BadRequestError, NotFoundError):
