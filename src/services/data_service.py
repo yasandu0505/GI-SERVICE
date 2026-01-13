@@ -160,11 +160,14 @@ class DataService:
             if not dataset_relation:
                 raise BadRequestError("Dataset relation is required")
             
-            dataset_start_time = dataset_relation.startTime.split("-")[0]
+            if dataset_relation.startTime:
+                dataset_start_year = dataset_relation.startTime.split("-")[0]
+            else:
+                dataset_start_year = "Unknown"
 
             return {
                 "datasetId": dataset_relation.relatedEntityId,
-                "year": dataset_start_time
+                "year": dataset_start_year
             }
             
         except (BadRequestError):
@@ -195,7 +198,7 @@ class DataService:
             )
 
             return {
-                "name": dataset_name[0].label.name if len(dataset_name) > 0 else "",
+                "name": dataset_name[0].label.name if len(dataset_name) > 0 else "Unknown",
                 "year": dataset_years if len(dataset_years) > 0 else []
             }
 
