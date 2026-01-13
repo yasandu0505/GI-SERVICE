@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  gi-service:
+    build: .
+    container_name: gi-service
+    ports:
+      - "8000:8000" # host:container
+    env_file:
+      - .env # load environment variables
+    volumes:
+      - .:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+  tests:
+    build: .
+    container_name: gi-tests
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      - gi-service
+    command: pytest --maxfail=1 --disable-warnings -q

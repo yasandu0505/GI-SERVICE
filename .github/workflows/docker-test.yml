@@ -1,0 +1,85 @@
+name: Docker Pipeline
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    test-docker-operations:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+            
+            - name: Build docker image
+              run: | 
+                docker build -t gi-service .
+                docker images | grep gi-service || (echo "Image build failed" && exit 1)
+            
+            - name: Run docker container
+              run: |
+                # run the container
+                docker run -d --name gi-service \
+                  -e BASE_URL_QUERY="http://localhost:8081" \
+                  -e BASE_URL_CRUD="http://localhost:8082" \
+                  gi-service
+
+                # wait for 3 seconds
+                sleep 3
+
+                if [ "$(docker inspect -f '{{.State.Running}}' gi-service)" == "true" ]; then
+                  echo "Success: Container is running."
+                else
+                  echo "Error: Container crashed. Showing logs below:"
+                  docker logs gi-service
+                  exit 1
+                fi
+
+            - name: Verify container health
+              run: |
+                sleep 5
+                docker ps | grep gi-service | grep -q "Up" || (echo "Container is not healthy" && exit 1)
+                echo "Container is running successfully"
+
+            - name: Stop docker container
+              run: |
+                docker stop gi-service
+
+                # check the status
+                if [ "$(docker inspect -f '{{.State.Status}}' gi-service)" == "exited" ]; then
+                  echo "Success: Container stopped."
+                else
+                  echo "Error: Container stop failed. Showing logs below:"
+                  docker logs gi-service
+                  exit 1
+                fi
+
+            - name: Remove docker container
+              run: |
+                docker rm -f gi-service || true 
+
+                # Check if the container ID still exists
+                if [ -z "$(docker ps -aq -f name=^gi-service$)" ]; then
+                  echo "Container removed successfully"
+                else
+                  echo "Container removal failed"
+                  exit 1
+                fi
+
+            - name: Remove docker image
+              run: |
+                docker rmi -f gi-service || true 
+
+                # Check if the image still exists 
+                if [ -z "$(docker images -q --filter "reference=gi-service")" ]; then
+                  echo "Image removed successfully"
+                else
+                  echo "Image removal failed"
+                  docker images
+                  exit 1
+                fi
+

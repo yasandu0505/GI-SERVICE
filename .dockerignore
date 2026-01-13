@@ -1,0 +1,34 @@
+# Python bytecode files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment (if you have one locally)
+.venv/
+env/
+venv/
+
+# Git
+.git/
+.gitignore
+
+# IDE/editor settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment files (optional: you might pass them at runtime instead)
+.env
+.env.*   # e.g., .env.dev, .env.local
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.bak
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Body, Path
 from src.dependencies import get_config
-from src.models.organisation_v1_schemas import Date
+from src.models.organisation_schemas import Date
 from src.services import OpenGINService, OrganisationService
 
 router = APIRouter(prefix="/v1/organisation", tags=["Organisation"])
@@ -25,4 +25,12 @@ async def departments_by_portfolio(
     service: OrganisationService = Depends(get_organisation_service)
 ):  
     service_response = await service.departments_by_portfolio(portfolio_id=portfolio_id, selected_date=body.date)
+    return service_response
+
+@router.post('/prime-minister')
+async def prime_minister(
+    body: Date = Body(...),
+    service: OrganisationService = Depends(get_organisation_service)
+):
+    service_response = await service.fetch_prime_minister(selected_date=body.date)
     return service_response
