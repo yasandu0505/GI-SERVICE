@@ -1,3 +1,4 @@
+from src.exception.exceptions import NotFoundError
 from src.exception.exceptions import InternalServerError
 from src.exception.exceptions import BadRequestError
 from src.models.organisation_schemas import Label
@@ -154,4 +155,50 @@ class DataService:
             logger.error(f"failed to fetch data catalog {e}")
             raise InternalServerError("An unexpected error occurred") from e
 
+    async def enrich_dataset_years(self, dataset_relation: Relation):
+        try:
+            if not dataset_relation:
+                raise BadRequestError("Dataset relation is required")
+            
+            dataset_start_time = dataset_relation.startTime.split("-")[0]
+
+            return {
+                "datasetId": dataset_relation.relatedEntityId,
+                "year": dataset_start_time
+            }
+            
+        except (BadRequestError):
+            raise
+        except Exception as e:
+            logger.error(f"failed to enrich dataset years {e}")
+            raise InternalServerError("An unexpected error occurred") from e
+    
+    async def fetch_dataset_available_years(self, category_id: str):
+        try:
+            if not category_id:
+                raise BadRequestError("Category ID is required")
+
+            relation = Relation(name="IS_ATTRIBUTE", direction="OUTGOING")
+
+            dataset_relations = await self.opengin_service.fetch_relation(entityId=category_id, relation=relation)
+    
+            if not dataset_relations:
+                raise NotFoundError("No datasets found")
+
+            # get the dataset name
+            dataset_name_task = 
+            
+            enrich_dataset_year_tasks = [self.enrich_dataset_years(dataset_relation=relation) for relation in dataset_relations]
+            dataset_years = await asyncio.gather(*enrich_dataset_year_tasks)
+
+            return {
+                "name": dataset_name,
+                "year": dataset_years
+            }
+
+        except (BadRequestError, NotFoundError):
+            raise
+        except Exception as e:
+            logger.error(f"failed to fetch dataset available years {e}")
+            raise InternalServerError("An unexpected error occurred") from e
             
