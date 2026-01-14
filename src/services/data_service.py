@@ -49,7 +49,7 @@ class DataService:
 
             if dataset_relation:
                 dataset_id = dataset_relation.relatedEntityId
-                datasets = await self.opengin_service.get_entity(entity=Entity(id=dataset_id))
+                datasets = await self.opengin_service.get_entities(entity=Entity(id=dataset_id))
                 dataset = datasets[0]
 
             decoded_name = Util.decode_protobuf_attribute_name(dataset.name)
@@ -58,10 +58,10 @@ class DataService:
             if metadata:
                 actual_name = Util.decode_protobuf_attribute_name(metadata.get(decoded_name))
             else:
-                actual_name = "Dataset Name is not provided"
+                actual_name = "Dataset name cannot be found"
 
-            updated_dataset = Dataset(id=dataset.id, label=Label(id=decoded_name,name=actual_name), kind=dataset.kind, parentId=category_id)
-            return updated_dataset
+            enriched_dataset = Dataset(id=dataset.id, label=Label(id=decoded_name,name=actual_name), kind=dataset.kind, parentId=category_id)
+            return enriched_dataset
 
         except (BadRequestError):
             raise
@@ -88,12 +88,12 @@ class DataService:
             
             if category_relation:
                 category_id = category_relation.relatedEntityId
-                categories = await self.opengin_service.get_entity(entity=Entity(id=category_id))
+                categories = await self.opengin_service.get_entities(entity=Entity(id=category_id))
                 category = categories[0]
 
             decoded_name = Util.decode_protobuf_attribute_name(category.name)
-            updated_category = Category(id=category.id, name=decoded_name, kind=category.kind)
-            return updated_category
+            enriched_category = Category(id=category.id, name=decoded_name, kind=category.kind)
+            return enriched_category
         
         except (BadRequestError):
             raise
@@ -102,21 +102,21 @@ class DataService:
             raise InternalServerError("An unexpected error occurred") from e
 
 
-    async def fetch_data_catalog(self, parent_id: str = None):
+    async def fetch_data_catalog(self, entity_id: str = None):
         """
-        Fetches the data catalog for a given parent ID. If no parent ID is provided, it fetches the parent categories. Otherwise it fetches the child categories and datasets for the given parent ID.
+        Fetches the data catalog for a given entity ID. If no entity ID is provided, it fetches the parent categories. Otherwise it fetches the child categories and datasets for the given entity ID.
         
         Args:
-            parent_id (str, optional): The ID of the parent entity. Defaults to None.
+            entity_id (str, optional): The ID of the entity. Defaults to None.
         
         Returns:
             dict: A dictionary containing the list of categories and datasets.
         """
         
         try:
-            if not parent_id:
+            if not entity_id:
                 entity = Entity(kind=Kind(major="Category", minor="parentCategory"))
-                parentCategories = await self.opengin_service.get_entity(entity=entity)
+                parentCategories = await self.opengin_service.get_entities(entity=entity)
 
                 enrich_category_task = [self.enrich_category(category) for category in parentCategories]
                 parent_categories = await asyncio.gather(*enrich_category_task)
@@ -132,11 +132,11 @@ class DataService:
                     Relation(name="IS_ATTRIBUTE", direction="OUTGOING")
                 ]
                 
-                fetch_relation_tasks = [self.opengin_service.fetch_relation(entityId=parent_id, relation=relation) for relation in relations]
+                fetch_relation_tasks = [self.opengin_service.fetch_relation(entityId=entity_id, relation=relation) for relation in relations]
                 category_relations, dataset_relations = await asyncio.gather(*fetch_relation_tasks)
 
                 category_enrich_tasks = [self.enrich_category(category_relation=relation) for relation in category_relations]
-                dataset_enrich_tasks = [self.enrich_dataset(dataset_relation=relation, category_id=parent_id) for relation in dataset_relations]
+                dataset_enrich_tasks = [self.enrich_dataset(dataset_relation=relation, category_id=entity_id) for relation in dataset_relations]
                 
                 category_results, dataset_results = await asyncio.gather(
                     asyncio.gather(*category_enrich_tasks),

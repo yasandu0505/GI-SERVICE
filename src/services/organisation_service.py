@@ -35,7 +35,7 @@ class OrganisationService:
             # handle cases where president is assigned as default
             if is_president and person_relation == None:
                 entity = Entity(id=president_id)
-                person_node_data = await self.opengin_service.get_entity(
+                person_node_data = await self.opengin_service.get_entities(
                     entity=entity
                 )
 
@@ -43,7 +43,7 @@ class OrganisationService:
                 is_new = False
             else:
                 entity = Entity(id=person_relation.relatedEntityId)
-                person_node_data = await self.opengin_service.get_entity(
+                person_node_data = await self.opengin_service.get_entities(
                     entity=entity
                 )
                 
@@ -52,11 +52,12 @@ class OrganisationService:
                 is_new = person_start_date == Util.normalize_timestamp(selected_date)
 
             # check if the person is president or not
-            if person_node_data[0].id == president_id:
+            first_person = person_node_data[0]
+            if first_person.id == president_id:
                 is_president = True
 
             # decode name from protobuf
-            name = Util.decode_protobuf_attribute_name(person_node_data[0].name)
+            name = Util.decode_protobuf_attribute_name(first_person.name)
 
             return {
                 "id": id,
@@ -80,7 +81,7 @@ class OrganisationService:
 
             # task for get node details
             entity = Entity(id=portfolio_relation.relatedEntityId)
-            portfolio_task = self.opengin_service.get_entity(
+            portfolio_task = self.opengin_service.get_entities(
                 entity=entity,
             )
 
@@ -261,16 +262,16 @@ class OrganisationService:
         department_id = department_relation.relatedEntityId
 
         entity = Entity(id=department_id)
-        department_data_task = self.opengin_service.get_entity(entity=entity)
+        department_data_task = self.opengin_service.get_entities(entity=entity)
         dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relation=Relation(name="AS_CATEGORY", direction="OUTGOING"))
 
         # run parallel calls to get department data and parent category relations to ensure the department has data
         department_data, dataset_relations = await asyncio.gather(department_data_task, dataset_task, return_exceptions=True)
 
-        department_data = department_data[0]
+        department_first_datum = department_data[0]
 
         # decode name
-        name = Util.decode_protobuf_attribute_name(department_data.name)
+        name = Util.decode_protobuf_attribute_name(department_first_datum.name)
             
         # check the department is new or not
         department_start_date = department_relation.startTime

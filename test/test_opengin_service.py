@@ -12,7 +12,7 @@ async def test_get_entity_success(mock_service, mock_session):
     
     mock_session.post.return_value = mock_response
 
-    result = await mock_service.get_entity(entity)
+    result = await mock_service.get_entities(entity)
 
     assert result == [Entity(id="entity_123", name="Test Entity")]
     mock_session.post.assert_called_once()
@@ -25,7 +25,7 @@ async def test_get_entity_empty_entity_id(mock_service, mock_session):
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await mock_service.get_entity(entity)
+        await mock_service.get_entities(entity)
 
 @pytest.mark.asyncio 
 async def test_get_entity_none_empty_id(mock_service, mock_session):
@@ -35,7 +35,7 @@ async def test_get_entity_none_empty_id(mock_service, mock_session):
     mock_session.post.return_value = mock_response
 
     with pytest.raises(BadRequestError):
-        await mock_service.get_entity(entity)
+        await mock_service.get_entities(entity)
     
 @pytest.mark.asyncio 
 async def test_get_entity_by_none_response(mock_service, mock_session):
@@ -45,7 +45,7 @@ async def test_get_entity_by_none_response(mock_service, mock_session):
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await mock_service.get_entity(entity)
+        await mock_service.get_entities(entity)
 
 @pytest.mark.asyncio 
 async def test_get_entity_by_id_empty_response(mock_service, mock_session):
@@ -55,7 +55,7 @@ async def test_get_entity_by_id_empty_response(mock_service, mock_session):
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await mock_service.get_entity(entity)
+        await mock_service.get_entities(entity)
 
 @pytest.mark.asyncio 
 async def test_get_entity_by_name_empty_response(mock_service, mock_session):
@@ -65,7 +65,7 @@ async def test_get_entity_by_name_empty_response(mock_service, mock_session):
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await mock_service.get_entity(entity)
+        await mock_service.get_entities(entity)
 
 @pytest.mark.asyncio 
 async def test_get_entity_by_kind_empty_response(mock_service, mock_session):
@@ -76,7 +76,7 @@ async def test_get_entity_by_kind_empty_response(mock_service, mock_session):
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await mock_service.get_entity(entity)
+        await mock_service.get_entities(entity)
 
 @pytest.mark.asyncio 
 async def test_get_entity_by_created_empty_response(mock_service, mock_session):
@@ -86,7 +86,7 @@ async def test_get_entity_by_created_empty_response(mock_service, mock_session):
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await mock_service.get_entity(entity)
+        await mock_service.get_entities(entity)
 
 @pytest.mark.asyncio 
 async def test_get_entity_by_terminated_empty_response(mock_service, mock_session):
@@ -96,7 +96,7 @@ async def test_get_entity_by_terminated_empty_response(mock_service, mock_sessio
     mock_session.post.return_value = mock_response
 
     with pytest.raises(NotFoundError):
-        await mock_service.get_entity(entity)
+        await mock_service.get_entities(entity)
 
 @pytest.mark.asyncio 
 async def test_fetch_relation_success(mock_service, mock_session):

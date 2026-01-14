@@ -20,7 +20,7 @@ class OpenGINService:
     def session(self) -> ClientSession:
         return http_client.session
         
-    async def get_entity(self,entity: Entity):
+    async def get_entities(self,entity: Entity):
 
         if not entity:
             raise BadRequestError("Entity is required")
@@ -42,7 +42,7 @@ class OpenGINService:
                 if not response_list:
                     raise NotFoundError(f"Read API Error: Entity not found for id {entity.id}")
 
-                result = [Entity.model_validate(item) for item in response_list]
+                result = [Entity.model_validate(response) for response in response_list]
                 return result    
                 
         except NotFoundError:
@@ -81,16 +81,15 @@ class OpenGINService:
             logger.error(f'Read API Error: {str(e)}')
             raise InternalServerError("An unexpected error occurred") from e
 
-    async def get_metadata(self, category_id):
+    async def get_metadata(self, entity_id: str):
         
-        url = f"{settings.BASE_URL_QUERY}/v1/entities/{category_id}/metadata"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entity_id}/metadata"
         headers = {"Content-Type": "application/json"}
                 
         try:
             async with self.session.get(url, headers=headers) as response:
                 response.raise_for_status()
-                data = await response.json()
-                return data
+                return await response.json()
         except Exception as e:
-            logger.error(f"failed to get metadata for {category_id} : {e}")
+            logger.error(f'Read API Error: {str(e)}')
             raise InternalServerError("An unexpected error occurred") from e 

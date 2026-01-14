@@ -12,11 +12,11 @@ def get_data_service(config: dict = Depends(get_config)):
     opengin_service = OpenGINService(config=config)
     return DataService(config, opengin_service)
 
-@router.get('/data-catalog', summary="Get all parent/child categories and datasets.", description="Returns parent/child categories based on the given id. If id is not given it returns the top level parent categories. if id is given, it returns the categories in the below level for the given parent. if any category has a dataset, it returns the dataset as well.")
+@router.get('/data-catalog', summary="Get all parent/child categories and datasets.", description="Returns parent/child categories and datasets based on the given entity id. If entity id is not given it returns the top level parent categories. if entity id is given, it returns the categories and the datasets in the below level for the given parent.")
 async def get_data_catalog(
-    parent_id: str = Query(None, description="Parent category ID"),
+    entity_id: str = Query(None, description="Entity ID"),
     service: DataService = Depends(get_data_service)
 ):
-    service_response = await service.fetch_data_catalog(parent_id)
+    service_response = await service.fetch_data_catalog(entity_id)
     return service_response
     
