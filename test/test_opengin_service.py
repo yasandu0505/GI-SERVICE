@@ -133,8 +133,3 @@ async def test_fetch_relation_none_entity_id(mock_service, mock_session):
 
     with pytest.raises(BadRequestError):
         await mock_service.fetch_relation(entity_id,relation=Relation(id="relation_123"))
-
-
-
-
-
