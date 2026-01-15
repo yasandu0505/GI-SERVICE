@@ -1,3 +1,6 @@
+from asyncio import timeout
+from google.api_core.exceptions import GoogleAPICallError
+from google.api_core.retry import if_transient_error
 from src.models.organisation_schemas import Entity, Relation
 from src.exception.exceptions import BadRequestError
 from src.exception.exceptions import InternalServerError
@@ -11,20 +14,23 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def should_retry(exception):
+def custom_retry_predicate(exception: Exception) -> bool:
     """
     Determine if the request should be retried based on the exception type.
-    Returns False for NotFoundError and BadRequestError to skip retries.
+    Returns False for BadRequestError to skip retries.
     """
-    if isinstance(exception, (NotFoundError, BadRequestError)):
+    if isinstance(exception, (BadRequestError, NotFoundError)):
         return False
-    return True
+    
+    if isinstance(exception, (InternalServerError)):
+        return True
 
 api_retry_decorator = retry_async.AsyncRetry(
-    predicate=should_retry,  # custom predicate to skip NotFoundError and BadRequestError
-    initial=1.0,  # initial delay in seconds
-    maximum=5.0, # maximum delay in seconds
-    multiplier=2.0, # delay multiplier
+    predicate=custom_retry_predicate,
+    initial=1.0,
+    maximum=6.0,
+    multiplier=2.0,
+    timeout=10.0 # retry for 10 seconds
 )
 
 class OpenGINService:
