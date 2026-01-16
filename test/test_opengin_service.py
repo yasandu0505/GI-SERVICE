@@ -1,10 +1,12 @@
 
+from src.exception.exceptions import InternalServerError
 from src.models.organisation_schemas import Kind
 from src.exception.exceptions import NotFoundError, BadRequestError
 import pytest
 from src.models.organisation_schemas import Entity, Relation
 from test.conftest import MockResponse
 
+# Test get entity
 @pytest.mark.asyncio
 async def test_get_entity_success(mock_service, mock_session):
     entity = Entity(id="entity_123")
@@ -98,6 +100,7 @@ async def test_get_entity_by_terminated_empty_response(mock_service, mock_sessio
     with pytest.raises(NotFoundError):
         await mock_service.get_entity(entity)
 
+# Test fetch relation
 @pytest.mark.asyncio 
 async def test_fetch_relation_success(mock_service, mock_session):
     entity_id = "entity_123"
