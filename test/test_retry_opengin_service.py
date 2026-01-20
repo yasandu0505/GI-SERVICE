@@ -140,3 +140,67 @@ async def test_fetch_relation_succeeds_after_retries(mock_service, mock_session)
             
             assert mock_session.post.call_count == 3
             assert mock_sleep.call_count == 2
+
+# test retrying for get metadata
+@pytest.mark.asyncio
+async def test_get_metadata_retries_stops_on_timeout(mock_service, mock_session):
+    """Test that the method retries on InternalServerError and stops after timeout"""
+    category_id = "category_123"
+
+    mock_session.get.side_effect = InternalServerError("Connection timeout")
+
+    with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        time = 0
+        def fake_monotonic():
+            nonlocal time
+            time += 1
+            return time
+        with patch("time.monotonic", fake_monotonic):
+            with pytest.raises(RetryError) as exc_info:
+                await mock_service.get_metadata(category_id)
+
+    assert exc_info.value.args[0] == "Timeout of 10.0s exceeded"
+
+    assert mock_session.get.call_count >= 1
+    assert mock_sleep.call_count >= 1
+
+@pytest.mark.asyncio
+async def test_get_metadata_no_retry_on_bad_request(mock_service, mock_session):
+    """Test that BadRequestError does NOT trigger retries"""
+    category_id = "category_123"
+    
+    mock_session.get.side_effect = BadRequestError("Bad request error")
+    
+    with patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
+        with patch('time.monotonic', return_value=0):
+            with pytest.raises(BadRequestError):
+                await mock_service.get_metadata(category_id)
+            
+            assert mock_session.get.call_count == 1
+            assert mock_sleep.call_count == 0
+
+@pytest.mark.asyncio
+async def test_get_metadata_succeeds_after_retries(mock_service, mock_session):
+    """Test that the method eventually succeeds after retries"""
+    category_id = "category_123"
+    
+    success_response = MockResponse({"key1": "value1", "key2": "value2"})
+    
+    mock_session.get.return_value = success_response
+
+    mock_session.get.side_effect = [
+        InternalServerError("Network error"),
+        InternalServerError("Network error"),
+        success_response
+    ]
+    
+    with patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
+        with patch('time.monotonic', return_value=0):
+            result = await mock_service.get_metadata(category_id)
+            
+            assert result["key1"] == "value1"
+            assert result["key2"] == "value2"   
+            
+            assert mock_session.get.call_count == 3
+            assert mock_sleep.call_count == 2
+

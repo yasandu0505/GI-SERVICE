@@ -107,8 +107,8 @@ class OrganisationService:
                     selected_date=selected_date
                 )
                 results_president_enrich = await asyncio.gather(portfolio_task, president_enrich_task, return_exceptions=True)
-
-                portfolio_data = results_president_enrich[0]
+                
+                portfolio_data = results_president_enrich[0][0]
                 person_data_list = [results_president_enrich[1]]
 
             if isinstance(portfolio_data, Entity):

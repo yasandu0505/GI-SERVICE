@@ -112,15 +112,31 @@ class OpenGINService:
             logger.error(f'Read API Error: {str(e)}')
             raise InternalServerError("An unexpected error occurred") from e
 
+    @api_retry_decorator
     async def get_metadata(self, entityId: str):
+
+        if not entityId:
+            raise BadRequestError("Entity ID is required")
+        
+        stripped_entity_id = str(entityId).strip()
+        if not stripped_entity_id:
+            raise BadRequestError("Entity ID can not be empty")
         
         url = f"{settings.BASE_URL_QUERY}/v1/entities/{entityId}/metadata"
         headers = {"Content-Type": "application/json"}
                 
         try:
             async with self.session.get(url, headers=headers) as response:
+                if response.status == 404:
+                    raise NotFoundError(f"Read API Error: Metadata not found for id {entityId}")
+                if response.status == 400:
+                    raise BadRequestError(f"Read API Error: Bad request for id {entityId}")
                 response.raise_for_status()
                 return await response.json()
+        except NotFoundError:
+            raise    
+        except BadRequestError:
+            raise   
         except Exception as e:
             logger.error(f'Read API Error: {str(e)}')
             raise InternalServerError("An unexpected error occurred") from e 
