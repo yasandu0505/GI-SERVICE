@@ -35,7 +35,7 @@ class OrganisationService:
             # handle cases where president is assigned as default
             if is_president and person_relation == None:
                 entity = Entity(id=president_id)
-                person_node_data = await self.opengin_service.get_entities(
+                person_node_data = await self.opengin_service.get_entity(
                     entity=entity
                 )
 
@@ -43,7 +43,7 @@ class OrganisationService:
                 is_new = False
             else:
                 entity = Entity(id=person_relation.relatedEntityId)
-                person_node_data = await self.opengin_service.get_entities(
+                person_node_data = await self.opengin_service.get_entity(
                     entity=entity
                 )
                 
@@ -81,7 +81,7 @@ class OrganisationService:
 
             # task for get node details
             entity = Entity(id=portfolio_relation.relatedEntityId)
-            portfolio_task = self.opengin_service.get_entities(
+            portfolio_task = self.opengin_service.get_entity(
                 entity=entity,
             )
 
@@ -262,7 +262,7 @@ class OrganisationService:
         department_id = department_relation.relatedEntityId
 
         entity = Entity(id=department_id)
-        department_data_task = self.opengin_service.get_entities(entity=entity)
+        department_data_task = self.opengin_service.get_entity(entity=entity)
         dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relation=Relation(name="AS_CATEGORY", direction="OUTGOING"))
 
         # run parallel calls to get department data and parent category relations to ensure the department has data

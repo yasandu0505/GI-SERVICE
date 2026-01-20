@@ -49,7 +49,7 @@ class DataService:
 
             if dataset_relation:
                 dataset_id = dataset_relation.relatedEntityId
-                datasets = await self.opengin_service.get_entities(entity=Entity(id=dataset_id))
+                datasets = await self.opengin_service.get_entity(entity=Entity(id=dataset_id))
                 dataset = datasets[0]
 
             decoded_name = Util.decode_protobuf_attribute_name(dataset.name)
@@ -91,7 +91,7 @@ class DataService:
             
             if category_relation:
                 category_id = category_relation.relatedEntityId
-                categories = await self.opengin_service.get_entities(entity=Entity(id=category_id))
+                categories = await self.opengin_service.get_entity(entity=Entity(id=category_id))
                 category = categories[0]
 
             decoded_name = Util.decode_protobuf_attribute_name(category.name)
@@ -149,7 +149,7 @@ class DataService:
         try:
             if not category_ids:
                 entity = Entity(kind=Kind(major="Category", minor="parentCategory"))
-                parentCategories = await self.opengin_service.get_entities(entity=entity)
+                parentCategories = await self.opengin_service.get_entity(entity=entity)
 
                 enrich_category_task = [self.enrich_category(categories_dictionary=categories_dictionary, category=category) for category in parentCategories]
                 await asyncio.gather(*enrich_category_task)
