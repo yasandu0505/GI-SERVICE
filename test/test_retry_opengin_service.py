@@ -203,4 +203,5 @@ async def test_get_metadata_succeeds_after_retries(mock_service, mock_session):
             
             assert mock_session.get.call_count == 3
             assert mock_sleep.call_count == 2
+            
 
