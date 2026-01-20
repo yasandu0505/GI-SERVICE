@@ -1,4 +1,6 @@
 
+
+from src.exception.exceptions import InternalServerError
 from src.models.organisation_schemas import Kind
 from src.exception.exceptions import NotFoundError, BadRequestError
 import pytest
@@ -169,8 +171,7 @@ async def test_get_metadata_empty_response(mock_service, mock_session):
 @pytest.mark.asyncio
 async def test_get_metadata_http_error(mock_service, mock_session):
     """Test get_metadata handles HTTP errors"""
-    from src.exception.exceptions import InternalServerError
-    category_id = "category_error"
+    category_id = "category_123"
     
     mock_response = MockResponse({}, status=500)
     mock_session.get.return_value = mock_response
@@ -183,8 +184,7 @@ async def test_get_metadata_http_error(mock_service, mock_session):
 @pytest.mark.asyncio
 async def test_get_metadata_not_found(mock_service, mock_session):
     """Test get_metadata handles 404 errors"""
-    from src.exception.exceptions import InternalServerError
-    category_id = "nonexistent_category"
+    category_id = "category_123"
     
     mock_response = MockResponse({}, status=404)
     mock_session.get.return_value = mock_response
@@ -197,10 +197,8 @@ async def test_get_metadata_not_found(mock_service, mock_session):
 @pytest.mark.asyncio
 async def test_get_metadata_with_exception(mock_service, mock_session):
     """Test get_metadata handles general exceptions"""
-    from src.exception.exceptions import InternalServerError
-    category_id = "category_exception"
+    category_id = "category_123"
     
-    # Simulate an exception during the request
     mock_session.get.side_effect = Exception("Network timeout")
     
     with pytest.raises(InternalServerError) as exc_info:

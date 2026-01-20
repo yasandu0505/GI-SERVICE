@@ -81,9 +81,9 @@ class OpenGINService:
             logger.error(f'Read API Error: {str(e)}')
             raise InternalServerError("An unexpected error occurred") from e
 
-    async def get_metadata(self, entity_id: str):
+    async def get_metadata(self, entityId: str):
         
-        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entity_id}/metadata"
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{entityId}/metadata"
         headers = {"Content-Type": "application/json"}
                 
         try:

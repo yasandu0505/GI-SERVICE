@@ -28,7 +28,7 @@ class DataService:
         """Access the global session"""
         return http_client.session
 
-    async def enrich_dataset(self,  category_id: str, dataset: Entity = None, dataset_relation: Relation = None):
+    async def enrich_dataset(self, dataset_dictionary: dict[str, list[str]], category_id: str, metadata_cache: dict, dataset: Entity = None, dataset_relation: Relation = None):
         """
         Enriches the dataset with the decoded name.
         
@@ -53,15 +53,17 @@ class DataService:
                 dataset = datasets[0]
 
             decoded_name = Util.decode_protobuf_attribute_name(dataset.name)
-            metadata = await self.opengin_service.get_metadata(category_id)
 
-            if metadata:
-                actual_name = Util.decode_protobuf_attribute_name(metadata.get(decoded_name))
+            # If the metadata cache is empty, fetch the metadata
+            if metadata_cache:
+                actual_name = Util.decode_protobuf_attribute_name(metadata_cache.get(decoded_name))
             else:
-                actual_name = "Dataset name cannot be found"
-
-            enriched_dataset = Dataset(id=dataset.id, label=Label(id=decoded_name,name=actual_name), kind=dataset.kind, parentId=category_id)
-            return enriched_dataset
+                metadata = await self.opengin_service.get_metadata(category_id)
+                actual_name = Util.decode_protobuf_attribute_name(metadata.get(decoded_name)) if metadata else "Unknown"
+            
+            actual_name_title_case = Util.to_title_case(actual_name)
+            # Append the dataset id to the dataset dictionary
+            dataset_dictionary.setdefault(actual_name_title_case, set()).add(dataset.id)
 
         except (BadRequestError):
             raise
@@ -70,16 +72,17 @@ class DataService:
             raise InternalServerError("An unexpected error occurred") from e
 
 
-    async def enrich_category(self, category: Entity = None, category_relation: Relation = None):
-        """
-        Enriches the category with the decoded name.
+    async def enrich_category(self, categories_dictionary: dict[str, list[str]], category: Entity = None, category_relation: Relation = None):
+        """This function takes the categories_dictionary variable and appends the category id to the categories dictionary. 
+        This is done to avoid duplicate category names and improve the performance using instance data access by key
         
         Args:
+            categories_dictionary (dict[str, list[str]]): The dictionary to append the category id to.
             category (Entity, optional): The category to enrich. Defaults to None.
             category_relation (Relation, optional): The category relation to enrich. Defaults to None.
         
         Returns:
-            Category: The enriched category.
+            None
         """
 
         try:
@@ -92,8 +95,9 @@ class DataService:
                 category = categories[0]
 
             decoded_name = Util.decode_protobuf_attribute_name(category.name)
-            enriched_category = Category(id=category.id, name=decoded_name, kind=category.kind)
-            return enriched_category
+            # Append the category id to the category dictionary
+            actual_name_title_case = Util.to_title_case(decoded_name)
+            categories_dictionary.setdefault(actual_name_title_case, set()).add(category.id)
         
         except (BadRequestError):
             raise
@@ -101,51 +105,98 @@ class DataService:
             logger.error(f"failed to enrich category {e}")
             raise InternalServerError("An unexpected error occurred") from e
 
+    # helper: convert dictionary to a list
+    @staticmethod
+    def convert_dict_to_list(dictionary: dict) -> list:
+        """
+        Convert a dictionary to a list of dictionaries.
+        Example: {"category1": ["cat_1","cat_2"]} -> [{"name": "category1", "categoryIds": ["cat_1","cat_2"]}]
 
-    async def fetch_data_catalog(self, entity_id: str = None):
+        Args:
+            dictionary (dict): The dictionary to convert.
+
+        Returns:
+            list: A list of dictionaries.
+        """
+        categories = [
+            {
+                "name": category,
+                "categoryIds": ids
+            }
+            for category, ids in dictionary.items()
+        ]
+
+        return categories 
+
+    async def fetch_data_catalog(self, category_ids: list[str] = None):
         """
         Fetches the data catalog for a given entity ID. If no entity ID is provided, it fetches the parent categories. Otherwise it fetches the child categories and datasets for the given entity ID.
+        This category and dataset dictionary will store the decoded category name as key and list of category ids as value
+        Example: {"category1": ["cat_1", "cat_2"], "category2": ["cat_3", "cat_4"]}
         
         Args:
-            entity_id (str, optional): The ID of the entity. Defaults to None.
+            category_ids (list[str], optional): The list of category IDs. Defaults to None.
         
         Returns:
             dict: A dictionary containing the list of categories and datasets.
+        
+        Note: This function is used to fetch the data catalog per user click. 
         """
+
+        categories_dictionary : Dict[str, list[str]] = {}
+        dataset_dictionary: Dict[str, list[str]] = {}
         
         try:
-            if not entity_id:
+            if not category_ids:
                 entity = Entity(kind=Kind(major="Category", minor="parentCategory"))
                 parentCategories = await self.opengin_service.get_entities(entity=entity)
 
-                enrich_category_task = [self.enrich_category(category) for category in parentCategories]
-                parent_categories = await asyncio.gather(*enrich_category_task)
+                enrich_category_task = [self.enrich_category(categories_dictionary=categories_dictionary, category=category) for category in parentCategories]
+                await asyncio.gather(*enrich_category_task)
+
+                categories = self.convert_dict_to_list(categories_dictionary)
 
                 return {
-                    "categories": parent_categories,
+                    "categories": categories,
                     "datasets": []
                     }
             
             else:
-                relations = [
-                    Relation(name="AS_CATEGORY", direction="OUTGOING"),
-                    Relation(name="IS_ATTRIBUTE", direction="OUTGOING")
-                ]
+                category_relation_instance = Relation(name="AS_CATEGORY", direction="OUTGOING")
+                dataset_relation_instance = Relation(name="IS_ATTRIBUTE", direction="OUTGOING")
                 
-                fetch_relation_tasks = [self.opengin_service.fetch_relation(entityId=entity_id, relation=relation) for relation in relations]
-                category_relations, dataset_relations = await asyncio.gather(*fetch_relation_tasks)
+                fetch_category_relation_tasks = [self.opengin_service.fetch_relation(entityId=category_id, relation=category_relation_instance) for category_id in category_ids]
+                fetch_dataset_relation_tasks = [self.opengin_service.fetch_relation(entityId=category_id, relation=dataset_relation_instance) for category_id in category_ids]
+                category_relations, dataset_relations = await asyncio.gather(
+                    asyncio.gather(*fetch_category_relation_tasks), 
+                    asyncio.gather(*fetch_dataset_relation_tasks),
+                )
 
-                category_enrich_tasks = [self.enrich_category(category_relation=relation) for relation in category_relations]
-                dataset_enrich_tasks = [self.enrich_dataset(dataset_relation=relation, category_id=entity_id) for relation in dataset_relations]
-                
+                if dataset_relations:
+                    # cache the metadata to reduce the latency
+                    fetch_metadata_tasks = [self.opengin_service.get_metadata(entityId=category_id) for category_id in category_ids]
+                    metadata_results = await asyncio.gather(*fetch_metadata_tasks)
+                    metadata_cache = dict(zip(category_ids, metadata_results))
+
+                # tasks for parallel execution
+                category_enrich_tasks = [self.enrich_category(category_relation=relation, categories_dictionary=categories_dictionary) for sublist in category_relations for relation in sublist]
+                dataset_enrich_tasks = [self.enrich_dataset(dataset_relation=relation, category_id=category_id, metadata_cache=metadata_cache.get(category_id, {}), dataset_dictionary=dataset_dictionary)
+                for sublist, category_id in zip(dataset_relations, category_ids)
+                for relation in sublist]
+
+                # parallel execution of tasks
                 category_results, dataset_results = await asyncio.gather(
                     asyncio.gather(*category_enrich_tasks),
                     asyncio.gather(*dataset_enrich_tasks)
                 )
 
+                # Convert the categories_dictionary and dataset_dictionary to the format required
+                categories = self.convert_dict_to_list(categories_dictionary)
+                datasets = self.convert_dict_to_list(dataset_dictionary)
+
                 return {
-                    "categories": category_results if category_results else [],
-                    "datasets": dataset_results if dataset_results else []
+                    "categories": categories,
+                    "datasets": datasets
                 }
                 
         except (BadRequestError):
@@ -154,4 +205,3 @@ class DataService:
             logger.error(f"failed to fetch data catalog {e}")
             raise InternalServerError("An unexpected error occurred") from e
 
-            
