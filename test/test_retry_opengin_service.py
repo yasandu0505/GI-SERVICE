@@ -66,8 +66,8 @@ async def test_get_entity_succeeds_after_retries(mock_service, mock_session):
         with patch('time.monotonic', return_value=0):
             result = await mock_service.get_entity(entity)
             
-            assert result.id == "entity_123"
-            assert result.name == "Test Entity"
+            assert result[0].id == "entity_123"
+            assert result[0].name == "Test Entity"
             
             assert mock_session.post.call_count == 3
             assert mock_sleep.call_count == 2
