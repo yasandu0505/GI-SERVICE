@@ -23,7 +23,7 @@ async def test_get_entity_retries_stops_on_timeout(mock_service, mock_session):
             return time
         with patch("time.monotonic", fake_monotonic):
             with pytest.raises(RetryError) as exc_info:
-                await mock_service.get_entity(entity)
+                await mock_service.get_entities(entity)
 
     assert exc_info.value.args[0] == "Timeout of 10.0s exceeded"
 
@@ -40,7 +40,7 @@ async def test_get_entity_no_retry_on_bad_request(mock_service, mock_session):
     with patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
         with patch('time.monotonic', return_value=0):
             with pytest.raises(BadRequestError):
-                await mock_service.get_entity(entity)
+                await mock_service.get_entities(entity)
             
             assert mock_session.post.call_count == 1
             assert mock_sleep.call_count == 0
@@ -64,7 +64,7 @@ async def test_get_entity_succeeds_after_retries(mock_service, mock_session):
     
     with patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
         with patch('time.monotonic', return_value=0):
-            result = await mock_service.get_entity(entity)
+            result = await mock_service.get_entities(entity)
             
             assert result[0].id == "entity_123"
             assert result[0].name == "Test Entity"

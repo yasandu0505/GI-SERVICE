@@ -45,7 +45,7 @@ class OpenGINService:
         return http_client.session
     
     @api_retry_decorator
-    async def get_entity(self,entity: Entity):
+    async def get_entities(self,entity: Entity):
 
         if not entity:
             raise BadRequestError("Entity is required")

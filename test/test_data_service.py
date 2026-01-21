@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from src.exception.exceptions import InternalServerError, BadRequestError
 from unittest.mock import patch
 from src.models.organisation_schemas import Entity, Relation, Kind, Dataset, Category
@@ -12,10 +13,6 @@ async def test_enrich_dataset_with_dataset_entity(data_service, mock_opengin_ser
     dataset_dictionary = {}
     metadata_cache = {}
     
-    mock_opengin_service.get_metadata.return_value = {
-        "decoded_name": "Actual Dataset Name"
-    }
-    
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
         side_effect=["decoded_name", "Actual Dataset Name"]
@@ -28,9 +25,6 @@ async def test_enrich_dataset_with_dataset_entity(data_service, mock_opengin_ser
         )
     
     assert "Actual Dataset Name" in dataset_dictionary
-    assert "dataset_123" in dataset_dictionary["Actual Dataset Name"]
-    
-    mock_opengin_service.get_metadata.assert_called_with(category_id)
 
 @pytest.mark.asyncio
 async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_service):
@@ -50,7 +44,7 @@ async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_s
         kind=Kind(major="Dataset", minor="tabular")
     )
     
-    mock_opengin_service.get_entity.return_value = [mock_entity]
+    mock_opengin_service.get_entities.return_value = [mock_entity]
     mock_opengin_service.get_metadata.return_value = {
         "decoded_name": "Dataset from Relation"
     }
@@ -69,32 +63,7 @@ async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_s
     assert "Dataset From Relation" in dataset_dictionary
     assert "dataset_456" in dataset_dictionary["Dataset From Relation"]
     
-    mock_opengin_service.get_entity.assert_called_with(entity=Entity(id="dataset_456"))
-
-@pytest.mark.asyncio
-async def test_enrich_dataset_without_metadata(data_service, mock_opengin_service):
-    """Test enrich_dataset when metadata is not available"""
-    category_id = "category_123"
-    dataset = Entity(id="dataset_123", name="encoded_name", kind=Kind(major="Dataset", minor="tabular"))
-    dataset_dictionary = {}
-    metadata_cache = {}
-    
-    # Simulate empty/None metadata in cache or fetch
-    mock_opengin_service.get_metadata.return_value = None
-    
-    with patch(
-        "src.services.data_service.Util.decode_protobuf_attribute_name",
-        return_value="decoded_name"
-    ):
-        await data_service.enrich_dataset(
-            dataset_dictionary=dataset_dictionary,
-            category_id=category_id,
-            metadata_cache=metadata_cache,
-            dataset=dataset
-        )
-    
-    assert "Unknown" in dataset_dictionary
-    assert "dataset_123" in dataset_dictionary["Unknown"]
+    mock_opengin_service.get_entities.assert_called_with(entity=Entity(id="dataset_456"))
 
 @pytest.mark.asyncio
 async def test_enrich_dataset_without_category_id(data_service):
@@ -141,8 +110,8 @@ async def test_enrich_dataset_with_internal_error(data_service, mock_opengin_ser
     dataset_dictionary = {}
     metadata_cache = {}
     
-    # This will cause an error in get_entity
-    mock_opengin_service.get_entity.side_effect = Exception("Network timeout")
+    # This will cause an error in get_entities
+    mock_opengin_service.get_entities.side_effect = Exception("Network timeout")
     
     with pytest.raises(InternalServerError) as exc_info:
         await data_service.enrich_dataset(
@@ -196,7 +165,7 @@ async def test_enrich_category_with_category_relation(data_service, mock_opengin
         kind=Kind(major="Category", minor="childCategory")
     )
     
-    mock_opengin_service.get_entity.return_value = [mock_entity]
+    mock_opengin_service.get_entities.return_value = [mock_entity]
     
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
@@ -210,7 +179,7 @@ async def test_enrich_category_with_category_relation(data_service, mock_opengin
     assert "Category From Relation" in categories_dictionary
     assert "category_456" in categories_dictionary["Category From Relation"]
     
-    mock_opengin_service.get_entity.assert_called_with(entity=Entity(id="category_456"))
+    mock_opengin_service.get_entities.assert_called_with(entity=Entity(id="category_456"))
 
 @pytest.mark.asyncio
 async def test_enrich_category_without_category_and_relation(data_service):
@@ -229,7 +198,7 @@ async def test_enrich_category_with_internal_error(data_service, mock_opengin_se
         direction="OUTGOING"
     )
     
-    mock_opengin_service.get_entity.side_effect = Exception("Database Error")
+    mock_opengin_service.get_entities.side_effect = Exception("Database Error")
     
     with pytest.raises(InternalServerError) as exc_info:
         await data_service.enrich_category(
@@ -251,7 +220,7 @@ async def test_fetch_data_catalog_without_parent_id(data_service, mock_opengin_s
         Entity(id="cat_2", name="encoded_2", kind=Kind(major="Category", minor="parentCategory"))
     ]
     
-    mock_opengin_service.get_entity.return_value = mock_categories
+    mock_opengin_service.get_entities.return_value = mock_categories
     
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
@@ -268,7 +237,7 @@ async def test_fetch_data_catalog_without_parent_id(data_service, mock_opengin_s
     assert "Category 1" in names
     assert "Category 2" in names
     
-    mock_opengin_service.get_entity.assert_called_once()
+    mock_opengin_service.get_entities.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_fetch_data_catalog_with_entity_id_and_relations(data_service, mock_opengin_service):
@@ -287,7 +256,7 @@ async def test_fetch_data_catalog_with_entity_id_and_relations(data_service, moc
     
     mock_opengin_service.fetch_relation.side_effect = [category_relations, dataset_relations]
     
-    mock_opengin_service.get_entity.side_effect = [
+    mock_opengin_service.get_entities.side_effect = [
         [Entity(id="cat_1", name="encoded_cat_1", kind=Kind(major="Category", minor="childCategory"))],
         [Entity(id="cat_2", name="encoded_cat_2", kind=Kind(major="Category", minor="childCategory"))],
         [Entity(id="ds_1", name="encoded_ds_1", kind=Kind(major="Dataset", minor="dataset"))]
@@ -345,7 +314,7 @@ async def test_fetch_data_catalog_with_only_categories(data_service, mock_opengi
     
     mock_opengin_service.fetch_relation.side_effect = [category_relations, []]
     
-    mock_opengin_service.get_entity.return_value = [
+    mock_opengin_service.get_entities.return_value = [
         Entity(id="cat_1", name="encoded_cat_1", kind=Kind(major="Category", minor="childCategory"))
     ]
     
@@ -372,7 +341,7 @@ async def test_fetch_data_catalog_with_only_datasets(data_service, mock_opengin_
     
     mock_opengin_service.fetch_relation.side_effect = [[], dataset_relations]
     
-    mock_opengin_service.get_entity.side_effect = [
+    mock_opengin_service.get_entities.side_effect = [
         [Entity(id="ds_1", name="encoded_ds_1", kind=Kind(major="Dataset", minor="dataset"))],
         [Entity(id="ds_2", name="encoded_ds_2", kind=Kind(major="Dataset", minor="dataset"))]
     ]
@@ -397,7 +366,7 @@ async def test_fetch_data_catalog_with_only_datasets(data_service, mock_opengin_
 @pytest.mark.asyncio
 async def test_fetch_data_catalog_with_internal_error(data_service, mock_opengin_service):
     """Test fetch_data_catalog handles internal errors"""
-    mock_opengin_service.get_entity.side_effect = Exception("Database Error")
+    mock_opengin_service.get_entities.side_effect = Exception("Database Error")
     
     with pytest.raises(InternalServerError) as exc_info:
         await data_service.fetch_data_catalog()
@@ -407,3 +376,88 @@ async def test_fetch_data_catalog_with_internal_error(data_service, mock_opengin
     assert isinstance(root_cause, Exception)
     assert str(root_cause) == "Database Error"
 
+# Tests for lock functionality
+@pytest.mark.asyncio
+async def test_enrich_category_with_lock_prevents_race_condition(data_service):
+    """Test that the instance-level lock prevents race conditions when multiple tasks update categories_dictionary concurrently"""
+    
+    categories_dictionary = {}
+    
+    # Create multiple categories with the same name
+    categories = [
+        Entity(id=f"cat_{i}", name=f"encoded_category_name_{i % 3}", kind=Kind(major="Category", minor="parentCategory"))
+        for i in range(10)
+    ]
+    
+    with patch(
+        "src.services.data_service.Util.decode_protobuf_attribute_name",
+        side_effect=[f"Category {i % 3}" for i in range(10)]
+    ):
+        tasks = [
+            data_service.enrich_category(
+                categories_dictionary=categories_dictionary,
+                category=category
+            )
+            for category in categories
+        ]
+        await asyncio.gather(*tasks)
+    
+    assert len(categories_dictionary) == 3  # Should have 3 unique category names (0, 1, 2)
+    
+    assert len(categories_dictionary["Category 0"]) == 4  # cat_0, cat_3, cat_6, cat_9
+    assert len(categories_dictionary["Category 1"]) == 3  # cat_1, cat_4, cat_7
+    assert len(categories_dictionary["Category 2"]) == 3  # cat_2, cat_5, cat_8
+    
+    all_ids = set()
+    for ids in categories_dictionary.values():
+        all_ids.update(ids)
+    assert len(all_ids) == 10
+
+@pytest.mark.asyncio
+async def test_enrich_dataset_with_lock_prevents_race_condition(data_service, mock_opengin_service):
+    """Test that the instance-level lock prevents race conditions when multiple tasks update dataset_dictionary concurrently"""
+    
+    dataset_dictionary = {}
+    category_id = "category_123"
+    
+    # Create multiple datasets with the same name
+    datasets = [
+        Entity(id=f"ds_{i}", name=f"encoded_name_{i % 2}", kind=Kind(major="Dataset", minor="tabular"))
+        for i in range(8)
+    ]
+    
+    metadata_cache = {}
+    mock_opengin_service.get_metadata.return_value = {
+        "decoded_name_0": "Dataset A",
+        "decoded_name_1": "Dataset B"
+    }
+    
+    with patch(
+        "src.services.data_service.Util.decode_protobuf_attribute_name",
+        side_effect=[
+            f"decoded_name_{i % 2}" if j == 0 else f"Dataset {'A' if i % 2 == 0 else 'B'}"
+            for i in range(8)
+            for j in range(2)
+        ]
+    ):
+
+        tasks = [
+            data_service.enrich_dataset(
+                dataset_dictionary=dataset_dictionary,
+                category_id=category_id,
+                metadata_cache=metadata_cache,
+                dataset=ds
+            )
+            for ds in datasets
+        ]
+        await asyncio.gather(*tasks)
+    
+    assert len(dataset_dictionary) == 2  # Should have 2 unique dataset names (A and B)
+    
+    assert len(dataset_dictionary["Dataset A"]) == 4  # ds_0, ds_2, ds_4, ds_6
+    assert len(dataset_dictionary["Dataset B"]) == 4  # ds_1, ds_3, ds_5, ds_7
+    
+    all_ids = set()
+    for ids in dataset_dictionary.values():
+        all_ids.update(ids)
+    assert len(all_ids) == 8

@@ -53,10 +53,19 @@ paths:
                               type: string
                             categoryIds: 
                               type: array
+                              items:
+                                type: string
                       datasets:
                         type: array
                         items:
-                          $ref: '#/components/schemas/dataset'
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            datasetId:
+                              type: array
+                              items:
+                                type: string
 
         "400":
           description: Bad request
