@@ -1,7 +1,7 @@
 import logging  
 import asyncio
 from typing import Dict
-from src.exception.exceptions import InternalServerError
+from src.exception.exceptions import InternalServerError, NotFoundError
 from src.exception.exceptions import BadRequestError
 from src.models.organisation_schemas import Label
 from src.models.organisation_schemas import Dataset
@@ -219,13 +219,18 @@ class DataService:
     
     async def fetch_dataset_available_years(self, dataset_ids: list[str]):
         """
-        Fetches the available years for the given dataset IDs. 
+        Fetches the available years for a group of related dataset IDs.
+
+        This function assumes all provided dataset IDs represent different yearly
+        instances of the same logical dataset. It uses the first dataset ID in the
+        list to find the parent category and determine the common dataset name.
         
         Args:
-            dataset_ids (list[str]): List of dataset IDs
+            dataset_ids (list[str]): List of dataset IDs that belong to the same group.
             
         Returns:
-            dict: Dictionary containing the available years for the given dataset IDs
+            dict: A dictionary containing the common dataset name and a list of
+                  available years with their corresponding dataset IDs.
         """
         try:
             if not dataset_ids:
@@ -245,11 +250,10 @@ class DataService:
             # get one relation for the neighbour node to find the categoryId
             dataset_relation_instance = Relation(name="IS_ATTRIBUTE", direction="INCOMING")
             
-            fetch_dataset_relation_tasks = [self.opengin_service.fetch_relation(entityId=dataset_first_datum.id, relation=dataset_relation_instance)]
-            dataset_relations = await asyncio.gather(*fetch_dataset_relation_tasks)
+            dataset_relations = await self.opengin_service.fetch_relation(entityId=dataset_first_datum.id, relation=dataset_relation_instance)
             
             # get the category id
-            category_id = dataset_relations[0][0].relatedEntityId
+            category_id = dataset_relations[0].relatedEntityId
             
             # get the metadata
             metadata_results = await self.opengin_service.get_metadata(entityId=category_id)
@@ -270,10 +274,10 @@ class DataService:
 
             return {
                 "name": dataset_name_decoded,
-                "years": dataset_years if len(dataset_years) > 0 else []
+                "years": dataset_years
             }
 
-        except (BadRequestError):
+        except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
             logger.error(f"failed to fetch dataset available years {e}")
