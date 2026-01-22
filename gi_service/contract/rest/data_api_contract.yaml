@@ -14,17 +14,24 @@ tags:
 
 paths:
   /data-catalog:
-    get:
+    post:
       tags:
       - Data
       summary: Get all parent/child categories and datasets.
-      description: "Returns parent/child categories based on the given id. If id is not given it returns the top level parent categories. if id is given, it returns the categories in the below level for the given parent. if any category has a dataset, it returns the dataset as well."
+      description: "Returns parent/child categories and datasets based on the given category id lists. If the list is empty, it returns the top level parent categories. If the list is not empty, it returns the categories/datasets in the next level for the given categories. The API traverses only one level."
       operationId: getCategoriesAndDatasets
-      parameters:
-      - name: parentId
-        in: query
-        schema:
-          type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                categoryIds:
+                  type: array
+                  items:
+                    type: string
       
       responses:
         "200":
@@ -40,11 +47,25 @@ paths:
                       categories:
                         type: array
                         items:
-                          $ref: '#/components/schemas/category'
+                          type: object
+                          properties:
+                            name: 
+                              type: string
+                            categoryIds: 
+                              type: array
+                              items:
+                                type: string
                       datasets:
                         type: array
                         items:
-                          $ref: '#/components/schemas/dataset'
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            datasetId:
+                              type: array
+                              items:
+                                type: string
 
         "400":
           description: Bad request
