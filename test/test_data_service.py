@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from src.exception.exceptions import InternalServerError, BadRequestError
+from src.exception.exceptions import InternalServerError, BadRequestError, NotFoundError
 from unittest.mock import patch
 from src.models.organisation_schemas import Entity, Relation, Kind, Dataset, Category
 
@@ -373,125 +373,117 @@ async def test_fetch_data_catalog_with_internal_error(data_service, mock_opengin
     
     assert "An unexpected error occurred" in str(exc_info.value)
 
-# Tests for enrich_dataset_years
-@pytest.mark.asyncio
-async def test_enrich_dataset_years_success(data_service):
-    """Test enrich_dataset_years extracts year from dataset relation"""
-    dataset_relation = Relation(
-        relatedEntityId="dataset_123",
-        name="IS_ATTRIBUTE",
-        direction="OUTGOING",
-        startTime="2023-10-15T00:00:00Z"
-    )
-    
-    result = await data_service.enrich_dataset_years(dataset_relation=dataset_relation)
-    
-    assert result["datasetId"] == "dataset_123"
-    assert result["year"] == "2023"
-
-
-@pytest.mark.asyncio
-async def test_enrich_dataset_years_different_year(data_service):
-    """Test enrich_dataset_years with different year"""
-    dataset_relation = Relation(
-        relatedEntityId="dataset_456",
-        name="IS_ATTRIBUTE",
-        direction="OUTGOING",
-        startTime="2020-01-01T00:00:00Z"
-    )
-    
-    result = await data_service.enrich_dataset_years(dataset_relation=dataset_relation)
-    
-    assert result["datasetId"] == "dataset_456"
-    assert result["year"] == "2020"
-
-
-@pytest.mark.asyncio
-async def test_enrich_dataset_years_without_relation(data_service):
-    """Test enrich_dataset_years raises BadRequestError when dataset_relation is missing"""
-    with pytest.raises(BadRequestError) as exc_info:
-        await data_service.enrich_dataset_years(dataset_relation=None)
-    
-    assert "Dataset relation is required" in str(exc_info.value)
-
 # Tests for fetch_dataset_available_years
 @pytest.mark.asyncio
 async def test_fetch_dataset_available_years_success(data_service, mock_opengin_service):
     """Test fetch_dataset_available_years with successful response"""
-    from src.exception.exceptions import NotFoundError
     
-    category_id = "category_123"
+    dataset_ids = ["dataset_123", "dataset_124", "dataset_125"]
     
-    dataset_relations = [
-        Relation(
-            relatedEntityId="ds_1",
-            name="IS_ATTRIBUTE",
-            direction="OUTGOING",
-            startTime="2020-01-01T00:00:00Z"
-        ),
-        Relation(
-            relatedEntityId="ds_2",
-            name="IS_ATTRIBUTE",
-            direction="OUTGOING",
-            startTime="2021-01-01T00:00:00Z"
-        ),
-        Relation(
-            relatedEntityId="ds_3",
-            name="IS_ATTRIBUTE",
-            direction="OUTGOING",
-            startTime="2022-01-01T00:00:00Z"
-        )
+    # Mock entities that will be returned for each dataset_id
+    mock_entity_1 = Entity(
+        id="dataset_123",
+        name="encoded_dataset_name",
+        kind=Kind(major="Dataset", minor="tabular"),
+        created="2020-12-31T00:00:00Z",
+        terminated=""
+    )
+    
+    mock_entity_2 = Entity(
+        id="dataset_124",
+        name="encoded_dataset_name",
+        kind=Kind(major="Dataset", minor="tabular"),
+        created="2021-06-15T00:00:00Z",
+        terminated=""
+    )
+    
+    mock_entity_3 = Entity(
+        id="dataset_125",
+        name="encoded_dataset_name",
+        kind=Kind(major="Dataset", minor="tabular"),
+        created="2022-03-20T00:00:00Z",
+        terminated=""
+    )
+    
+    # get_entities is called 3 times (once per dataset_id) in asyncio.gather
+    # Each call returns a list with one entity
+    mock_opengin_service.get_entities.side_effect = [
+        [mock_entity_1],
+        [mock_entity_2],
+        [mock_entity_3]
     ]
     
-    mock_opengin_service.fetch_relation.return_value = dataset_relations
+    # Mock the relation fetch (returns one relation)
+    mock_relation = Relation(
+        relatedEntityId="category_456",
+        name="IS_ATTRIBUTE"
+    )
+    mock_opengin_service.fetch_relation.return_value = [mock_relation]
     
-    # Mock for enrich_dataset call
-    mock_opengin_service.get_entity.return_value = [
-        Entity(id="ds_1", name="encoded_name", kind=Kind(major="Dataset", minor="dataset"))
-    ]
-    
+    # Mock metadata response
     mock_opengin_service.get_metadata.return_value = {
         "decoded_name": "Population Dataset"
     }
     
+    # Mock the decode function - called twice:
+    # 1. For dataset_name from first entity
+    # 2. For final dataset_name_decoded from metadata
     with patch(
         "src.utils.util_functions.Util.decode_protobuf_attribute_name",
         side_effect=["decoded_name", "Population Dataset"]
     ):
-        result = await data_service.fetch_dataset_available_years(category_id=category_id)
+        result = await data_service.fetch_dataset_available_years(dataset_ids)
     
+    # Assertions
     assert "name" in result
-    assert "year" in result
+    assert "years" in result  # Note: it's "years" not "year"
     assert result["name"] == "Population Dataset"
-    assert len(result["year"]) == 3
-    assert result["year"][0]["year"] == "2020"
-    assert result["year"][1]["year"] == "2021"
-    assert result["year"][2]["year"] == "2022"
-    assert result["year"][0]["datasetId"] == "ds_1"
+    assert len(result["years"]) == 3
     
-    mock_opengin_service.fetch_relation.assert_called_once()
-
+    # Results should be sorted by year
+    assert result["years"][0]["year"] == "2020"
+    assert result["years"][0]["datasetId"] == "dataset_123"
+    
+    assert result["years"][1]["year"] == "2021"
+    assert result["years"][1]["datasetId"] == "dataset_124"
+    
+    assert result["years"][2]["year"] == "2022"
+    assert result["years"][2]["datasetId"] == "dataset_125"
+    
+    # Verify mocks were called correctly
+    assert mock_opengin_service.get_entities.call_count == 3
+    mock_opengin_service.fetch_relation.assert_called_once_with(
+        entityId="dataset_123",
+        relation=Relation(
+            name="IS_ATTRIBUTE",
+            direction="INCOMING"
+        )
+    )
+    mock_opengin_service.get_metadata.assert_called_once_with(
+        entityId="category_456"
+    )
 
 @pytest.mark.asyncio
 async def test_fetch_dataset_available_years_single_year(data_service, mock_opengin_service):
     """Test fetch_dataset_available_years with single dataset"""
-    from src.exception.exceptions import NotFoundError
     
-    category_id = "category_456"
+    dataset_ids = ["dataset_123"]
     
-    dataset_relations = [
-        Relation(
-            relatedEntityId="ds_1",
-            name="IS_ATTRIBUTE",
-            direction="OUTGOING",
-            startTime="2023-06-15T00:00:00Z"
-        )
-    ]
+    mock_entity = Entity(
+        id="dataset_123",
+        name="encoded_name",
+        kind=Kind(major="Dataset", minor="tabular"),
+        created="2023-06-15T00:00:00Z"
+    )
     
-    mock_opengin_service.fetch_relation.return_value = dataset_relations
-    mock_opengin_service.get_entity.return_value = [
-        Entity(id="ds_1", name="encoded_name", kind=Kind(major="Dataset", minor="dataset"))
-    ]
+    mock_opengin_service.get_entities.return_value = [mock_entity]
+    
+    mock_relation = Relation(
+        relatedEntityId="category_456",
+        name="IS_ATTRIBUTE"
+    )
+    mock_opengin_service.fetch_relation.return_value = [mock_relation]
+    
     mock_opengin_service.get_metadata.return_value = {
         "decoded_name": "Single Year Dataset"
     }
@@ -500,86 +492,82 @@ async def test_fetch_dataset_available_years_single_year(data_service, mock_open
         "src.utils.util_functions.Util.decode_protobuf_attribute_name",
         side_effect=["decoded_name", "Single Year Dataset"]
     ):
-        result = await data_service.fetch_dataset_available_years(category_id=category_id)
+        result = await data_service.fetch_dataset_available_years(dataset_ids=dataset_ids)
     
     assert result["name"] == "Single Year Dataset"
-    assert len(result["year"]) == 1
-    assert result["year"][0]["year"] == "2023"
-
+    assert len(result["years"]) == 1
+    assert result["years"][0]["year"] == "2023"
 
 @pytest.mark.asyncio
-async def test_fetch_dataset_available_years_without_category_id(data_service):
-    """Test fetch_dataset_available_years raises BadRequestError when category_id is missing"""
+async def test_fetch_dataset_available_years_without_dataset_ids(data_service):
+    """Test fetch_dataset_available_years raises BadRequestError when dataset_ids is missing"""
     with pytest.raises(BadRequestError) as exc_info:
-        await data_service.fetch_dataset_available_years(category_id=None)
+        await data_service.fetch_dataset_available_years(dataset_ids=None)
     
-    assert "Category ID is required" in str(exc_info.value)
+    assert "Dataset ID list is required" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
-async def test_fetch_dataset_available_years_empty_category_id(data_service):
-    """Test fetch_dataset_available_years raises BadRequestError when category_id is empty"""
+async def test_fetch_dataset_available_years_empty_dataset_ids(data_service):
+    """Test fetch_dataset_available_years raises BadRequestError when dataset_ids is empty"""
     with pytest.raises(BadRequestError) as exc_info:
-        await data_service.fetch_dataset_available_years(category_id="")
+        await data_service.fetch_dataset_available_years(dataset_ids=[])
     
-    assert "Category ID is required" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
-async def test_fetch_dataset_available_years_no_datasets(data_service, mock_opengin_service):
-    """Test fetch_dataset_available_years raises NotFoundError when no datasets found"""
-    from src.exception.exceptions import NotFoundError
-    
-    category_id = "category_empty"
-    
-    mock_opengin_service.fetch_relation.return_value = []
-    
-    with pytest.raises(NotFoundError) as exc_info:
-        await data_service.fetch_dataset_available_years(category_id=category_id)
-    
-    assert "No datasets found" in str(exc_info.value)
-
+    assert "Dataset ID list is required" in str(exc_info.value)
 
 @pytest.mark.asyncio
 async def test_fetch_dataset_available_years_with_metadata_unavailable(data_service, mock_opengin_service):
     """Test fetch_dataset_available_years when metadata is not available"""
-    category_id = "category_789"
+    dataset_ids = ["dataset_123"]
     
-    dataset_relations = [
-        Relation(
-            relatedEntityId="ds_1",
-            name="IS_ATTRIBUTE",
-            direction="OUTGOING",
-            startTime="2020-01-01T00:00:00Z"
-        )
-    ]
+    mock_entity = Entity(
+        id="dataset_123",
+        name="encoded_name",
+        kind=Kind(major="Dataset", minor="tabular"),
+        created="2020-01-01T00:00:00Z"
+    )
     
-    mock_opengin_service.fetch_relation.return_value = dataset_relations
-    mock_opengin_service.get_entity.return_value = [
-        Entity(id="ds_1", name="encoded_name", kind=Kind(major="Dataset", minor="dataset"))
-    ]
-    mock_opengin_service.get_metadata.return_value = None
+    mock_opengin_service.get_entities.return_value = [mock_entity]
+    
+    mock_relation = Relation(
+        relatedEntityId="category_789",
+        name="IS_ATTRIBUTE"
+    )
+    mock_opengin_service.fetch_relation.return_value = [mock_relation]
+    # Return empty dict to simulate metadata not containing the dataset name
+    mock_opengin_service.get_metadata.return_value = {}
     
     with patch(
         "src.utils.util_functions.Util.decode_protobuf_attribute_name",
-        return_value="decoded_name"
+        side_effect=["decoded_name", None]
     ):
-        result = await data_service.fetch_dataset_available_years(category_id=category_id)
+        result = await data_service.fetch_dataset_available_years(dataset_ids=dataset_ids)
     
-    assert result["name"] == "Dataset Name is not provided"
-    assert len(result["year"]) == 1
-    assert result["year"][0]["year"] == "2020"
+    # When metadata is empty dict, metadata_results.get(dataset_name) returns None
+    # decode_protobuf_attribute_name(None) will return None or empty string
+    # The result name will be whatever decode_protobuf_attribute_name returns for None
+    assert result["name"] is None or result["name"] == ""
+    assert len(result["years"]) == 1
+    assert result["years"][0]["year"] == "2020"
 
 
 @pytest.mark.asyncio
 async def test_fetch_dataset_available_years_with_internal_error(data_service, mock_opengin_service):
     """Test fetch_dataset_available_years handles internal errors"""
-    category_id = "category_error"
+    dataset_ids = ["dataset_123"]
     
+    mock_entity = Entity(
+        id="dataset_123",
+        name="encoded_name",
+        kind=Kind(major="Dataset", minor="tabular"),
+        created="2020-01-01T00:00:00Z"
+    )
+    
+    mock_opengin_service.get_entities.return_value = [mock_entity]
     mock_opengin_service.fetch_relation.side_effect = Exception("Service unavailable")
     
     with pytest.raises(InternalServerError) as exc_info:
-        await data_service.fetch_dataset_available_years(category_id=category_id)
+        await data_service.fetch_dataset_available_years(dataset_ids=dataset_ids)
     
     assert "An unexpected error occurred" in str(exc_info.value)
 
@@ -587,33 +575,41 @@ async def test_fetch_dataset_available_years_with_internal_error(data_service, m
 @pytest.mark.asyncio
 async def test_fetch_dataset_available_years_multiple_years_sorted(data_service, mock_opengin_service):
     """Test fetch_dataset_available_years with multiple years from same dataset"""
-    category_id = "category_multi"
+    dataset_ids = ["dataset_2019", "dataset_2024", "dataset_2022"]
     
-    dataset_relations = [
-        Relation(
-            relatedEntityId="ds_2019",
-            name="IS_ATTRIBUTE",
-            direction="OUTGOING",
-            startTime="2019-12-31T00:00:00Z"
-        ),
-        Relation(
-            relatedEntityId="ds_2024",
-            name="IS_ATTRIBUTE",
-            direction="OUTGOING",
-            startTime="2024-03-15T00:00:00Z"
-        ),
-        Relation(
-            relatedEntityId="ds_2022",
-            name="IS_ATTRIBUTE",
-            direction="OUTGOING",
-            startTime="2022-07-20T00:00:00Z"
-        )
+    mock_entity_1 = Entity(
+        id="dataset_2019",
+        name="encoded_name",
+        kind=Kind(major="Dataset", minor="tabular"),
+        created="2019-12-31T00:00:00Z"
+    )
+    
+    mock_entity_2 = Entity(
+        id="dataset_2024",
+        name="encoded_name",
+        kind=Kind(major="Dataset", minor="tabular"),
+        created="2024-03-15T00:00:00Z"
+    )
+    
+    mock_entity_3 = Entity(
+        id="dataset_2022",
+        name="encoded_name",
+        kind=Kind(major="Dataset", minor="tabular"),
+        created="2022-07-20T00:00:00Z"
+    )
+    
+    mock_opengin_service.get_entities.side_effect = [
+        [mock_entity_1],
+        [mock_entity_2],
+        [mock_entity_3]
     ]
     
-    mock_opengin_service.fetch_relation.return_value = dataset_relations
-    mock_opengin_service.get_entity.return_value = [
-        Entity(id="ds_2019", name="encoded_name", kind=Kind(major="Dataset", minor="dataset"))
-    ]
+    mock_relation = Relation(
+        relatedEntityId="category_multi",
+        name="IS_ATTRIBUTE"
+    )
+    mock_opengin_service.fetch_relation.return_value = [mock_relation]
+    
     mock_opengin_service.get_metadata.return_value = {
         "decoded_name": "Multi-Year Dataset"
     }
@@ -622,18 +618,17 @@ async def test_fetch_dataset_available_years_multiple_years_sorted(data_service,
         "src.utils.util_functions.Util.decode_protobuf_attribute_name",
         side_effect=["decoded_name", "Multi-Year Dataset"]
     ):
-        result = await data_service.fetch_dataset_available_years(category_id=category_id)
+        result = await data_service.fetch_dataset_available_years(dataset_ids=dataset_ids)
     
     assert result["name"] == "Multi-Year Dataset"
-    assert len(result["year"]) == 3
-    # Check years are extracted correctly (order depends on relation order, not sorted by year)
-    years = [item["year"] for item in result["year"]]
-    assert "2019" in years
-    assert "2024" in years
-    assert "2022" in years
-    root_cause = exc_info.value.__cause__
-    assert isinstance(root_cause, Exception)
-    assert str(root_cause) == "Database Error"
+    assert len(result["years"]) == 3
+    # Check years are sorted correctly
+    assert result["years"][0]["year"] == "2019"
+    assert result["years"][0]["datasetId"] == "dataset_2019"
+    assert result["years"][1]["year"] == "2022"
+    assert result["years"][1]["datasetId"] == "dataset_2022"
+    assert result["years"][2]["year"] == "2024"
+    assert result["years"][2]["datasetId"] == "dataset_2024"
 
 # Tests for lock functionality
 @pytest.mark.asyncio

@@ -1,3 +1,6 @@
+import logging  
+import asyncio
+from typing import Dict
 from src.exception.exceptions import InternalServerError
 from src.exception.exceptions import BadRequestError
 from src.models.organisation_schemas import Label
@@ -7,8 +10,6 @@ from src.models.organisation_schemas import Category
 from src.utils.util_functions import Util
 from src.models.organisation_schemas import Kind
 from src.models.organisation_schemas import Entity
-import logging  
-import asyncio
 from aiohttp import ClientSession
 from src.utils import http_client
 
@@ -215,55 +216,64 @@ class DataService:
         except Exception as e:
             logger.error(f"failed to fetch data catalog {e}")
             raise InternalServerError("An unexpected error occurred") from e
-
-    async def enrich_dataset_years(self, dataset_relation: Relation):
-        try:
-            if not dataset_relation:
-                raise BadRequestError("Dataset relation is required")
-            
-            if dataset_relation.startTime:
-                dataset_start_year = dataset_relation.startTime.split("-")[0]
-            else:
-                dataset_start_year = "Unknown"
-
-            return {
-                "datasetId": dataset_relation.relatedEntityId,
-                "year": dataset_start_year
-            }
-            
-        except (BadRequestError):
-            raise
-        except Exception as e:
-            logger.error(f"failed to enrich dataset years {e}")
-            raise InternalServerError("An unexpected error occurred") from e
     
-    async def fetch_dataset_available_years(self, category_id: str):
+    async def fetch_dataset_available_years(self, dataset_ids: list[str]):
+        """
+        Fetches the available years for the given dataset IDs. 
+        
+        Args:
+            dataset_ids (list[str]): List of dataset IDs
+            
+        Returns:
+            dict: Dictionary containing the available years for the given dataset IDs
+        """
         try:
-            if not category_id:
-                raise BadRequestError("Category ID is required")
+            if not dataset_ids:
+                raise BadRequestError("Dataset ID list is required")
 
-            relation = Relation(name="IS_ATTRIBUTE", direction="OUTGOING")
+            # prepare the dataset entities
+            dataset_entities = [Entity(id=dataset_id) for dataset_id in dataset_ids]
 
-            dataset_relations = await self.opengin_service.fetch_relation(entityId=category_id, relation=relation)
-    
-            if not dataset_relations:
-                raise NotFoundError("No datasets found")
+            # parallel execution of tasks
+            dataset_entity_tasks = [self.opengin_service.get_entities(entity=entity) for entity in dataset_entities]
+            dataset_entities = await asyncio.gather(*dataset_entity_tasks)
 
             # get the dataset name task
-            dataset_name_task = self.enrich_dataset(dataset_relation=dataset_relations[0], category_id=category_id)
-            # get the dataset years task
-            enrich_dataset_year_tasks = [self.enrich_dataset_years(dataset_relation=relation) for relation in dataset_relations]
-            dataset_years, dataset_name = await asyncio.gather(
-                asyncio.gather(*enrich_dataset_year_tasks),
-                asyncio.gather(dataset_name_task)
-            )
+            dataset_first_datum = dataset_entities[0][0]
+            dataset_name = Util.decode_protobuf_attribute_name(dataset_first_datum.name)
+
+            # get one relation for the neighbour node to find the categoryId
+            dataset_relation_instance = Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+            
+            fetch_dataset_relation_tasks = [self.opengin_service.fetch_relation(entityId=dataset_first_datum.id, relation=dataset_relation_instance)]
+            dataset_relations = await asyncio.gather(*fetch_dataset_relation_tasks)
+            
+            # get the category id
+            category_id = dataset_relations[0][0].relatedEntityId
+            
+            # get the metadata
+            metadata_results = await self.opengin_service.get_metadata(entityId=category_id)
+            
+            dataset_name_decoded = Util.decode_protobuf_attribute_name(metadata_results.get(dataset_name))
+
+            # get the dataset years
+            dataset_years = [
+                {
+                    "datasetId": entity[0].id,
+                    "year": entity[0].created.split("-")[0] if entity[0].created else "Unknown"
+                }
+                for entity in dataset_entities
+            ]
+
+            # sort the list by years
+            dataset_years.sort(key=lambda x: x["year"])
 
             return {
-                "name": dataset_name[0].label.name if len(dataset_name) > 0 else "Unknown",
-                "year": dataset_years if len(dataset_years) > 0 else []
+                "name": dataset_name_decoded,
+                "years": dataset_years if len(dataset_years) > 0 else []
             }
 
-        except (BadRequestError, NotFoundError):
+        except (BadRequestError):
             raise
         except Exception as e:
             logger.error(f"failed to fetch dataset available years {e}")

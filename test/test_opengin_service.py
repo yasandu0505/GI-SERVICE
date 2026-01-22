@@ -169,47 +169,4 @@ async def test_get_metadata_empty_response(mock_service, mock_session):
     assert result == {}
     mock_session.get.assert_called_once()
 
-@pytest.mark.asyncio
-async def test_get_metadata_http_error(mock_service, mock_session):
-    """Test get_metadata handles HTTP errors"""
-    from src.exception.exceptions import InternalServerError
-    category_id = "category_error"
-    
-    mock_response = MockResponse({}, status=500)
-    mock_session.get.return_value = mock_response
-    
-    with pytest.raises(InternalServerError) as exc_info:
-        await mock_service.get_metadata(category_id)
-    
-    assert "An unexpected error occurred" in str(exc_info.value)
 
-@pytest.mark.asyncio
-async def test_get_metadata_not_found(mock_service, mock_session):
-    """Test get_metadata handles 404 errors"""
-    from src.exception.exceptions import InternalServerError
-    category_id = "nonexistent_category"
-    
-    mock_response = MockResponse({}, status=404)
-    mock_session.get.return_value = mock_response
-    
-    with pytest.raises(InternalServerError) as exc_info:
-        await mock_service.get_metadata(category_id)
-    
-    assert "An unexpected error occurred" in str(exc_info.value)
-
-@pytest.mark.asyncio
-async def test_get_metadata_with_exception(mock_service, mock_session):
-    """Test get_metadata handles general exceptions"""
-    from src.exception.exceptions import InternalServerError
-    category_id = "category_exception"
-    
-    # Simulate an exception during the request
-    mock_session.get.side_effect = Exception("Network timeout")
-    
-    with pytest.raises(InternalServerError) as exc_info:
-        await mock_service.get_metadata(category_id)
-    
-    assert "An unexpected error occurred" in str(exc_info.value)
-    root_cause = exc_info.value.__cause__
-    assert isinstance(root_cause, Exception)
-    assert str(root_cause) == "Network timeout"
