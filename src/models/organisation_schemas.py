@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 class Label(BaseModel):
-    """Label refers to a label type with id and name"""
+    """Label refers to an entity with id and name"""
     id: str = ""
     name: str = ""
 
@@ -38,7 +38,6 @@ class Dataset(BaseModel):
     """Dataset refers to the dataset in the OpenGIN Specification"""
     id: str = ""
     label: Label = Label()
-    parentId: str = ""
     kind: Kind = Kind()
 
 class Date(BaseModel):
