@@ -57,7 +57,6 @@ async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_s
     mock_opengin_service.get_entities.assert_called_with(entity=Entity(id="dataset_456"))
 
 
-
 @pytest.mark.asyncio
 async def test_enrich_dataset_without_dataset_and_relation(data_service):
     """Test enrich_dataset raises BadRequestError when both dataset and relation are missing"""
