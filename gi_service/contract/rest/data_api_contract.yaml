@@ -135,19 +135,14 @@ paths:
         "500":
           description: Server Error
 
-  /categories/{categoryId}/datasets/{datasetId}/data:
+  /datasets/{datasetId}/data:
     get:
       tags:
       - Data
-      summary: Get the data for the given dataset.
-      description: "Returns the data for the given dataset"
-      operationId: getDataByYear
+      summary: Get the data attributes for the given dataset.
+      description: "Returns the data attributes for the given dataset"
+      operationId: getDataAttributes
       parameters:
-      - name: categoryId
-        required: true
-        in: path
-        schema:
-          type: string
       - name: datasetId
         required: true
         in: path

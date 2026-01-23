@@ -282,4 +282,60 @@ class DataService:
         except Exception as e:
             logger.error(f"failed to fetch dataset available years {e}")
             raise InternalServerError("An unexpected error occurred") from e
+
+    async def fetch_data_attributes(self, dataset_id: str):
+        """
+        Fetches the data attributes for a given dataset ID. Then retrieves the attributes and formats them for display based on data type.
+        
+        Args:
+            dataset_id (str): The ID of the dataset.
+        
+        Returns:
+            dict: A dictionary containing formatted attribute data with:
+                - type: The data type ("tabular", "document", or "graph")
+                - data: Type-specific data structure
+                    For tabular:
+                        - columns: List of column names
+                        - rows: List of row data
+        """
+
+        try:
+            if not dataset_id:
+                raise BadRequestError("Dataset ID is required")
+
+            # Prepare the dataset entity and relation objects
+            dataset_entity = Entity(id=dataset_id)
+            dataset_relation = Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+
+            # Fetch the dataset entity and relations
+            dataset_entity_result, dataset_relations_result = await asyncio.gather(
+                self.opengin_service.get_entities(entity=dataset_entity),
+                self.opengin_service.fetch_relation(entityId=dataset_id, relation=dataset_relation)
+            )
+
+            # Extract dataset information
+            if not dataset_entity_result or not dataset_relations_result:
+                logger.error(f"Dataset not found {dataset_id}")
+                raise
+            
+            dataset_first_datum = dataset_entity_result[0]
+            dataset_name = Util.decode_protobuf_attribute_name(dataset_first_datum.name)
+            
+            # Get the category id from relations
+            category_id = dataset_relations_result[0].relatedEntityId
+            
+            attributes = await self.opengin_service.get_attributes(category_id=category_id, dataset_name=dataset_name)
+            
+            # transform the data for chart
+            formatted_attributes = Util.transform_data_for_chart(
+                attribute_data_out={"data": attributes}
+            )
+            
+            return formatted_attributes
+
+        except (BadRequestError, NotFoundError):
+            raise
+        except Exception as e:
+            logger.error(f"failed to fetch data attributes {e}")
+            raise InternalServerError("An unexpected error occurred") from e
             
