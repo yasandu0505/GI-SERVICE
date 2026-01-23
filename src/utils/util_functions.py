@@ -1,5 +1,6 @@
 import binascii
 import json
+import re
 from datetime import datetime
 from google.protobuf.wrappers_pb2 import StringValue
 
@@ -90,5 +91,30 @@ class Util:
             term = f"{start_year} {start_month_abbr} - {end_year} {end_month_abbr}"
 
         return term
-          
+
+    # helper: to convert string to title case
+    @staticmethod
+    def to_title_case(text: str) -> str:
+        """
+        Converts any string to proper title case with each word capitalized.
+        Removes special characters except spaces.
+        
+        Args:
+            text (str): The input string to convert
+            
+        Returns:
+            str: The formatted string in title case
+            
+        Examples:
+            to_title_case("my nAme is?") -> "My Name Is"
+            to_title_case("hello_world-test") -> "Hello World Test"
+            to_title_case("THIS is A TEST!!!") -> "This Is A Test"
+        """
+        if not text:
+            return ""
+        
+        text = text.replace('_', ' ').replace('-', ' ')
+        text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
+        words = [word.capitalize() for word in text.split() if word]
+        return ' '.join(words)
 
