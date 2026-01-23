@@ -11,16 +11,14 @@ async def test_enrich_dataset_with_dataset_entity(data_service, mock_opengin_ser
     category_id = "category_123"
     dataset = Entity(id="dataset_123", name="encoded_name", kind=Kind(major="Dataset", minor="tabular"))
     dataset_dictionary = {}
-    metadata_cache = {}
     
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
-        side_effect=["decoded_name", "Actual Dataset Name"]
+        return_value="Actual Dataset Name"
     ):
         await data_service.enrich_dataset(
             dataset_dictionary=dataset_dictionary,
             category_id=category_id,
-            metadata_cache=metadata_cache,
             dataset=dataset
         )
     
@@ -36,7 +34,6 @@ async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_s
         direction="OUTGOING"
     )
     dataset_dictionary = {}
-    metadata_cache = {}
     
     mock_entity = Entity(
         id="dataset_456",
@@ -45,18 +42,14 @@ async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_s
     )
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
-    mock_opengin_service.get_metadata.return_value = {
-        "decoded_name": "Dataset from Relation"
-    }
     
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
-        side_effect=["decoded_name", "Dataset from Relation"]
+        return_value="Dataset from Relation"
     ):
         await data_service.enrich_dataset(
             dataset_dictionary=dataset_dictionary,
             category_id=category_id,
-            metadata_cache=metadata_cache,
             dataset_relation=dataset_relation
         )
     
@@ -70,13 +63,11 @@ async def test_enrich_dataset_without_category_id(data_service):
     """Test enrich_dataset raises BadRequestError when category_id is missing"""
     dataset = Entity(id="dataset_123", name="encoded_name", kind=Kind(major="Dataset", minor="tabular"))
     dataset_dictionary = {}
-    metadata_cache = {}
 
     with pytest.raises(BadRequestError) as exc_info:
         await data_service.enrich_dataset(
             dataset_dictionary=dataset_dictionary,
             category_id=None,
-            metadata_cache=metadata_cache,
             dataset=dataset
         )
     
@@ -87,13 +78,11 @@ async def test_enrich_dataset_without_dataset_and_relation(data_service):
     """Test enrich_dataset raises BadRequestError when both dataset and relation are missing"""
     category_id = "category_123"
     dataset_dictionary = {}
-    metadata_cache = {}
 
     with pytest.raises(BadRequestError) as exc_info:
         await data_service.enrich_dataset(
             dataset_dictionary=dataset_dictionary,
             category_id=category_id,
-            metadata_cache=metadata_cache
         )
     
     assert "Dataset or dataset relation is required" in str(exc_info.value)
@@ -108,7 +97,6 @@ async def test_enrich_dataset_with_internal_error(data_service, mock_opengin_ser
         direction="OUTGOING"
     )
     dataset_dictionary = {}
-    metadata_cache = {}
     
     # This will cause an error in get_entities
     mock_opengin_service.get_entities.side_effect = Exception("Network timeout")
@@ -117,7 +105,6 @@ async def test_enrich_dataset_with_internal_error(data_service, mock_opengin_ser
         await data_service.enrich_dataset(
             dataset_dictionary=dataset_dictionary,
             category_id=category_id,
-            metadata_cache=metadata_cache,
             dataset_relation=dataset_relation
         )
     
@@ -262,14 +249,9 @@ async def test_fetch_data_catalog_with_entity_id_and_relations(data_service, moc
         [Entity(id="ds_1", name="encoded_ds_1", kind=Kind(major="Dataset", minor="dataset"))]
     ]
     
-    # Setup mock return for get_metadata
-    mock_opengin_service.get_metadata.return_value = {
-        "decoded_ds_1": "Dataset_ds_2"
-    }
-    
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
-        side_effect=["Child Category 1", "Child Category 2", "decoded_ds_1", "Dataset_ds_2"]
+        side_effect=["Child Category 1", "Child Category 2", "Dataset ds 2"]
     ):
         result = await data_service.fetch_data_catalog(category_ids=[entity_id])
     
@@ -346,14 +328,9 @@ async def test_fetch_data_catalog_with_only_datasets(data_service, mock_opengin_
         [Entity(id="ds_2", name="encoded_ds_2", kind=Kind(major="Dataset", minor="dataset"))]
     ]
     
-    mock_opengin_service.get_metadata.return_value = {
-        "decoded_ds_1": "Dataset 1",
-        "decoded_ds_2": "Dataset 2"
-    }
-    
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
-        side_effect=["decoded_ds_1", "Dataset 1", "decoded_ds_2", "Dataset 2"]
+        side_effect=["Dataset 1", "Dataset 2"]
     ):
         result = await data_service.fetch_data_catalog(category_ids=[entity_id])
     
@@ -413,24 +390,10 @@ async def test_fetch_dataset_available_years_success(data_service, mock_opengin_
         [mock_entity_3]
     ]
     
-    # Mock the relation fetch (returns one relation)
-    mock_relation = Relation(
-        relatedEntityId="category_456",
-        name="IS_ATTRIBUTE"
-    )
-    mock_opengin_service.fetch_relation.return_value = [mock_relation]
-    
-    # Mock metadata response
-    mock_opengin_service.get_metadata.return_value = {
-        "decoded_name": "Population Dataset"
-    }
-    
-    # Mock the decode function - called twice:
-    # 1. For dataset_name from first entity
-    # 2. For final dataset_name_decoded from metadata
+    # Mock the decode function - called once for dataset_name from first entity
     with patch(
         "src.utils.util_functions.Util.decode_protobuf_attribute_name",
-        side_effect=["decoded_name", "Population Dataset"]
+        return_value="Population Dataset"
     ):
         result = await data_service.fetch_dataset_available_years(dataset_ids)
     
@@ -452,16 +415,6 @@ async def test_fetch_dataset_available_years_success(data_service, mock_opengin_
     
     # Verify mocks were called correctly
     assert mock_opengin_service.get_entities.call_count == 3
-    mock_opengin_service.fetch_relation.assert_called_once_with(
-        entityId="dataset_123",
-        relation=Relation(
-            name="IS_ATTRIBUTE",
-            direction="INCOMING"
-        )
-    )
-    mock_opengin_service.get_metadata.assert_called_once_with(
-        entityId="category_456"
-    )
 
 @pytest.mark.asyncio
 async def test_fetch_dataset_available_years_single_year(data_service, mock_opengin_service):
@@ -478,19 +431,9 @@ async def test_fetch_dataset_available_years_single_year(data_service, mock_open
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
     
-    mock_relation = Relation(
-        relatedEntityId="category_456",
-        name="IS_ATTRIBUTE"
-    )
-    mock_opengin_service.fetch_relation.return_value = [mock_relation]
-    
-    mock_opengin_service.get_metadata.return_value = {
-        "decoded_name": "Single Year Dataset"
-    }
-    
     with patch(
         "src.utils.util_functions.Util.decode_protobuf_attribute_name",
-        side_effect=["decoded_name", "Single Year Dataset"]
+        return_value="Single Year Dataset"
     ):
         result = await data_service.fetch_dataset_available_years(dataset_ids=dataset_ids)
     
@@ -516,39 +459,29 @@ async def test_fetch_dataset_available_years_empty_dataset_ids(data_service):
     assert "Dataset ID list is required" in str(exc_info.value)
 
 @pytest.mark.asyncio
-async def test_fetch_dataset_available_years_with_metadata_unavailable(data_service, mock_opengin_service):
-    """Test fetch_dataset_available_years when metadata is not available"""
+async def test_fetch_dataset_available_years_with_missing_created_date(data_service, mock_opengin_service):
+    """Test fetch_dataset_available_years when created date is missing"""
     dataset_ids = ["dataset_123"]
     
     mock_entity = Entity(
         id="dataset_123",
         name="encoded_name",
         kind=Kind(major="Dataset", minor="tabular"),
-        created="2020-01-01T00:00:00Z"
+        created=""
     )
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
     
-    mock_relation = Relation(
-        relatedEntityId="category_789",
-        name="IS_ATTRIBUTE"
-    )
-    mock_opengin_service.fetch_relation.return_value = [mock_relation]
-    # Return empty dict to simulate metadata not containing the dataset name
-    mock_opengin_service.get_metadata.return_value = {}
-    
     with patch(
         "src.utils.util_functions.Util.decode_protobuf_attribute_name",
-        side_effect=["decoded_name", None]
+        return_value="Dataset Without Date"
     ):
         result = await data_service.fetch_dataset_available_years(dataset_ids=dataset_ids)
     
-    # When metadata is empty dict, metadata_results.get(dataset_name) returns None
-    # decode_protobuf_attribute_name(None) will return None or empty string
-    # The result name will be whatever decode_protobuf_attribute_name returns for None
-    assert result["name"] is None or result["name"] == ""
+    # When created date is None, the year should be "Unknown"
+    assert result["name"] == "Dataset Without Date"
     assert len(result["years"]) == 1
-    assert result["years"][0]["year"] == "2020"
+    assert result["years"][0]["year"] == "Unknown"
 
 
 @pytest.mark.asyncio
@@ -556,15 +489,8 @@ async def test_fetch_dataset_available_years_with_internal_error(data_service, m
     """Test fetch_dataset_available_years handles internal errors"""
     dataset_ids = ["dataset_123"]
     
-    mock_entity = Entity(
-        id="dataset_123",
-        name="encoded_name",
-        kind=Kind(major="Dataset", minor="tabular"),
-        created="2020-01-01T00:00:00Z"
-    )
-    
-    mock_opengin_service.get_entities.return_value = [mock_entity]
-    mock_opengin_service.fetch_relation.side_effect = Exception("Service unavailable")
+    # Trigger error from get_entities call
+    mock_opengin_service.get_entities.side_effect = Exception("Service unavailable")
     
     with pytest.raises(InternalServerError) as exc_info:
         await data_service.fetch_dataset_available_years(dataset_ids=dataset_ids)
@@ -604,23 +530,14 @@ async def test_fetch_dataset_available_years_multiple_years_sorted(data_service,
         [mock_entity_3]
     ]
     
-    mock_relation = Relation(
-        relatedEntityId="category_multi",
-        name="IS_ATTRIBUTE"
-    )
-    mock_opengin_service.fetch_relation.return_value = [mock_relation]
-    
-    mock_opengin_service.get_metadata.return_value = {
-        "decoded_name": "Multi-Year Dataset"
-    }
-    
     with patch(
         "src.utils.util_functions.Util.decode_protobuf_attribute_name",
-        side_effect=["decoded_name", "Multi-Year Dataset"]
+        return_value="Multi-Year Dataset"
     ):
         result = await data_service.fetch_dataset_available_years(dataset_ids=dataset_ids)
     
-    assert result["name"] == "Multi-Year Dataset"
+    # After get_name_without_year splits by "-", we get "Multi", then title case
+    assert result["name"] == "Multi"
     assert len(result["years"]) == 3
     # Check years are sorted correctly
     assert result["years"][0]["year"] == "2019"
@@ -930,26 +847,17 @@ async def test_enrich_dataset_with_lock_prevents_race_condition(data_service, mo
         for i in range(8)
     ]
     
-    metadata_cache = {}
-    mock_opengin_service.get_metadata.return_value = {
-        "decoded_name_0": "Dataset A",
-        "decoded_name_1": "Dataset B"
-    }
-    
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
         side_effect=[
-            f"decoded_name_{i % 2}" if j == 0 else f"Dataset {'A' if i % 2 == 0 else 'B'}"
+            f"Dataset {'A' if i % 2 == 0 else 'B'}"
             for i in range(8)
-            for j in range(2)
         ]
     ):
-
         tasks = [
             data_service.enrich_dataset(
                 dataset_dictionary=dataset_dictionary,
                 category_id=category_id,
-                metadata_cache=metadata_cache,
                 dataset=ds
             )
             for ds in datasets
