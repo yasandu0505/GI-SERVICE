@@ -30,7 +30,7 @@ class DataService:
         """Access the global session"""
         return http_client.session
 
-    async def enrich_dataset(self, dataset_dictionary: dict[str, list[str]], category_id: str, metadata_cache: dict, dataset: Entity = None, dataset_relation: Relation = None):
+    async def enrich_dataset(self, dataset_dictionary: dict[str, list[str]], category_id: str, dataset: Entity = None, dataset_relation: Relation = None):
         """
         Enriches the dataset with the decoded name.
         
@@ -39,7 +39,6 @@ class DataService:
             dataset (Entity, optional): The dataset to enrich. Defaults to None.
             dataset_relation (Relation, optional): The dataset relation to enrich. Defaults to None.
             dataset_dictionary (dict[str, list[str]], optional): The dictionary to store the enriched dataset. Defaults to None.
-            metadata_cache (dict[str, dict], optional): The cache for metadata. Defaults to None.
         Returns:
             Dataset: The enriched dataset.
         """
@@ -55,11 +54,14 @@ class DataService:
                 datasets = await self.opengin_service.get_entities(entity=Entity(id=dataset_id))
                 dataset = datasets[0]
 
+            # decode the protobuf value
             decoded_name = Util.decode_protobuf_attribute_name(dataset.name)
-
-            actual_name = Util.decode_protobuf_attribute_name(metadata_cache.get(decoded_name))
             
-            actual_name_title_case = Util.to_title_case(actual_name)
+            # remove the year from the name
+            name_without_year = Util.get_name_without_year(decoded_name)
+            
+            # convert the name to title case
+            actual_name_title_case = Util.to_title_case(name_without_year)
 
             # Append the dataset id to the dataset dictionary with lock protection
             async with self.lock:
@@ -177,13 +179,6 @@ class DataService:
                     asyncio.gather(*fetch_dataset_relation_tasks),
                 )
 
-                if dataset_relations:
-                    # cache the metadata to reduce the latency
-                    fetch_metadata_tasks = [
-                        self.opengin_service.get_metadata(entityId=category_id)for category_id in category_ids]
-                    metadata_results = await asyncio.gather(*fetch_metadata_tasks)
-                    metadata_cache = dict(zip(category_ids, metadata_results))
-
                 # tasks for parallel execution
                 category_enrich_tasks = [
                     self.enrich_category(category_relation=relation, categories_dictionary=categories_dictionary) 
@@ -191,7 +186,7 @@ class DataService:
                     for relation in sublist
                     ]
                 dataset_enrich_tasks = [
-                    self.enrich_dataset(dataset_relation=relation, category_id=category_id, metadata_cache=metadata_cache.get(category_id, {}), dataset_dictionary=dataset_dictionary)
+                    self.enrich_dataset(dataset_relation=relation, category_id=category_id, dataset_dictionary=dataset_dictionary)
                     for sublist, category_id in zip(dataset_relations, category_ids)
                     for relation in sublist
                     ]
@@ -245,20 +240,15 @@ class DataService:
 
             # get the dataset name task
             dataset_first_datum = dataset_entities[0][0]
+
+            # decode the protobuf value
             dataset_name = Util.decode_protobuf_attribute_name(dataset_first_datum.name)
 
-            # get one relation for the neighbour node to find the categoryId
-            dataset_relation_instance = Relation(name="IS_ATTRIBUTE", direction="INCOMING")
-            
-            dataset_relations = await self.opengin_service.fetch_relation(entityId=dataset_first_datum.id, relation=dataset_relation_instance)
-            
-            # get the category id
-            category_id = dataset_relations[0].relatedEntityId
-            
-            # get the metadata
-            metadata_results = await self.opengin_service.get_metadata(entityId=category_id)
-            
-            dataset_name_decoded = Util.decode_protobuf_attribute_name(metadata_results.get(dataset_name))
+            # remove the year from the name
+            name_without_year = Util.get_name_without_year(dataset_name)
+
+            # convert the name to title case
+            actual_name_title_case = Util.to_title_case(name_without_year)
 
             # get the dataset years
             dataset_years = [
@@ -273,7 +263,7 @@ class DataService:
             dataset_years.sort(key=lambda x: x["year"])
 
             return {
-                "name": dataset_name_decoded,
+                "name": actual_name_title_case,
                 "years": dataset_years
             }
 

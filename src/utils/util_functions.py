@@ -233,3 +233,17 @@ class Util:
     
 
 
+    def get_name_without_year(name: str) -> str:
+        """
+        Removes the year from the name if it exists at the end.
+        
+        Args:
+            name (str): The name to remove the year from.
+            
+        Returns:
+            str: The name without the year at the end split by '-'.
+        """
+        if not name:
+            return ""
+        
+        return name.split("-")[0]
