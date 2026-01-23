@@ -965,3 +965,388 @@ async def test_enrich_dataset_with_lock_prevents_race_condition(data_service, mo
     for ids in dataset_dictionary.values():
         all_ids.update(ids)
     assert len(all_ids) == 8
+
+# Tests for find_root_department_or_minister
+@pytest.mark.asyncio
+async def test_find_root_department_or_minister_found_department(data_service, mock_opengin_service):
+    """Test find_root_department_or_minister when the category itself is a department"""
+    category_id = "category_dept_123"
+    
+    # Mock category entity that is a department
+    mock_department = Entity(
+        id=category_id,
+        name="encoded_department_name",
+        kind=Kind(major="Category", minor="department")
+    )
+    
+    mock_opengin_service.get_entities.return_value = [mock_department]
+    
+    result = await data_service.find_root_department_or_minister(category_id)
+    
+    assert result is not None
+    assert result.id == category_id
+    assert result.kind.minor == "department"
+    mock_opengin_service.get_entities.assert_called_once_with(entity=Entity(id=category_id))
+
+@pytest.mark.asyncio
+async def test_find_root_department_or_minister_found_minister(data_service, mock_opengin_service):
+    """Test find_root_department_or_minister when the category itself is a minister"""
+    category_id = "category_minister_456"
+    
+    # Mock category entity that is a minister
+    mock_minister = Entity(
+        id=category_id,
+        name="encoded_minister_name",
+        kind=Kind(major="Category", minor="minister")
+    )
+    
+    mock_opengin_service.get_entities.return_value = [mock_minister]
+    
+    result = await data_service.find_root_department_or_minister(category_id)
+    
+    assert result is not None
+    assert result.id == category_id
+    assert result.kind.minor == "minister"
+
+@pytest.mark.asyncio
+async def test_find_root_department_or_minister_recursive_traversal(data_service, mock_opengin_service):
+    """Test find_root_department_or_minister correctly traverses up the hierarchy"""
+    child_category_id = "child_category_789"
+    parent_category_id = "parent_category_012"
+    grandparent_category_id = "grandparent_dept_345"
+    
+    # Mock child category (not a department/minister)
+    mock_child_category = Entity(
+        id=child_category_id,
+        name="encoded_child",
+        kind=Kind(major="Category", minor="subCategory")
+    )
+    
+    # Mock parent category (not a department/minister)
+    mock_parent_category = Entity(
+        id=parent_category_id,
+        name="encoded_parent",
+        kind=Kind(major="Category", minor="parentCategory")
+    )
+    
+    # Mock grandparent category (is a department)
+    mock_grandparent_department = Entity(
+        id=grandparent_category_id,
+        name="encoded_grandparent_dept",
+        kind=Kind(major="Category", minor="department")
+    )
+    
+    # Mock relation from child to parent
+    mock_child_to_parent_relation = Relation(
+        relatedEntityId=parent_category_id,
+        name="AS_CATEGORY",
+        direction="INCOMING"
+    )
+    
+    # Mock relation from parent to grandparent
+    mock_parent_to_grandparent_relation = Relation(
+        relatedEntityId=grandparent_category_id,
+        name="AS_CATEGORY",
+        direction="INCOMING"
+    )
+    
+    # Setup mock behavior:
+    # 1st call: get_entities for child_category
+    # 2nd call: fetch_relation for child_category relations
+    # 3rd call: get_entities for parent_category
+    # 4th call: fetch_relation for parent_category relations
+    # 5th call: get_entities for grandparent_category (department)
+    mock_opengin_service.get_entities.side_effect = [
+        [mock_child_category],
+        [mock_parent_category],
+        [mock_grandparent_department]
+    ]
+    
+    mock_opengin_service.fetch_relation.side_effect = [
+        [mock_child_to_parent_relation],
+        [mock_parent_to_grandparent_relation]
+    ]
+    
+    result = await data_service.find_root_department_or_minister(child_category_id)
+    
+    assert result is not None
+    assert result.id == grandparent_category_id
+    assert result.kind.minor == "department"
+    
+    # Verify recursive calls
+    assert mock_opengin_service.get_entities.call_count == 3
+    assert mock_opengin_service.fetch_relation.call_count == 2
+
+@pytest.mark.asyncio
+async def test_find_root_department_or_minister_no_parent_found(data_service, mock_opengin_service):
+    """Test find_root_department_or_minister when no parent category is found"""
+    category_id = "orphan_category_111"
+    
+    # Mock category that is not a department/minister
+    mock_category = Entity(
+        id=category_id,
+        name="encoded_orphan",
+        kind=Kind(major="Category", minor="childCategory")
+    )
+    
+    mock_opengin_service.get_entities.return_value = [mock_category]
+    # Return empty list (no parent relations found)
+    mock_opengin_service.fetch_relation.return_value = []
+    
+    result = await data_service.find_root_department_or_minister(category_id)
+    
+    assert result is None
+
+@pytest.mark.asyncio
+async def test_find_root_department_or_minister_without_category_id(data_service):
+    """Test find_root_department_or_minister raises BadRequestError when category_id is missing"""
+    with pytest.raises(BadRequestError) as exc_info:
+        await data_service.find_root_department_or_minister(category_id=None)
+    
+    assert "Category ID is required" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_find_root_department_or_minister_with_empty_category_id(data_service):
+    """Test find_root_department_or_minister raises BadRequestError when category_id is empty"""
+    with pytest.raises(BadRequestError) as exc_info:
+        await data_service.find_root_department_or_minister(category_id="")
+    
+    assert "Category ID is required" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_find_root_department_or_minister_with_internal_error(data_service, mock_opengin_service):
+    """Test find_root_department_or_minister handles internal errors"""
+    category_id = "error_category_222"
+    
+    mock_opengin_service.get_entities.side_effect = Exception("Database connection failed")
+    
+    with pytest.raises(InternalServerError) as exc_info:
+        await data_service.find_root_department_or_minister(category_id)
+    
+    assert "An unexpected error occurred" in str(exc_info.value)
+
+# Tests for fetch_dataset_root
+@pytest.mark.asyncio
+async def test_fetch_dataset_root_success_with_department(data_service, mock_opengin_service):
+    """Test fetch_dataset_root successfully finds a department"""
+    dataset_id = "dataset_root_123"
+    category_id = "category_456"
+    department_id = "department_789"
+    
+    # Mock relation from dataset to category
+    mock_dataset_relation = Relation(
+        relatedEntityId=category_id,
+        name="IS_ATTRIBUTE",
+        direction="INCOMING"
+    )
+    
+    # Mock department entity
+    mock_department = Entity(
+        id=department_id,
+        name="encoded_department_name",
+        kind=Kind(major="Category", minor="department")
+    )
+    
+    mock_opengin_service.fetch_relation.return_value = [mock_dataset_relation]
+    mock_opengin_service.get_entities.return_value = [mock_department]
+    
+    with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="Ministry of Health"):
+        result = await data_service.fetch_dataset_root(dataset_id)
+    
+    assert result is not None
+    assert result["id"] == department_id
+    assert result["name"] == "Ministry of Health"
+    assert result["type"] == "department"
+    
+    # Verify fetch_relation was called with correct parameters
+    mock_opengin_service.fetch_relation.assert_called_once_with(
+        entityId=dataset_id,
+        relation=Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+    )
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_root_success_with_minister(data_service, mock_opengin_service):
+    """Test fetch_dataset_root successfully finds a minister"""
+    dataset_id = "dataset_minister_321"
+    category_id = "category_654"
+    minister_id = "minister_987"
+    
+    # Mock relation from dataset to category
+    mock_dataset_relation = Relation(
+        relatedEntityId=category_id,
+        name="IS_ATTRIBUTE",
+        direction="INCOMING"
+    )
+    
+    # Mock category (not a department/minister)
+    mock_category = Entity(
+        id=category_id,
+        name="encoded_category",
+        kind=Kind(major="Category", minor="subCategory")
+    )
+    
+    # Mock minister entity
+    mock_minister = Entity(
+        id=minister_id,
+        name="encoded_minister_name",
+        kind=Kind(major="Category", minor="minister")
+    )
+    
+    # Mock relation from category to minister
+    mock_category_relation = Relation(
+        relatedEntityId=minister_id,
+        name="AS_CATEGORY",
+        direction="INCOMING"
+    )
+    
+    # Setup call sequence:
+    # 1st call: fetch_relation for dataset -> category
+    # 2nd call: get_entities for category
+    # 3rd call: fetch_relation for category -> parent
+    # 4th call: get_entities for minister
+    mock_opengin_service.fetch_relation.side_effect = [
+        [mock_dataset_relation],
+        [mock_category_relation]
+    ]
+    
+    mock_opengin_service.get_entities.side_effect = [
+        [mock_category],
+        [mock_minister]
+    ]
+    
+    with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="Prime Minister"):
+        result = await data_service.fetch_dataset_root(dataset_id)
+    
+    assert result is not None
+    assert result["id"] == minister_id
+    assert result["name"] == "Prime Minister"
+    assert result["type"] == "minister"
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_root_without_dataset_id(data_service):
+    """Test fetch_dataset_root raises BadRequestError when dataset_id is missing"""
+    with pytest.raises(BadRequestError) as exc_info:
+        await data_service.fetch_dataset_root(dataset_id=None)
+    
+    assert "Dataset ID is required" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_root_with_empty_dataset_id(data_service):
+    """Test fetch_dataset_root raises BadRequestError when dataset_id is empty"""
+    with pytest.raises(BadRequestError) as exc_info:
+        await data_service.fetch_dataset_root(dataset_id="")
+    
+    assert "Dataset ID is required" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_root_no_relation_found(data_service, mock_opengin_service):
+    """Test fetch_dataset_root when no relation is found for the dataset"""
+    dataset_id = "orphan_dataset_555"
+    
+    # Return empty list (no relations found)
+    mock_opengin_service.fetch_relation.return_value = []
+    
+    result = await data_service.fetch_dataset_root(dataset_id)
+    
+    assert result is not None
+    assert "detail" in result
+    assert result["detail"] == "No relation found for dataset"
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_root_no_root_entity_found(data_service, mock_opengin_service):
+    """Test fetch_dataset_root when no root department or minister is found"""
+    dataset_id = "rootless_dataset_666"
+    category_id = "rootless_category_777"
+    
+    # Mock relation from dataset to category
+    mock_dataset_relation = Relation(
+        relatedEntityId=category_id,
+        name="IS_ATTRIBUTE",
+        direction="INCOMING"
+    )
+    
+    # Mock category (not a department/minister)
+    mock_category = Entity(
+        id=category_id,
+        name="encoded_category",
+        kind=Kind(major="Category", minor="subCategory")
+    )
+    
+    mock_opengin_service.fetch_relation.side_effect = [
+        [mock_dataset_relation],
+        []  # No parent relations found
+    ]
+    
+    mock_opengin_service.get_entities.return_value = [mock_category]
+    
+    result = await data_service.fetch_dataset_root(dataset_id)
+    
+    assert result is not None
+    assert "detail" in result
+    assert result["detail"] == "Dataset not found"
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_root_with_fetch_relation_error(data_service, mock_opengin_service):
+    """Test fetch_dataset_root handles errors from fetch_relation"""
+    dataset_id = "error_dataset_888"
+    
+    mock_opengin_service.fetch_relation.side_effect = Exception("Relation service unavailable")
+    
+    with pytest.raises(InternalServerError) as exc_info:
+        await data_service.fetch_dataset_root(dataset_id)
+    
+    assert "An unexpected error occurred" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_root_with_find_root_error(data_service, mock_opengin_service):
+    """Test fetch_dataset_root handles errors from find_root_department_or_minister"""
+    dataset_id = "error_dataset_999"
+    category_id = "error_category_000"
+    
+    # Mock relation from dataset to category
+    mock_dataset_relation = Relation(
+        relatedEntityId=category_id,
+        name="IS_ATTRIBUTE",
+        direction="INCOMING"
+    )
+    
+    mock_opengin_service.fetch_relation.return_value = [mock_dataset_relation]
+    # get_entities will throw error during find_root_department_or_minister
+    mock_opengin_service.get_entities.side_effect = Exception("Entity service error")
+    
+    with pytest.raises(InternalServerError) as exc_info:
+        await data_service.fetch_dataset_root(dataset_id)
+    
+    assert "An unexpected error occurred" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_root_multiple_relations_uses_first(data_service, mock_opengin_service):
+    """Test fetch_dataset_root uses the first relation when multiple relations exist"""
+    dataset_id = "multi_relation_dataset"
+    category_id_1 = "category_first"
+    category_id_2 = "category_second"
+    department_id = "department_main"
+    
+    # Mock multiple relations (should use first one)
+    mock_relations = [
+        Relation(relatedEntityId=category_id_1, name="IS_ATTRIBUTE", direction="INCOMING"),
+        Relation(relatedEntityId=category_id_2, name="IS_ATTRIBUTE", direction="INCOMING")
+    ]
+    
+    # Mock department entity
+    mock_department = Entity(
+        id=department_id,
+        name="encoded_dept",
+        kind=Kind(major="Category", minor="department")
+    )
+    
+    mock_opengin_service.fetch_relation.return_value = mock_relations
+    mock_opengin_service.get_entities.return_value = [mock_department]
+    
+    with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="Main Department"):
+        result = await data_service.fetch_dataset_root(dataset_id)
+    
+    assert result is not None
+    assert result["id"] == department_id
+    # Verify get_entities was called with the first relation's category_id
+    mock_opengin_service.get_entities.assert_called_with(entity=Entity(id=category_id_1))

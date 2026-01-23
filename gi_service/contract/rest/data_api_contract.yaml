@@ -184,15 +184,15 @@ paths:
         "500":
           description: Server Error
 
-  /categories/{categoryId}/root:
+  /dataset/{datasetId}/root:
     get:
       tags:
       - Data
-      summary: Get the root of the given parent.
-      description: Returns the root of the given parent.
+      summary: Get the root of the given dataset.
+      description: Returns the root of the given dataset.
       operationId: getRootById
       parameters:
-      - name: categoryId
+      - name: datasetId
         required: true
         in: path
         schema:
@@ -213,8 +213,8 @@ paths:
                         type: string
                       id:
                         type: object
-                      kind:
-                        $ref: '#/components/schemas/kind'
+                      type:
+                        type: string
               
               example:
                 body:
