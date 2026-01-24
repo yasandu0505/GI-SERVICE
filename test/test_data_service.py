@@ -623,8 +623,11 @@ async def test_fetch_data_attributes_dataset_not_found(data_service, mock_opengi
         Relation(relatedEntityId="category_123", name="IS_ATTRIBUTE")
     ]
     
-    with pytest.raises(Exception):
-        await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    # Should return a message indicating dataset not found
+    assert "message" in result
+    assert result["message"] == "Dataset or its relations not found"
 
 @pytest.mark.asyncio
 async def test_fetch_data_attributes_no_relations_found(data_service, mock_opengin_service):
@@ -642,8 +645,11 @@ async def test_fetch_data_attributes_no_relations_found(data_service, mock_openg
     mock_opengin_service.get_entities.return_value = [mock_entity]
     mock_opengin_service.fetch_relation.return_value = []
     
-    with pytest.raises(Exception):
-        await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    # Should return a message indicating relations not found
+    assert "message" in result
+    assert result["message"] == "Dataset or its relations not found"
 
 @pytest.mark.asyncio
 async def test_fetch_data_attributes_with_empty_attributes(data_service, mock_opengin_service):
