@@ -8,26 +8,24 @@ from src.models.organisation_schemas import Entity, Relation, Kind, Dataset, Cat
 @pytest.mark.asyncio
 async def test_enrich_dataset_with_dataset_entity(data_service, mock_opengin_service):
     """Test enrich_dataset with a dataset entity"""
-    category_id = "category_123"
-    dataset = Entity(id="dataset_123", name="encoded_name", kind=Kind(major="Dataset", minor="tabular"))
+    dataset = Entity(id="dataset_123", name="population-2020", kind=Kind(major="Dataset", minor="tabular"))
     dataset_dictionary = {}
     
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
-        return_value="Actual Dataset Name"
+        return_value="Population-2020"
     ):
         await data_service.enrich_dataset(
             dataset_dictionary=dataset_dictionary,
-            category_id=category_id,
             dataset=dataset
         )
     
-    assert "Actual Dataset Name" in dataset_dictionary
+    # After removing year (-2020), we get "Population", then title case
+    assert "Population" in dataset_dictionary
 
 @pytest.mark.asyncio
 async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_service):
     """Test enrich_dataset with a dataset relation"""
-    category_id = "category_123"
     dataset_relation = Relation(
         relatedEntityId="dataset_456",
         name="IS_ATTRIBUTE",
@@ -37,7 +35,7 @@ async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_s
     
     mock_entity = Entity(
         id="dataset_456",
-        name="encoded_name",
+        name="gdp-2021",
         kind=Kind(major="Dataset", minor="tabular")
     )
     
@@ -45,44 +43,29 @@ async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_s
     
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
-        return_value="Dataset from Relation"
+        return_value="GDP-2021"
     ):
         await data_service.enrich_dataset(
             dataset_dictionary=dataset_dictionary,
-            category_id=category_id,
             dataset_relation=dataset_relation
         )
     
-    assert "Dataset From Relation" in dataset_dictionary
-    assert "dataset_456" in dataset_dictionary["Dataset From Relation"]
+    # After removing year (-2021), we get "GDP", then title case
+    assert "Gdp" in dataset_dictionary
+    assert "dataset_456" in dataset_dictionary["Gdp"]
     
     mock_opengin_service.get_entities.assert_called_with(entity=Entity(id="dataset_456"))
 
-@pytest.mark.asyncio
-async def test_enrich_dataset_without_category_id(data_service):
-    """Test enrich_dataset raises BadRequestError when category_id is missing"""
-    dataset = Entity(id="dataset_123", name="encoded_name", kind=Kind(major="Dataset", minor="tabular"))
-    dataset_dictionary = {}
 
-    with pytest.raises(BadRequestError) as exc_info:
-        await data_service.enrich_dataset(
-            dataset_dictionary=dataset_dictionary,
-            category_id=None,
-            dataset=dataset
-        )
-    
-    assert "Category ID is required" in str(exc_info.value)
 
 @pytest.mark.asyncio
 async def test_enrich_dataset_without_dataset_and_relation(data_service):
     """Test enrich_dataset raises BadRequestError when both dataset and relation are missing"""
-    category_id = "category_123"
     dataset_dictionary = {}
 
     with pytest.raises(BadRequestError) as exc_info:
         await data_service.enrich_dataset(
             dataset_dictionary=dataset_dictionary,
-            category_id=category_id,
         )
     
     assert "Dataset or dataset relation is required" in str(exc_info.value)
@@ -90,7 +73,6 @@ async def test_enrich_dataset_without_dataset_and_relation(data_service):
 @pytest.mark.asyncio
 async def test_enrich_dataset_with_internal_error(data_service, mock_opengin_service):
     """Test enrich_dataset handles internal errors"""
-    category_id = "category_123"
     dataset_relation = Relation(
         relatedEntityId="dataset_123",
         name="IS_ATTRIBUTE",
@@ -104,7 +86,6 @@ async def test_enrich_dataset_with_internal_error(data_service, mock_opengin_ser
     with pytest.raises(InternalServerError) as exc_info:
         await data_service.enrich_dataset(
             dataset_dictionary=dataset_dictionary,
-            category_id=category_id,
             dataset_relation=dataset_relation
         )
     
@@ -360,7 +341,7 @@ async def test_fetch_dataset_available_years_success(data_service, mock_opengin_
     # Mock entities that will be returned for each dataset_id
     mock_entity_1 = Entity(
         id="dataset_123",
-        name="encoded_dataset_name",
+        name="dataset_name",
         kind=Kind(major="Dataset", minor="tabular"),
         created="2020-12-31T00:00:00Z",
         terminated=""
@@ -368,7 +349,7 @@ async def test_fetch_dataset_available_years_success(data_service, mock_opengin_
     
     mock_entity_2 = Entity(
         id="dataset_124",
-        name="encoded_dataset_name",
+        name="dataset_name",
         kind=Kind(major="Dataset", minor="tabular"),
         created="2021-06-15T00:00:00Z",
         terminated=""
@@ -376,7 +357,7 @@ async def test_fetch_dataset_available_years_success(data_service, mock_opengin_
     
     mock_entity_3 = Entity(
         id="dataset_125",
-        name="encoded_dataset_name",
+        name="dataset_name",
         kind=Kind(major="Dataset", minor="tabular"),
         created="2022-03-20T00:00:00Z",
         terminated=""
@@ -536,8 +517,8 @@ async def test_fetch_dataset_available_years_multiple_years_sorted(data_service,
     ):
         result = await data_service.fetch_dataset_available_years(dataset_ids=dataset_ids)
     
-    # After get_name_without_year splits by "-", we get "Multi", then title case
-    assert result["name"] == "Multi"
+    # After get_name_without_year removes -YYYY pattern, we get "Multi-Year Dataset", then title case
+    assert result["name"] == "Multi Year Dataset"
     assert len(result["years"]) == 3
     # Check years are sorted correctly
     assert result["years"][0]["year"] == "2019"
@@ -589,35 +570,33 @@ async def test_enrich_dataset_with_lock_prevents_race_condition(data_service, mo
     """Test that the instance-level lock prevents race conditions when multiple tasks update dataset_dictionary concurrently"""
     
     dataset_dictionary = {}
-    category_id = "category_123"
     
-    # Create multiple datasets with the same name
+    # Create multiple datasets with the same name (with years)
     datasets = [
-        Entity(id=f"ds_{i}", name=f"encoded_name_{i % 2}", kind=Kind(major="Dataset", minor="tabular"))
+        Entity(id=f"ds_{i}", name=f"dataset_name_{i % 2}-202{i % 2}", kind=Kind(major="Dataset", minor="tabular"))
         for i in range(8)
     ]
     
     with patch(
         "src.services.data_service.Util.decode_protobuf_attribute_name",
         side_effect=[
-            f"Dataset {'A' if i % 2 == 0 else 'B'}"
+            f"Employment-202{'0' if i % 2 == 0 else '1'}"
             for i in range(8)
         ]
     ):
         tasks = [
             data_service.enrich_dataset(
                 dataset_dictionary=dataset_dictionary,
-                category_id=category_id,
                 dataset=ds
             )
             for ds in datasets
         ]
         await asyncio.gather(*tasks)
     
-    assert len(dataset_dictionary) == 2  # Should have 2 unique dataset names (A and B)
-    
-    assert len(dataset_dictionary["Dataset A"]) == 4  # ds_0, ds_2, ds_4, ds_6
-    assert len(dataset_dictionary["Dataset B"]) == 4  # ds_1, ds_3, ds_5, ds_7
+    # After removing years, all datasets should have the same name "Employment"
+    assert len(dataset_dictionary) == 1
+    assert "Employment" in dataset_dictionary
+    assert len(dataset_dictionary["Employment"]) == 8  # All 8 dataset IDs
     
     all_ids = set()
     for ids in dataset_dictionary.values():
