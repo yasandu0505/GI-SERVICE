@@ -3,10 +3,7 @@ import asyncio
 from typing import Dict
 from src.exception.exceptions import InternalServerError, NotFoundError
 from src.exception.exceptions import BadRequestError
-from src.models.organisation_schemas import Label
-from src.models.organisation_schemas import Dataset
 from src.models.organisation_schemas import Relation
-from src.models.organisation_schemas import Category
 from src.utils.util_functions import Util
 from src.models.organisation_schemas import Kind
 from src.models.organisation_schemas import Entity
@@ -30,12 +27,11 @@ class DataService:
         """Access the global session"""
         return http_client.session
 
-    async def enrich_dataset(self, dataset_dictionary: dict[str, list[str]], category_id: str, dataset: Entity = None, dataset_relation: Relation = None):
+    async def enrich_dataset(self, dataset_dictionary: dict[str, list[str]], dataset: Entity = None, dataset_relation: Relation = None):
         """
         Enriches the dataset with the decoded name.
         
         Args:
-            category_id (str): The ID of the parent category to the dataset.
             dataset (Entity, optional): The dataset to enrich. Defaults to None.
             dataset_relation (Relation, optional): The dataset relation to enrich. Defaults to None.
             dataset_dictionary (dict[str, list[str]], optional): The dictionary to store the enriched dataset. Defaults to None.
@@ -43,9 +39,6 @@ class DataService:
             Dataset: The enriched dataset.
         """
         try:
-            if not category_id:
-                raise BadRequestError("Category ID is required")
-
             if not dataset and not dataset_relation:
                 raise BadRequestError("Dataset or dataset relation is required")
 
@@ -186,8 +179,8 @@ class DataService:
                     for relation in sublist
                     ]
                 dataset_enrich_tasks = [
-                    self.enrich_dataset(dataset_relation=relation, category_id=category_id, dataset_dictionary=dataset_dictionary)
-                    for sublist, category_id in zip(dataset_relations, category_ids)
+                    self.enrich_dataset(dataset_relation=relation, dataset_dictionary=dataset_dictionary)
+                    for sublist in dataset_relations
                     for relation in sublist
                     ]
 

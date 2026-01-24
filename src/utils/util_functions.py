@@ -246,4 +246,4 @@ class Util:
         if not name:
             return ""
         
-        return name.split("-")[0]
+        return re.sub(r"-\d{4}$", "", name)
