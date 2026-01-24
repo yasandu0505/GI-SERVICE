@@ -298,8 +298,8 @@ class DataService:
 
             # Extract dataset information
             if not dataset_entity_result or not dataset_relations_result:
-                logger.error(f"Dataset not found {dataset_id}")
-                raise
+                logger.error(f"Dataset or its relations not found for id: {dataset_id}")
+                return {"message": "Dataset or its relations not found"}
             
             dataset_first_datum = dataset_entity_result[0]
             dataset_name = Util.decode_protobuf_attribute_name(dataset_first_datum.name)

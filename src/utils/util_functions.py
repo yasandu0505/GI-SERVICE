@@ -136,6 +136,7 @@ class Util:
         
         return re.sub(r"-\d{4}$", "", name)
     
+    @staticmethod
     def decode_response(response):
         """
         Decode the protobuf response and extract the data
