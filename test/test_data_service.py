@@ -537,7 +537,7 @@ async def test_fetch_data_attributes_success(data_service, mock_opengin_service)
     # Mock dataset entity
     mock_entity = Entity(
         id=dataset_id,
-        name="encoded_dataset_name",
+        name="dataset_name",
         kind=Kind(major="Dataset", minor="tabular")
     )
     

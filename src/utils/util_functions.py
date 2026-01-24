@@ -197,7 +197,7 @@ class Util:
             data_dictionary = json.loads(decoded_data["data"])
             
             # Auto-detect data type based on structure
-            detected_type = Util._detect_data_type(data_dictionary)
+            detected_type = Util.detect_data_type(data_dictionary)
             
             # Handle different data types
             if detected_type == "tabular":
@@ -227,7 +227,7 @@ class Util:
             }
     
     @staticmethod
-    def _detect_data_type(data_dict: dict) -> str:
+    def detect_data_type(data_dict: dict) -> str:
         """
         Detect the data type based on the structure of the data dictionary.
         
