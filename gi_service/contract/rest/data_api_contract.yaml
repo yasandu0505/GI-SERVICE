@@ -74,19 +74,25 @@ paths:
         "500":
           description: Server Error
   
-  /categories/{categoryId}/datasets/years:
-    get:
+  /datasets/years:
+    post:
       tags:
       - Data
-      summary: Get all the dataset available years for a category.
-      description: Returns the list of years for available datasets
+      summary: Get all the dataset available years for the given datasets.
+      description: Returns the list of years and datasetIds for available datasets with dataset name.
       operationId: getAvailableDataYears
-      parameters:
-      - name: categoryId
+      
+      requestBody:
         required: true
-        in: path
-        schema:
-          type: string
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                datasetIds:
+                  type: array
+                  items:
+                    type: string
       
       responses:
         "200":

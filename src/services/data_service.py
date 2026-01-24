@@ -1,14 +1,12 @@
-from src.exception.exceptions import InternalServerError
+import logging  
+import asyncio
+from typing import Dict
+from src.exception.exceptions import InternalServerError, NotFoundError
 from src.exception.exceptions import BadRequestError
-from src.models.organisation_schemas import Label
-from src.models.organisation_schemas import Dataset
 from src.models.organisation_schemas import Relation
-from src.models.organisation_schemas import Category
 from src.utils.util_functions import Util
 from src.models.organisation_schemas import Kind
 from src.models.organisation_schemas import Entity
-import logging  
-import asyncio
 from aiohttp import ClientSession
 from src.utils import http_client
 
@@ -29,23 +27,18 @@ class DataService:
         """Access the global session"""
         return http_client.session
 
-    async def enrich_dataset(self, dataset_dictionary: dict[str, list[str]], category_id: str, metadata_cache: dict, dataset: Entity = None, dataset_relation: Relation = None):
+    async def enrich_dataset(self, dataset_dictionary: dict[str, list[str]], dataset: Entity = None, dataset_relation: Relation = None):
         """
         Enriches the dataset with the decoded name.
         
         Args:
-            category_id (str): The ID of the parent category to the dataset.
             dataset (Entity, optional): The dataset to enrich. Defaults to None.
             dataset_relation (Relation, optional): The dataset relation to enrich. Defaults to None.
             dataset_dictionary (dict[str, list[str]], optional): The dictionary to store the enriched dataset. Defaults to None.
-            metadata_cache (dict[str, dict], optional): The cache for metadata. Defaults to None.
         Returns:
             Dataset: The enriched dataset.
         """
         try:
-            if not category_id:
-                raise BadRequestError("Category ID is required")
-
             if not dataset and not dataset_relation:
                 raise BadRequestError("Dataset or dataset relation is required")
 
@@ -54,11 +47,14 @@ class DataService:
                 datasets = await self.opengin_service.get_entities(entity=Entity(id=dataset_id))
                 dataset = datasets[0]
 
+            # decode the protobuf value
             decoded_name = Util.decode_protobuf_attribute_name(dataset.name)
-
-            actual_name = Util.decode_protobuf_attribute_name(metadata_cache.get(decoded_name))
             
-            actual_name_title_case = Util.to_title_case(actual_name)
+            # remove the year from the name
+            name_without_year = Util.get_name_without_year(decoded_name)
+            
+            # convert the name to title case
+            actual_name_title_case = Util.to_title_case(name_without_year)
 
             # Append the dataset id to the dataset dictionary with lock protection
             async with self.lock:
@@ -176,13 +172,6 @@ class DataService:
                     asyncio.gather(*fetch_dataset_relation_tasks),
                 )
 
-                if dataset_relations:
-                    # cache the metadata to reduce the latency
-                    fetch_metadata_tasks = [
-                        self.opengin_service.get_metadata(entityId=category_id)for category_id in category_ids]
-                    metadata_results = await asyncio.gather(*fetch_metadata_tasks)
-                    metadata_cache = dict(zip(category_ids, metadata_results))
-
                 # tasks for parallel execution
                 category_enrich_tasks = [
                     self.enrich_category(category_relation=relation, categories_dictionary=categories_dictionary) 
@@ -190,8 +179,8 @@ class DataService:
                     for relation in sublist
                     ]
                 dataset_enrich_tasks = [
-                    self.enrich_dataset(dataset_relation=relation, category_id=category_id, metadata_cache=metadata_cache.get(category_id, {}), dataset_dictionary=dataset_dictionary)
-                    for sublist, category_id in zip(dataset_relations, category_ids)
+                    self.enrich_dataset(dataset_relation=relation, dataset_dictionary=dataset_dictionary)
+                    for sublist in dataset_relations
                     for relation in sublist
                     ]
 
@@ -215,4 +204,65 @@ class DataService:
         except Exception as e:
             logger.error(f"failed to fetch data catalog {e}")
             raise InternalServerError("An unexpected error occurred") from e
+    
+    async def fetch_dataset_available_years(self, dataset_ids: list[str]):
+        """
+        Fetches the available years for a group of related dataset IDs.
 
+        This function assumes all provided dataset IDs represent different yearly
+        instances of the same logical dataset. It uses the first dataset ID in the
+        list to find the parent category and determine the common dataset name.
+        
+        Args:
+            dataset_ids (list[str]): List of dataset IDs that belong to the same group.
+            
+        Returns:
+            dict: A dictionary containing the common dataset name and a list of
+                  available years with their corresponding dataset IDs.
+        """
+        try:
+            if not dataset_ids:
+                raise BadRequestError("Dataset ID list is required")
+
+            # prepare the dataset entities
+            dataset_entities = [Entity(id=dataset_id) for dataset_id in dataset_ids]
+
+            # parallel execution of tasks
+            dataset_entity_tasks = [self.opengin_service.get_entities(entity=entity) for entity in dataset_entities]
+            dataset_entities = await asyncio.gather(*dataset_entity_tasks)
+
+            # get the dataset name task
+            dataset_first_datum = dataset_entities[0][0]
+
+            # decode the protobuf value
+            dataset_name = Util.decode_protobuf_attribute_name(dataset_first_datum.name)
+
+            # remove the year from the name
+            name_without_year = Util.get_name_without_year(dataset_name)
+
+            # convert the name to title case
+            actual_name_title_case = Util.to_title_case(name_without_year)
+
+            # get the dataset years
+            dataset_years = [
+                {
+                    "datasetId": entity[0].id,
+                    "year": entity[0].created.split("-")[0] if entity[0].created else "Unknown"
+                }
+                for entity in dataset_entities
+            ]
+
+            # sort the list by years
+            dataset_years.sort(key=lambda x: x["year"])
+
+            return {
+                "name": actual_name_title_case,
+                "years": dataset_years
+            }
+
+        except (BadRequestError, NotFoundError):
+            raise
+        except Exception as e:
+            logger.error(f"failed to fetch dataset available years {e}")
+            raise InternalServerError("An unexpected error occurred") from e
+            
