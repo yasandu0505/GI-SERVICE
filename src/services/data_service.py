@@ -354,9 +354,7 @@ class DataService:
 
             if not relations:
                 logger.error(f"No relation found for dataset {dataset_id}")
-                return {
-                    "detail": "No relation found for dataset"
-                }
+                raise NotFoundError("No relation found for dataset")
 
             category_id = relations[0].relatedEntityId
             
@@ -422,7 +420,7 @@ class DataService:
 
             if not parent_relations:
                 logger.error(f"No parent category found for category {category_id}")
-                return None
+                raise NotFoundError("No parent category found for category")
             
             # Recursively check the parent category
             parent_category_id = parent_relations[0].relatedEntityId
