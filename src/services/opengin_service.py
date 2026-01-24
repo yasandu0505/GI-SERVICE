@@ -140,3 +140,41 @@ class OpenGINService:
         except Exception as e:
             logger.error(f'Read API Error: {str(e)}')
             raise InternalServerError("An unexpected error occurred") from e 
+
+    @api_retry_decorator
+    async def get_attributes(self,category_id: str, dataset_name: str):
+        if not category_id:
+            raise BadRequestError("Category ID is required")
+        
+        if not dataset_name:
+            raise BadRequestError("Dataset name is required")
+        
+        stripped_category_id = str(category_id).strip()
+        if not stripped_category_id:
+            raise BadRequestError("Category ID can not be empty")
+        
+        stripped_dataset_name = str(dataset_name).strip()
+        if not stripped_dataset_name:
+            raise BadRequestError("Dataset name can not be empty")
+        
+        url = f"{settings.BASE_URL_QUERY}/v1/entities/{category_id}/attributes/{dataset_name}"
+        headers = {"Content-Type": "application/json"}
+                
+        try:
+            async with self.session.get(url, headers=headers) as response:
+                if response.status == 404:
+                    raise NotFoundError(f"Read API Error: Attributes not found for category id {category_id} and dataset name {dataset_name}")
+                if response.status == 400:
+                    raise BadRequestError(f"Read API Error: Bad request for category id {category_id} and dataset name {dataset_name}")
+                response.raise_for_status()
+                return await response.json()
+        except NotFoundError:
+            raise    
+        except BadRequestError:
+            raise   
+        except Exception as e:
+            logger.error(f'Read API Error: {str(e)}')
+            raise InternalServerError("An unexpected error occurred") from e 
+            
+
+        

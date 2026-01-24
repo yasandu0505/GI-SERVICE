@@ -528,6 +528,262 @@ async def test_fetch_dataset_available_years_multiple_years_sorted(data_service,
     assert result["years"][2]["year"] == "2024"
     assert result["years"][2]["datasetId"] == "dataset_2024"
 
+# Tests for fetch_data_attributes
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_success(data_service, mock_opengin_service):
+    """Test fetch_data_attributes with successful response"""
+    
+    dataset_id = "dataset_123"
+    
+    # Mock dataset entity
+    mock_entity = Entity(
+        id=dataset_id,
+        name="dataset_name",
+        kind=Kind(major="Dataset", minor="tabular")
+    )
+    
+    # Mock dataset relation
+    mock_relation = Relation(
+        relatedEntityId="category_456",
+        name="IS_ATTRIBUTE",
+        direction="INCOMING"
+    )
+    
+    # Mock get_entities and fetch_relation to return values
+    mock_opengin_service.get_entities.return_value = [mock_entity]
+    mock_opengin_service.fetch_relation.return_value = [mock_relation]
+    
+    # Mock get_attributes to return sample data
+    mock_attributes = [
+        {"attribute1": "value1", "attribute2": "value2"},
+        {"attribute1": "value3", "attribute2": "value4"}
+    ]
+    mock_opengin_service.get_attributes.return_value = mock_attributes
+    
+    # Mock the formatted response from transform_data_for_chart
+    mock_formatted_data = {
+        "type": "tabular",
+        "data": {
+            "columns": ["attribute1", "attribute2"],
+            "rows": [
+                ["value1", "value2"],
+                ["value3", "value4"]
+            ]
+        }
+    }
+    
+    with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="decoded_dataset_name"), \
+         patch("src.services.data_service.Util.transform_data_for_chart", return_value=mock_formatted_data):
+        
+        result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    # Assertions
+    assert result is not None
+    assert result["type"] == "tabular"
+    assert "data" in result
+    assert result["data"]["columns"] == ["attribute1", "attribute2"]
+    assert len(result["data"]["rows"]) == 2
+    
+    # Verify mocks were called correctly
+    mock_opengin_service.get_entities.assert_called_once_with(entity=Entity(id=dataset_id))
+    mock_opengin_service.fetch_relation.assert_called_once_with(
+        entityId=dataset_id,
+        relation=Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+    )
+    mock_opengin_service.get_attributes.assert_called_once_with(
+        category_id="category_456",
+        dataset_name="decoded_dataset_name"
+    )
+
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_without_dataset_id(data_service):
+    """Test fetch_data_attributes raises BadRequestError when dataset_id is missing"""
+    with pytest.raises(BadRequestError) as exc_info:
+        await data_service.fetch_data_attributes(dataset_id=None)
+    
+    assert "Dataset ID is required" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_empty_dataset_id(data_service):
+    """Test fetch_data_attributes raises BadRequestError when dataset_id is empty string"""
+    with pytest.raises(BadRequestError) as exc_info:
+        await data_service.fetch_data_attributes(dataset_id="")
+    
+    assert "Dataset ID is required" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_dataset_not_found(data_service, mock_opengin_service):
+    """Test fetch_data_attributes when dataset entity is not found"""
+    
+    dataset_id = "nonexistent_dataset"
+    
+    # Mock get_entities to return empty list (dataset not found)
+    mock_opengin_service.get_entities.return_value = []
+    mock_opengin_service.fetch_relation.return_value = [
+        Relation(relatedEntityId="category_123", name="IS_ATTRIBUTE")
+    ]
+    
+    result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    # Should return a message indicating dataset not found
+    assert "message" in result
+    assert result["message"] == "Dataset or its relations not found"
+
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_no_relations_found(data_service, mock_opengin_service):
+    """Test fetch_data_attributes when no relations are found for the dataset"""
+    
+    dataset_id = "dataset_456"
+    
+    mock_entity = Entity(
+        id=dataset_id,
+        name="encoded_name",
+        kind=Kind(major="Dataset", minor="tabular")
+    )
+    
+    # Mock get_entities to return entity but fetch_relation returns empty list
+    mock_opengin_service.get_entities.return_value = [mock_entity]
+    mock_opengin_service.fetch_relation.return_value = []
+    
+    result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    # Should return a message indicating relations not found
+    assert "message" in result
+    assert result["message"] == "Dataset or its relations not found"
+
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_with_empty_attributes(data_service, mock_opengin_service):
+    """Test fetch_data_attributes when get_attributes returns empty data"""
+    
+    dataset_id = "empty_dataset_555"
+    
+    mock_entity = Entity(
+        id=dataset_id,
+        name="encoded_empty_dataset",
+        kind=Kind(major="Dataset", minor="tabular")
+    )
+    
+    mock_relation = Relation(
+        relatedEntityId="category_empty",
+        name="IS_ATTRIBUTE"
+    )
+    
+    mock_opengin_service.get_entities.return_value = [mock_entity]
+    mock_opengin_service.fetch_relation.return_value = [mock_relation]
+    mock_opengin_service.get_attributes.return_value = []
+    
+    mock_formatted_empty = {
+        "type": "tabular",
+        "data": {
+            "columns": [],
+            "rows": []
+        }
+    }
+    
+    with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="empty_dataset"), \
+         patch("src.services.data_service.Util.transform_data_for_chart", return_value=mock_formatted_empty):
+        
+        result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    assert result["type"] == "tabular"
+    assert result["data"]["columns"] == []
+    assert result["data"]["rows"] == []
+
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_with_get_entities_error(data_service, mock_opengin_service):
+    """Test fetch_data_attributes handles errors from get_entities"""
+    
+    dataset_id = "dataset_error"
+    
+    mock_opengin_service.get_entities.side_effect = Exception("Service unavailable")
+    
+    with pytest.raises(InternalServerError) as exc_info:
+        await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    assert "An unexpected error occurred" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_with_fetch_relation_error(data_service, mock_opengin_service):
+    """Test fetch_data_attributes handles errors from fetch_relation"""
+    
+    dataset_id = "dataset_rel_error"
+    
+    mock_entity = Entity(
+        id=dataset_id,
+        name="encoded_name",
+        kind=Kind(major="Dataset", minor="tabular")
+    )
+    
+    mock_opengin_service.get_entities.return_value = [mock_entity]
+    mock_opengin_service.fetch_relation.side_effect = Exception("Relation fetch failed")
+    
+    with pytest.raises(InternalServerError) as exc_info:
+        await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    assert "An unexpected error occurred" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_with_get_attributes_error(data_service, mock_opengin_service):
+    """Test fetch_data_attributes handles errors from get_attributes"""
+    
+    dataset_id = "dataset_attr_error"
+    
+    mock_entity = Entity(
+        id=dataset_id,
+        name="encoded_name",
+        kind=Kind(major="Dataset", minor="tabular")
+    )
+    
+    mock_relation = Relation(
+        relatedEntityId="category_123",
+        name="IS_ATTRIBUTE"
+    )
+    
+    mock_opengin_service.get_entities.return_value = [mock_entity]
+    mock_opengin_service.fetch_relation.return_value = [mock_relation]
+    mock_opengin_service.get_attributes.side_effect = Exception("Attributes fetch failed")
+    
+    with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="dataset_name"):
+        with pytest.raises(InternalServerError) as exc_info:
+            await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    assert "An unexpected error occurred" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_fetch_data_attributes_with_multiple_relations(data_service, mock_opengin_service):
+    """Test fetch_data_attributes when multiple relations exist (uses first one)"""
+    
+    dataset_id = "multi_rel_dataset"
+    
+    mock_entity = Entity(
+        id=dataset_id,
+        name="encoded_multi",
+        kind=Kind(major="Dataset", minor="tabular")
+    )
+    
+    # Multiple relations, function should use the first one
+    mock_relations = [
+        Relation(relatedEntityId="category_first", name="IS_ATTRIBUTE"),
+        Relation(relatedEntityId="category_second", name="IS_ATTRIBUTE")
+    ]
+    
+    mock_opengin_service.get_entities.return_value = [mock_entity]
+    mock_opengin_service.fetch_relation.return_value = mock_relations
+    mock_opengin_service.get_attributes.return_value = []
+    
+    mock_formatted = {"type": "tabular", "data": {"columns": [], "rows": []}}
+    
+    with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="multi_dataset"), \
+         patch("src.services.data_service.Util.transform_data_for_chart", return_value=mock_formatted):
+        
+        result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
+    
+    # Verify get_attributes was called with the first relation's category_id
+    mock_opengin_service.get_attributes.assert_called_once_with(
+        category_id="category_first",
+        dataset_name="multi_dataset"
+    )
+
 # Tests for lock functionality
 @pytest.mark.asyncio
 async def test_enrich_category_with_lock_prevents_race_condition(data_service):
