@@ -985,9 +985,11 @@ async def test_find_root_department_or_minister_no_parent_found(data_service, mo
     # Return empty list (no parent relations found)
     mock_opengin_service.fetch_relation.return_value = []
     
-    result = await data_service.find_root_department_or_minister(category_id)
+    # Should raise NotFoundError when no parent is found
+    with pytest.raises(NotFoundError) as exc_info:
+        await data_service.find_root_department_or_minister(category_id)
     
-    assert result is None
+    assert "No parent category found for category" in str(exc_info.value)
 
 @pytest.mark.asyncio
 async def test_find_root_department_or_minister_without_category_id(data_service):
@@ -1138,11 +1140,11 @@ async def test_fetch_dataset_root_no_relation_found(data_service, mock_opengin_s
     # Return empty list (no relations found)
     mock_opengin_service.fetch_relation.return_value = []
     
-    result = await data_service.fetch_dataset_root(dataset_id)
+    # Should raise NotFoundError when no relation is found
+    with pytest.raises(NotFoundError) as exc_info:
+        await data_service.fetch_dataset_root(dataset_id)
     
-    assert result is not None
-    assert "detail" in result
-    assert result["detail"] == "No relation found for dataset"
+    assert "No relation found for dataset" in str(exc_info.value)
 
 @pytest.mark.asyncio
 async def test_fetch_dataset_root_no_root_entity_found(data_service, mock_opengin_service):
@@ -1171,11 +1173,11 @@ async def test_fetch_dataset_root_no_root_entity_found(data_service, mock_opengi
     
     mock_opengin_service.get_entities.return_value = [mock_category]
     
-    result = await data_service.fetch_dataset_root(dataset_id)
+    # Should raise NotFoundError when no root entity is found
+    with pytest.raises(NotFoundError) as exc_info:
+        await data_service.fetch_dataset_root(dataset_id)
     
-    assert result is not None
-    assert "detail" in result
-    assert result["detail"] == "Dataset not found"
+    assert "No parent category found for category" in str(exc_info.value)
 
 @pytest.mark.asyncio
 async def test_fetch_dataset_root_with_fetch_relation_error(data_service, mock_opengin_service):
