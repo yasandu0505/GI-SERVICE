@@ -121,6 +121,21 @@ class Util:
         return ' '.join(words)
 
     @staticmethod
+    def get_name_without_year(name: str) -> str:
+        """
+        Removes the year from the name if it exists at the end.
+        
+        Args:
+            name (str): The name to remove the year from.
+            
+        Returns:
+            str: The name without the year at the end split by '-'.
+        """
+        if not name:
+            return ""
+        
+        return re.sub(r"-\d{4}$", "", name)
+    
     def decode_response(response):
         """
         Decode the protobuf response and extract the data
