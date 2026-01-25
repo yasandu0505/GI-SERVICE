@@ -321,4 +321,114 @@ class DataService:
         except Exception as e:
             logger.error(f"failed to fetch data attributes {e}")
             raise InternalServerError("An unexpected error occurred") from e
+
+    async def fetch_dataset_root(self, dataset_id: str):
+        """
+        Fetches the root department or minister for a given dataset by traversing the category hierarchy.
+        
+        This function follows these steps:
+        1. Gets the category ID from the dataset using IS_ATTRIBUTE relation (INCOMING)
+        2. Traverses up the category hierarchy until it finds a department or minister
+        
+        Args:
+            dataset_id (str): The ID of the dataset.
+        
+        Returns:
+            Entity: The root entity (department or minister) for the dataset.
+            
+        Raises:
+            BadRequestError: If dataset_id is not provided.
+            NotFoundError: If no root department or minister is found.
+            InternalServerError: If an unexpected error occurs.
+        """
+        try:
+            if not dataset_id:
+                raise BadRequestError("Dataset ID is required")
+            
+            # Fetch relation to get the category ID
+            relation_instance = Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+            relations = await self.opengin_service.fetch_relation(
+                entityId=dataset_id, 
+                relation=relation_instance
+            )
+
+            if not relations:
+                logger.error(f"No relation found for dataset {dataset_id}")
+                raise NotFoundError("No relation found for dataset")
+
+            category_id = relations[0].relatedEntityId
+            
+            # Find the root department or minister
+            root_entity = await self.find_root_department_or_minister(category_id)
+
+            if not root_entity:
+                logger.error(f"Dataset not found {dataset_id}")
+                return {
+                    "detail": "Dataset not found"
+                }
+
+            root_entity_name = Util.decode_protobuf_attribute_name(root_entity.name)
+
+            # arrange the response
+            root_entity_data = {
+                "id": root_entity.id,
+                "name": root_entity_name,
+                "type": root_entity.kind.minor
+            }
+            
+            return root_entity_data
+
+        except (BadRequestError, NotFoundError):
+            raise
+        except Exception as e:
+            logger.error(f"Failed to fetch dataset root for dataset {dataset_id}: {e}")
+            raise InternalServerError("An unexpected error occurred") from e
+
+    async def find_root_department_or_minister(self, category_id: str):
+        """
+        Recursively traverses the category hierarchy to find the root department or minister.
+        
+        This function checks if the current category is a department or minister. If not,
+        it follows the AS_CATEGORY INCOMING relation to traverse up the hierarchy.
+        
+        Args:
+            category_id (str): The ID of the category to check.
+        
+        Returns:
+            Entity: The root entity with name, id and type as "department" or "minister".
+        """
+        try:
+            if not category_id:
+                raise BadRequestError("Category ID is required")
+            
+            # Fetch the category entity
+            category_entity = Entity(id=category_id)
+            category_results = await self.opengin_service.get_entities(entity=category_entity)
+
+            current_category = category_results[0]
+            
+            # Check if this is a department or minister
+            if current_category.kind and current_category.kind.minor in ["department", "minister"]:
+                return current_category
+            
+            # If not, traverse up the hierarchy using AS_CATEGORY INCOMING relation
+            relation_instance = Relation(name="AS_CATEGORY", direction="INCOMING")
+            parent_relations = await self.opengin_service.fetch_relation(
+                entityId=category_id,
+                relation=relation_instance
+            )
+
+            if not parent_relations:
+                logger.error(f"No parent category found for category {category_id}")
+                raise NotFoundError("No parent category found for category")
+            
+            # Recursively check the parent category
+            parent_category_id = parent_relations[0].relatedEntityId
+            return await self.find_root_department_or_minister(parent_category_id)
+
+        except (BadRequestError, NotFoundError):
+            raise
+        except Exception as e:
+            logger.error(f"Failed to find root department or minister for category {category_id}: {e}")
+            raise InternalServerError("An unexpected error occurred") from e
             

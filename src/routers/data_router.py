@@ -37,4 +37,10 @@ async def get_data_attributes(
     service_response = await service.fetch_data_attributes(datasetId)
     return service_response
 
-    
+@router.get('/datasets/{datasetId}/root', summary="Get the root of the given dataset.", description="Returns the root of the given dataset.")
+async def get_dataset_root(
+    datasetId: str = Path(..., description="The ID of the dataset"),
+    service: DataService = Depends(get_data_service)
+):
+    service_response = await service.fetch_dataset_root(datasetId)
+    return service_response    
