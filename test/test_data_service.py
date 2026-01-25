@@ -867,7 +867,7 @@ async def test_find_root_department_or_minister_found_department(data_service, m
     # Mock category entity that is a department
     mock_department = Entity(
         id=category_id,
-        name="encoded_department_name",
+        name="department_name",
         kind=Kind(major="Category", minor="department")
     )
     
@@ -877,6 +877,7 @@ async def test_find_root_department_or_minister_found_department(data_service, m
     
     assert result is not None
     assert result.id == category_id
+    assert result.name == "department_name"
     assert result.kind.minor == "department"
     mock_opengin_service.get_entities.assert_called_once_with(entity=Entity(id=category_id))
 
@@ -1037,7 +1038,7 @@ async def test_fetch_dataset_root_success_with_department(data_service, mock_ope
     # Mock department entity
     mock_department = Entity(
         id=department_id,
-        name="encoded_department_name",
+        name="department_name",
         kind=Kind(major="Category", minor="department")
     )
     
