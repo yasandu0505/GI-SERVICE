@@ -3,6 +3,8 @@ import json
 import re
 from datetime import datetime
 from google.protobuf.wrappers_pb2 import StringValue
+from google.protobuf import struct_pb2
+from google.protobuf.json_format import MessageToDict
 
 class Util:
     # helper: normalize timestamp
@@ -118,3 +120,130 @@ class Util:
         words = [word.capitalize() for word in text.split() if word]
         return ' '.join(words)
 
+    @staticmethod
+    def get_name_without_year(name: str) -> str:
+        """
+        Removes the year from the name if it exists at the end.
+        
+        Args:
+            name (str): The name to remove the year from.
+            
+        Returns:
+            str: The name without the year at the end split by '-'.
+        """
+        if not name:
+            return ""
+        
+        return re.sub(r"-\d{4}$", "", name)
+    
+    @staticmethod
+    def decode_response(response):
+        """
+        Decode the protobuf response and extract the data
+        """
+        response_value = response["value"]
+            
+        # Extract the hex string
+        hex_value = json.loads(response_value)["value"]
+        
+        # Convert hex string to bytes
+        proto_bytes = bytes.fromhex(hex_value)
+        
+        # Parse into a Protobuf Struct
+        struct_obj = struct_pb2.Struct()
+        struct_obj.ParseFromString(proto_bytes)
+        
+        # Convert to a Python dictionary
+        return MessageToDict(struct_obj)
+        
+    @staticmethod
+    def transform_data_for_chart(attribute_data_out):
+        """
+        Transform decoded attribute data into a generic format with automatic type detection.
+        
+        The function automatically identifies the data type by inspecting the structure:
+        - Tabular: Has "columns" and "rows" keys
+        - Graph: Has "nodes" and "edges" keys
+        - Document: Has "content" key or other document-like structure
+        - Unknown: Doesn't match any known pattern
+        
+        Args:
+            attribute_data_out: Dictionary containing the decoded data
+            
+        Returns:
+            dict: Formatted data with structure:
+                {
+                    "type": "<auto_detected_type>",
+                    "data": {
+                        // Type-specific data structure
+                    }
+                }
+        """
+        if attribute_data_out.get("error"):
+            return {
+                "type": "unknown",
+                "error": attribute_data_out["error"]
+            }
+        
+        try:
+            decoded_data = Util.decode_response(attribute_data_out["data"])
+        
+            if not decoded_data:
+                return {
+                    "type": "unknown",
+                    "error": "Could not decode response"
+                }
+        
+            data_dictionary = json.loads(decoded_data["data"])
+            
+            # Auto-detect data type based on structure
+            detected_type = Util.detect_data_type(data_dictionary)
+            
+            # Handle different data types
+            if detected_type == "tabular":
+                # Tabular data with columns and rows
+                columns = data_dictionary.get("columns", [])
+                rows = data_dictionary.get("rows", [])
+                
+                return {
+                    "type": "tabular",
+                    "data": {
+                        "columns": columns,
+                        "rows": rows
+                    }
+                }
+            
+            else:
+                # Unknown type - return raw data
+                return {
+                    "type": "unknown",
+                    "data": data_dictionary
+                }
+                
+        except Exception as e:
+            return {
+                "type": "unknown",
+                "error": f"Failed to transform data: {str(e)}"
+            }
+    
+    @staticmethod
+    def detect_data_type(data_dict: dict) -> str:
+        """
+        Detect the data type based on the structure of the data dictionary.
+        
+        Args:
+            data_dict: The data dictionary to inspect
+            
+        Returns:
+            str: The detected data type ("tabular" or "unknown")
+        """
+        if not isinstance(data_dict, dict):
+            return "unknown"
+        
+        # Check for tabular data (has both columns and rows)
+        if "columns" in data_dict and "rows" in data_dict:
+            return "tabular"
+        
+        # Default to unknown
+        return "unknown"
+    

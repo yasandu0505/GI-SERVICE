@@ -168,3 +168,5 @@ async def test_get_metadata_empty_response(mock_service, mock_session):
     
     assert result == {}
     mock_session.get.assert_called_once()
+
+

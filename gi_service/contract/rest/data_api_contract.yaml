@@ -74,19 +74,25 @@ paths:
         "500":
           description: Server Error
   
-  /categories/{categoryId}/datasets/years:
-    get:
+  /datasets/years:
+    post:
       tags:
       - Data
-      summary: Get all the dataset available years for a category.
-      description: Returns the list of years for available datasets
+      summary: Get all the dataset available years for the given datasets.
+      description: Returns the list of years and datasetIds for available datasets with dataset name.
       operationId: getAvailableDataYears
-      parameters:
-      - name: categoryId
+      
+      requestBody:
         required: true
-        in: path
-        schema:
-          type: string
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                datasetIds:
+                  type: array
+                  items:
+                    type: string
       
       responses:
         "200":
@@ -129,19 +135,14 @@ paths:
         "500":
           description: Server Error
 
-  /categories/{categoryId}/datasets/{datasetId}/data:
+  /datasets/{datasetId}/data:
     get:
       tags:
       - Data
-      summary: Get the data for the given dataset.
-      description: "Returns the data for the given dataset"
-      operationId: getDataByYear
+      summary: Get the data attributes for the given dataset.
+      description: "Returns the data attributes for the given dataset"
+      operationId: getDataAttributes
       parameters:
-      - name: categoryId
-        required: true
-        in: path
-        schema:
-          type: string
       - name: datasetId
         required: true
         in: path
@@ -183,15 +184,15 @@ paths:
         "500":
           description: Server Error
 
-  /categories/{categoryId}/root:
+  /datasets/{datasetId}/root:
     get:
       tags:
       - Data
-      summary: Get the root of the given parent.
-      description: Returns the root of the given parent.
+      summary: Get the root of the given dataset.
+      description: Returns the root of the given dataset.
       operationId: getRootById
       parameters:
-      - name: categoryId
+      - name: datasetId
         required: true
         in: path
         schema:
@@ -211,9 +212,9 @@ paths:
                       name:
                         type: string
                       id:
-                        type: object
-                      kind:
-                        $ref: '#/components/schemas/kind'
+                        type: string
+                      type:
+                        type: string
               
               example:
                 body:
