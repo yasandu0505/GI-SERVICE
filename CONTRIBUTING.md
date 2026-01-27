@@ -52,7 +52,7 @@ Fixes #123
 - Ensure all test cases are correct, validated, and cover the intended functionality thoroughly.
 - Run all tests locally to confirm they pass before committing, and update or add tests as needed for any new changes.
 
-### Testing 
+### Testing
 
 All changes should include appropriate tests. Run the test suite before submitting:
 
@@ -106,7 +106,7 @@ We value all contributions and appreciate your effort to improve this project!
 ## Additional Resources
 
 - [See Issues](https://github.com/LDFLK/GI-SERVICE/issues)
-- [See API Documentation](gi_service/contract/rest)
+- [See API Documentation](README.md#api-endpoints)
 - [Getting Started](README.md#getting-started)
 
 ---

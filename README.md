@@ -1,6 +1,6 @@
 # GI-SERVICE
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 **General Information Service** is a FastAPI-based backend service that acts as a middle-layer API adapter between **OpenGIN (Open General Information Network)** backend and the **OpenGINXplore** frontend application.
 
@@ -96,7 +96,7 @@ flowchart LR
 ### Method 2 (Docker)
 
    ```bash
-   # Make sure docker deamon running
+   # Make sure docker daemon running
    
    # Up containers 
    docker compose up 
@@ -114,8 +114,8 @@ Once the server is running, you can access:
 
 ## API Endpoints
 
-- Organization Contract: [See Contract](gi_service/contract/rest/data_api_contract.yaml)
-- Data Contract: [See Contract](gi_service/contract/rest/organisation_api_contract.yaml)
+- Organization Contract: [See Contract](gi_service/contract/rest/organisation_api_contract.yaml)
+- Data Contract: [See Contract](gi_service/contract/rest/data_api_contract.yaml)
 
 ## Configuration
 
