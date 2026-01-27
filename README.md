@@ -1,247 +1,49 @@
 # GI-SERVICE
 
-**General Information Service** - API Adapter for OpenGIN (Open General Information Network)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A FastAPI-based service that provides data processing and API endpoints for government information management, including entity attributes, organizational charts, and data visualization capabilities.
+**General Information Service** is a FastAPI-based backend service that acts as a middle-layer API adapter between **OpenGIN (Open General Information Network)** and the **OpenGINXplore** frontend application.
 
-## 🚀 Features
+The service is responsible for communicating with OpenGIN APIs, processing and aggregating the retrieved government information, and exposing frontend-friendly endpoints tailored to OpenGINXplore’s data needs. It abstracts the complexity of OpenGIN’s data structures and delivers well-structured, optimized responses for visualization and exploration.
 
-- **Entity Management**: Create and manage government entities (departments, ministries, etc.)
-- **Attribute Processing**: Process and store entity attributes with metadata
-- **Organizational Charts**: Generate timeline-based organizational structures
-- **Data Visualization**: Transform data for chart generation
-- **Category Management**: Hierarchical category creation and relationships
-- **RESTful APIs**: Clean, documented API endpoints
+## Features
 
-## 📋 Prerequisites
+| Feature | Description |
+|--------|-------------|
+| Active Ministries by Date | Provides an API to retrieve the list of ministries that were active on a given date, enabling time-aware views of government structures. |
+| Active Departments by Ministry | Exposes endpoints to fetch departments active under a specific ministry for a given date, ensuring historically accurate organizational data. |
+| Latest Dataset Access | Supplies various types of datasets (tabular) for the most recent available years, optimized for frontend consumption. |
+| Prime Minister & Minister Details | Retrieves active Prime Minister details along with assigned ministers for a specified date, including portfolio associations. |
+| Backend for Frontend (BFF) APIs | Acts as a dedicated BFF layer for the frontend, orchestrating parallel API calls to upstream services and returning frontend-ready responses. |
 
-- Python 3.8 to 3.13
-- pip (Python package installer)
-- Git
 
-## 🛠️ Installation & Setup
+## Getting Started
 
-### 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd GI-SERVICE
-```
-
-### 2. Create Virtual Environment
-
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-```
-
-### 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Environment Configuration
-
-Create a `.env` file in the root directory:
-
-```env
-# Base URLs for CRUD and Query services
-BASE_URL_CRUD=http://0.0.0.0:8080
-BASE_URL_QUERY=http://0.0.0.0:8081
-
-# Optional: Add other environment variables as needed
-```
-
-### 5. Run the Application
-
-```bash
-# Development server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# Or using the Procfile (for production)
-uvicorn main:app --host 0.0.0.0 --port $PORT
-```
-
-The API will be available at: `http://localhost:8000`
-
-## 📚 API Documentation
+## API Documentation
 
 Once the server is running, you can access:
 
 - **Interactive API Docs**: `http://localhost:8000/docs` (Swagger UI)
 - **Alternative Docs**: `http://localhost:8000/redoc` (ReDoc)
 
-## 🔌 API Endpoints
+## API Endpoints
 
-### Entity Attributes
+Organization Contract: [See Contract](gi_service/contract/rest/data_api_contract.yaml)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/allAttributes` | Get all available attributes |
-| `POST` | `/data/entity/{entityId}` | Get attributes for a specific entity |
-| `POST` | `/data/attribute/{entityId}` | Get data for a specific attribute |
+Data Contract: [See Contract](gi_service/contract/rest/organisation_api_contract.yaml)
 
-### Data Writing
+## Contributing
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/data/writeAttributes` | Process and write attributes to entities |
+Please see our [Contributing Guidelines](CONTRIBUTING.md).
 
-### Organizational Charts
+## Code of Conduct
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/data/orgchart/timeline` | Get timeline for organizational chart |
-| `POST` | `/data/orgchart/ministries` | Get ministries for selected date |
-| `POST` | `/data/orgchart/departments` | Get departments for selected ministry |
+Please see our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## 🧪 Testing the APIs
+## Security
 
-### 1. Test Basic Connectivity
+Please see our [Security Policy](SECURITY.md).
 
-```bash
-curl http://localhost:8000/docs
-```
+## License
 
-### 2. Test All Attributes Endpoint
-
-```bash
-curl -X GET "http://localhost:8000/allAttributes" \
-     -H "accept: application/json"
-```
-
-### 3. Test Entity Attributes
-
-```bash
-curl -X POST "http://localhost:8000/data/entity/your-entity-id" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "entityId": "your-entity-id",
-       "filters": {}
-     }'
-```
-
-### 4. Test Data Writing
-
-```bash
-curl -X POST "http://localhost:8000/data/writeAttributes" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "base_url": "/path/to/your/data"
-     }'
-```
-
-## 📁 Project Structure
-
-```
-GI-SERVICE/
-├── src/
-│   ├── dependencies/          # Dependency injection
-│   ├── models/               # Pydantic models
-│   ├── routers/              # API route handlers
-│   └── services/             # Business logic
-├── chartFactory/             # Chart generation utilities
-├── test/                     # Test data and scripts
-├── main.py                   # FastAPI application entry point
-├── requirements.txt          # Python dependencies
-├── Procfile                  # Deployment configuration
-└── README.md                # This file
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BASE_URL_CRUD` | CRUD service base URL | `http://0.0.0.0:8080` |
-| `BASE_URL_QUERY` | Query service base URL | `http://0.0.0.0:8081` |
-
-### Data Processing
-
-The service processes data in the following format:
-
-```json
-{
-  "attributeName": "example_attribute",
-  "relatedEntityName": "Department Name",
-  "relation": "2022 - Government - Minister - Department",
-  "attributeData": {
-    "columns": ["col1", "col2"],
-    "rows": [["val1", "val2"]]
-  },
-  "attributeMetadata": {
-    "storage_type": "tabular",
-    "dataset_name": "Example Dataset"
-  }
-}
-```
-
-## 🚀 Deployment
-
-### Using Heroku
-
-1. Install Heroku CLI
-2. Login to Heroku: `heroku login`
-3. Create app: `heroku create your-app-name`
-4. Deploy: `git push heroku main`
-
-### Using Docker
-
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Port already in use**: Change the port in the uvicorn command
-2. **Environment variables not loaded**: Ensure `.env` file is in the root directory
-3. **Import errors**: Make sure virtual environment is activated
-4. **API not responding**: Check if the CRUD and Query services are running
-
-### Debug Mode
-
-```bash
-# Run with debug logging
-uvicorn main:app --reload --log-level debug
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit changes: `git commit -am 'Add feature'`
-4. Push to branch: `git push origin feature-name`
-5. Submit a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 📞 Support
-
-For support and questions:
-- Create an issue in the repository
-- Contact the development team
-
----
-
-**Happy Coding! 🎉**
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
