@@ -19,87 +19,7 @@ There are many ways to contribute to this project:
 
 ## Getting Started
 
-### Prerequisites
-
-### Prerequisites
-
-- Python 3.8 to 3.13
-- pip (Python package installer)
-- Git
-- Docker (Optional)
-
-### Development Setup
-
-### Installation & Setup
-
-**Clone the Repository**
-
-   ```bash
-   git clone https://github.com/LDFLK/GI-SERVICE.git
-   cd GI-SERVICE
-   ```
-
-### Method 1 (Manual)
-1. **Create Virtual Environment**
-
-   ```bash
-   # Create virtual environment
-   python -m venv .venv
-
-   # Activate virtual environment
-   # On Windows:
-   .venv\Scripts\activate
-
-   # On macOS/Linux:
-   source .venv/bin/activate
-   ```
-
-2. **Install Dependencies**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Environment Configuration**
-
-   Create a `.env` file in the root directory:
-
-   ```env
-   # Base URLs for Read(Query) services in OpenGIN
-   BASE_URL_QUERY=http://0.0.0.0:8081
-   ```
-
-4. **Run the Application**
-
-   ```bash
-   # Development server
-   uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-   # Or using the Procfile (for production)
-   uvicorn main:app --host 0.0.0.0 --port $PORT
-   ```
-
-   The API will be available at: `http://localhost:8000`
-
-### Method 2 (Docker)
-
-   ```bash
-   # Make sure docker deamon running
-   
-   # Up containers with existing image
-   docker compose up 
-
-   # Up container & build image
-   docker compose up --build
-   ```
-
-## Configuration
-
-#### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BASE_URL_QUERY` | Query(Read) OpenGIN service URL | `http://0.0.0.0:8081` |
+Please refer to the [README](README.md#getting-started) section for detailed instructions on how to get started.
 
 ## Making Changes
 
@@ -128,26 +48,16 @@ Fixes #123
 
 ### Coding Standards
 
-<!-- Describe coding style, linting, formatting requirements -->
-<!-- Example:
-- Follow PEP 8 for Python code
-- Run `black` for formatting
-- Run `flake8` for linting
--->
+- Add unit tests directly inside the `tests/` directory and organize test files in a clear, maintainable structure.
+- Ensure all test cases are correct, validated, and cover the intended functionality thoroughly.
+- Run all tests locally to confirm they pass before committing, and update or add tests as needed for any new changes.
 
-### Testing
-
-<!-- Describe testing requirements -->
-<!-- Example:
-- Add unit tests for new functionality
-- Ensure all tests pass: `pytest`
-- Maintain or improve code coverage
--->
+### Testing 
 
 All changes should include appropriate tests. Run the test suite before submitting:
 
 ```bash
-# Add your test command here
+pytest
 ```
 
 ## Submitting Changes
@@ -174,40 +84,31 @@ For significant contributions, you may need to sign a Contributor License Agreem
 
 ### Review Process
 
-<!-- Describe how PRs are reviewed and merged -->
-<!-- Example:
-- PRs require at least one approval from a maintainer
-- CI checks must pass
-- Changes may be requested before merging
--->
+- PRs require at least one approval from a maintainer before merging.
+- All CI checks (tests, linting, build) must pass successfully.
+- Reviewers may request changes; address feedback before merging.
+- Keep commits clean and descriptive to maintain a clear project history.
+- Merge using the approved method (e.g., merge commit, or rebase) as per project conventions.
+
 
 ## Communication
 
-<!-- List communication channels -->
-<!-- Example:
 - GitHub Issues: For bug reports and feature requests
-- GitHub Discussions: For questions and general discussion
-- Mailing List: dev@project.apache.org
-- Slack/Discord: [Link to channel]
--->
+- Mailing List: [contact@datafoundation.lk](mailto:contact@datafoundation.lk)
 
 ## Recognition
 
-<!-- Describe how contributors are recognized -->
-<!-- Example:
-Contributors are recognized in our CONTRIBUTORS.md file and release notes.
--->
+- Contributors are recognized in the `CONTRIBUTORS.md` file and acknowledged in release notes.
+- Major contributions, bug fixes, and feature additions are highlighted to give proper credit.
+- Community involvement, such as reviewing PRs or reporting issues, is also appreciated and noted.
 
 We value all contributions and appreciate your effort to improve this project!
 
 ## Additional Resources
 
-<!-- Add links to helpful resources -->
-<!-- Example:
-- [Project Documentation](link)
-- [Issue Tracker](link)
-- [Development Roadmap](link)
--->
+- [See Issues](https://github.com/LDFLK/GI-SERVICE/issues)
+- [See API Documentation](gi_service/contract/rest)
+- [Getting Started](README.md#getting-started)
 
 ---
 
