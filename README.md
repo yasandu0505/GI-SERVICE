@@ -1,12 +1,8 @@
-<!-- Add your project banner/logo here -->
-<!-- Example: ![Banner](https://github.com/username/repo/assets/banner.png) -->
-
 # GI-SERVICE
 
-<!-- Add license badge below -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**General Information Service** is a FastAPI-based backend service that acts as a middle-layer API adapter between **OpenGIN (Open General Information Network)** and the **OpenGINXplore** frontend application.
+**General Information Service** is a FastAPI-based backend service that acts as a middle-layer API adapter between **OpenGIN (Open General Information Network)** backend and the **OpenGINXplore** frontend application.
 
 The service is responsible for communicating with OpenGIN APIs, processing and aggregating the retrieved government information, and exposing frontend-friendly endpoints tailored to OpenGINXplore’s data needs. It abstracts the complexity of OpenGIN’s data structures and delivers well-structured, optimized responses for visualization and exploration.
 
@@ -93,9 +89,6 @@ flowchart LR
    ```bash
    # Development server
    uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-   # Or using the Procfile (for production)
-   uvicorn main:app --host 0.0.0.0 --port $PORT
    ```
 
    The API will be available at: `http://localhost:8000`
@@ -105,10 +98,10 @@ flowchart LR
    ```bash
    # Make sure docker deamon running
    
-   # Up containers with existing image
+   # Up containers 
    docker compose up 
 
-   # Up container & build image
+   # Build & Up containers
    docker compose up --build
    ```
 

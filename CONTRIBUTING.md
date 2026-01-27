@@ -90,11 +90,10 @@ For significant contributions, you may need to sign a Contributor License Agreem
 - Keep commits clean and descriptive to maintain a clear project history.
 - Merge using the approved method (e.g., merge commit, or rebase) as per project conventions.
 
-
 ## Communication
 
 - GitHub Issues: For bug reports and feature requests
-- Mailing List: [contact@datafoundation.lk](mailto:contact@datafoundation.lk)
+- [contact@datafoundation.lk](mailto:contact@datafoundation.lk)
 
 ## Recognition
 
