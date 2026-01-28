@@ -1,247 +1,147 @@
 # GI-SERVICE
 
-**General Information Service** - API Adapter for OpenGIN (Open General Information Network)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-A FastAPI-based service that provides data processing and API endpoints for government information management, including entity attributes, organizational charts, and data visualization capabilities.
+**General Information Service** is a FastAPI-based backend service that acts as a middle-layer API adapter between **OpenGIN (Open General Information Network)** backend and the **OpenGINXplore** frontend application.
 
-## 🚀 Features
+The service is responsible for communicating with OpenGIN APIs, processing and aggregating the retrieved government information, and exposing frontend-friendly endpoints tailored to OpenGINXplore’s data needs. It abstracts the complexity of OpenGIN’s data structures and delivers well-structured, optimized responses for visualization and exploration.
 
-- **Entity Management**: Create and manage government entities (departments, ministries, etc.)
-- **Attribute Processing**: Process and store entity attributes with metadata
-- **Organizational Charts**: Generate timeline-based organizational structures
-- **Data Visualization**: Transform data for chart generation
-- **Category Management**: Hierarchical category creation and relationships
-- **RESTful APIs**: Clean, documented API endpoints
+### Architecture
+```mermaid
+flowchart LR
+    FE["Frontend<br/>(OpenGINXplore)"]
+    API["GI-Service<br/>(API Adapter / BFF)"]
+    CORE["OpenGIN<br/>(Core Data Platform)"]
 
-## 📋 Prerequisites
+    FE <-->| REST | API
+    API <-->| Query APIs | CORE
+
+    %% Base styles
+    classDef blue fill:#E3F2FD,stroke:#1565C0,stroke-width:1px,color:#0D47A1
+    classDef green fill:#C8E6C9,stroke:#1B5E20,stroke-width:3px,color:#0B3D0B
+
+    class FE blue
+    class CORE blue
+    class API green
+```
+
+## Features
+
+<!-- List your project features in a table format -->
+| Feature | Description |
+|--------|-------------|
+| Active Ministries by Date | Provides an API to retrieve the list of ministries that were active on a given date, enabling time-aware views of government structures. |
+| Active Departments by Ministry | Exposes endpoints to fetch departments active under a specific ministry for a given date, ensuring historically accurate organizational data. |
+| Latest Dataset Access | Supplies various types of datasets (tabular) for the most recent available years, optimized for frontend consumption. |
+| Prime Minister & Minister Details | Retrieves active Prime Minister details along with assigned ministers for a specified date, including portfolio associations. |
+| Backend for Frontend (BFF) APIs | Acts as a dedicated BFF layer for the frontend, orchestrating parallel API calls to upstream services and returning frontend-ready responses. |
+
+
+## Getting Started
+
+### Prerequisites
 
 - Python 3.8 to 3.13
 - pip (Python package installer)
 - Git
 
-## 🛠️ Installation & Setup
+### Installation & Setup
 
-### 1. Clone the Repository
+**Clone the Repository**
 
-```bash
-git clone <repository-url>
-cd GI-SERVICE
-```
+   ```bash
+   git clone https://github.com/LDFLK/GI-SERVICE.git
+   cd GI-SERVICE
+   ```
 
-### 2. Create Virtual Environment
+### Method 1 (Manual)
+1. **Create Virtual Environment**
 
-```bash
-# Create virtual environment
-python -m venv venv
+   ```bash
+   # Create virtual environment
+   python -m venv .venv
 
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-```
+   # Activate virtual environment
+   # On Windows:
+   .venv\Scripts\activate
 
-### 3. Install Dependencies
+   # On macOS/Linux:
+   source .venv/bin/activate
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+2. **Install Dependencies**
 
-### 4. Environment Configuration
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Create a `.env` file in the root directory:
+3. **Environment Configuration**
 
-```env
-# Base URLs for CRUD and Query services
-BASE_URL_CRUD=http://0.0.0.0:8080
-BASE_URL_QUERY=http://0.0.0.0:8081
+   Create a `.env` file in the root directory:
 
-# Optional: Add other environment variables as needed
-```
+   ```env
+   # Base URLs for Read(Query) services in OpenGIN
+   BASE_URL_QUERY=http://0.0.0.0:8081
+   ```
 
-### 5. Run the Application
+4. **Run the Application**
 
-```bash
-# Development server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```bash
+   # Development server
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
 
-# Or using the Procfile (for production)
-uvicorn main:app --host 0.0.0.0 --port $PORT
-```
+   The API will be available at: `http://localhost:8000`
 
-The API will be available at: `http://localhost:8000`
+### Method 2 (Docker)
 
-## 📚 API Documentation
+   ```bash
+   # Make sure docker daemon running
+   
+   # Up containers 
+   docker compose up 
+
+   # Build & Up containers
+   docker compose up --build
+   ```
+
+## API Documentation
 
 Once the server is running, you can access:
 
 - **Interactive API Docs**: `http://localhost:8000/docs` (Swagger UI)
 - **Alternative Docs**: `http://localhost:8000/redoc` (ReDoc)
 
-## 🔌 API Endpoints
+## API Endpoints
 
-### Entity Attributes
+- Organization Contract: [See Contract](gi_service/contract/rest/organisation_api_contract.yaml)
+- Data Contract: [See Contract](gi_service/contract/rest/data_api_contract.yaml)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/allAttributes` | Get all available attributes |
-| `POST` | `/data/entity/{entityId}` | Get attributes for a specific entity |
-| `POST` | `/data/attribute/{entityId}` | Get data for a specific attribute |
+## Configuration
 
-### Data Writing
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/data/writeAttributes` | Process and write attributes to entities |
-
-### Organizational Charts
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/data/orgchart/timeline` | Get timeline for organizational chart |
-| `POST` | `/data/orgchart/ministries` | Get ministries for selected date |
-| `POST` | `/data/orgchart/departments` | Get departments for selected ministry |
-
-## 🧪 Testing the APIs
-
-### 1. Test Basic Connectivity
-
-```bash
-curl http://localhost:8000/docs
-```
-
-### 2. Test All Attributes Endpoint
-
-```bash
-curl -X GET "http://localhost:8000/allAttributes" \
-     -H "accept: application/json"
-```
-
-### 3. Test Entity Attributes
-
-```bash
-curl -X POST "http://localhost:8000/data/entity/your-entity-id" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "entityId": "your-entity-id",
-       "filters": {}
-     }'
-```
-
-### 4. Test Data Writing
-
-```bash
-curl -X POST "http://localhost:8000/data/writeAttributes" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "base_url": "/path/to/your/data"
-     }'
-```
-
-## 📁 Project Structure
-
-```
-GI-SERVICE/
-├── src/
-│   ├── dependencies/          # Dependency injection
-│   ├── models/               # Pydantic models
-│   ├── routers/              # API route handlers
-│   └── services/             # Business logic
-├── chartFactory/             # Chart generation utilities
-├── test/                     # Test data and scripts
-├── main.py                   # FastAPI application entry point
-├── requirements.txt          # Python dependencies
-├── Procfile                  # Deployment configuration
-└── README.md                # This file
-```
-
-## 🔧 Configuration
-
-### Environment Variables
+#### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `BASE_URL_CRUD` | CRUD service base URL | `http://0.0.0.0:8080` |
-| `BASE_URL_QUERY` | Query service base URL | `http://0.0.0.0:8081` |
+| `BASE_URL_QUERY` | Query(Read) OpenGIN service URL | `http://0.0.0.0:8081` |
 
-### Data Processing
+## Contributing
 
-The service processes data in the following format:
+Please see our [Contributing](CONTRIBUTING.md).
 
-```json
-{
-  "attributeName": "example_attribute",
-  "relatedEntityName": "Department Name",
-  "relation": "2022 - Government - Minister - Department",
-  "attributeData": {
-    "columns": ["col1", "col2"],
-    "rows": [["val1", "val2"]]
-  },
-  "attributeMetadata": {
-    "storage_type": "tabular",
-    "dataset_name": "Example Dataset"
-  }
-}
-```
+## Code of Conduct
 
-## 🚀 Deployment
+Please see our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-### Using Heroku
+## Security
 
-1. Install Heroku CLI
-2. Login to Heroku: `heroku login`
-3. Create app: `heroku create your-app-name`
-4. Deploy: `git push heroku main`
+Please see our [Security Policy](SECURITY.md).
 
-### Using Docker
+## License
 
-```dockerfile
-FROM python:3.9-slim
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+## References
 
-COPY . .
-EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Port already in use**: Change the port in the uvicorn command
-2. **Environment variables not loaded**: Ensure `.env` file is in the root directory
-3. **Import errors**: Make sure virtual environment is activated
-4. **API not responding**: Check if the CRUD and Query services are running
-
-### Debug Mode
-
-```bash
-# Run with debug logging
-uvicorn main:app --reload --log-level debug
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit changes: `git commit -am 'Add feature'`
-4. Push to branch: `git push origin feature-name`
-5. Submit a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 📞 Support
-
-For support and questions:
-- Create an issue in the repository
-- Contact the development team
-
----
-
-**Happy Coding! 🎉**
+- [OpenGIN](https://github.com/LDFLK/OpenGIN) 
+- [OpenGINXplore](https://github.com/LDFLK/openginxplore)
