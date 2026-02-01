@@ -32,11 +32,10 @@ async def search(
         description="Date for historical search (YYYY-MM-DD). Defaults to today.",
         pattern=r"^\d{4}-\d{2}-\d{2}$"
     ),
-    limit: int = Query(
-        20,
+    limit: Optional[int] = Query(
+        None,
         ge=1,
-        le=50,
-        description="Maximum number of results to return (1-50)"
+        description="Maximum number of results to return. If not specified, returns all results."
     ),
     entity_types: Optional[List[str]] = Query(
         None,

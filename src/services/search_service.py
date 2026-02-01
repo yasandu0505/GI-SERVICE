@@ -24,7 +24,7 @@ class SearchService:
 
     # ============ MAIN SEARCH METHOD ============
 
-    async def unified_search(self, query: str, as_of_date: str, limit: int = 20, entity_types: Optional[List[str]] = None) -> SearchResponse:
+    async def unified_search(self, query: str, as_of_date: str, limit: Optional[int] = None, entity_types: Optional[List[str]] = None) -> SearchResponse:
         """
         Main entry point for unified search across all entity types.
 
@@ -87,8 +87,8 @@ class SearchService:
             # Sort by match score (highest first)
             all_results.sort(key=lambda x: x.get("match_score", 0), reverse=True)
 
-            # Limit results
-            limited_results = all_results[:limit]
+            # Limit results if limit is specified
+            limited_results = all_results[:limit] if limit else all_results
 
             # Convert to SearchResult models
             search_results = [SearchResult(**r) for r in limited_results]
@@ -108,7 +108,7 @@ class SearchService:
 
     # ============ ENTITY-SPECIFIC SEARCH METHODS ============
 
-    async def search_departments(self, query: str, as_of_date: str, limit: int) -> List[Dict[str, Any]]:
+    async def search_departments(self, query: str, as_of_date: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Search departments active on the given date.
 
@@ -146,7 +146,7 @@ class SearchService:
                         "match_score": self._calculate_match_score(query, name)
                     })
 
-            return matching[:limit]
+            return matching[:limit] if limit else matching
 
         except BadRequestError:
             raise
@@ -154,7 +154,7 @@ class SearchService:
             logger.error(f"Error searching departments: {e}")
             return []
 
-    async def search_ministers(self, query: str, as_of_date: str, limit: int) -> List[Dict[str, Any]]:
+    async def search_ministers(self, query: str, as_of_date: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Search ministers (portfolios) active on the given date.
 
@@ -192,7 +192,7 @@ class SearchService:
                         "match_score": self._calculate_match_score(query, name)
                     })
 
-            return matching[:limit]
+            return matching[:limit] if limit else matching
 
         except BadRequestError:
             raise
@@ -200,7 +200,7 @@ class SearchService:
             logger.error(f"Error searching ministers: {e}")
             return []
 
-    async def search_datasets(self, query: str, as_of_date: str, limit: int) -> List[Dict[str, Any]]:
+    async def search_datasets(self, query: str, as_of_date: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Search datasets by title, filtered by year.
 
@@ -241,7 +241,7 @@ class SearchService:
                         "match_score": self._calculate_match_score(query, name)
                     })
 
-            return matching[:limit]
+            return matching[:limit] if limit else matching
 
         except BadRequestError:
             raise
@@ -249,7 +249,7 @@ class SearchService:
             logger.error(f"Error searching datasets: {e}")
             return []
 
-    async def search_persons(self, query: str, as_of_date: str, limit: int) -> List[Dict[str, Any]]:
+    async def search_persons(self, query: str, as_of_date: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Search persons (citizens) by name, filtered by year.
 
@@ -286,7 +286,7 @@ class SearchService:
                         "match_score": self._calculate_match_score(query, name)
                     })
 
-            return matching[:limit]
+            return matching[:limit] if limit else matching
 
         except BadRequestError:
             raise
