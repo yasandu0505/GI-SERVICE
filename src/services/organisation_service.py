@@ -166,11 +166,7 @@ class OrganisationService:
 
     def get_state_minister_or_not(self, minister_name: str) -> bool:
         # check if the minister name starts with "State"
-        pattern_start = r"^State"
-        if re.search(pattern_start, minister_name):
-            return True
-        else:
-            return False
+        return minister_name.startswith("State")
 
     # active portfolio list
     async def active_portfolio_list(self, president_id: str, selected_date: str):
@@ -241,12 +237,12 @@ class OrganisationService:
                 raise InternalServerError("Failed to process all portfolios")
             
             # Calculate final counts
-            newMinistries = newMinisters = ministriesUnderPresident = NoOfStateMinistries = 0
+            newMinistries = newMinisters = ministriesUnderPresident = noOfStateMinistries = 0
 
             for portfolio in successful_portfolios:
                 newMinistries += portfolio.get("isNew", False)
                 ministers = portfolio.get("ministers",[])
-                NoOfStateMinistries += 1 if self.get_state_minister_or_not(portfolio.get("name", "")) == True else 0
+                noOfStateMinistries += 1 if self.get_state_minister_or_not(portfolio.get("name", "")) else 0
                 for minister in ministers:
                     if isinstance(minister, dict):
                         newMinisters += minister.get("isNew", False)
@@ -254,8 +250,8 @@ class OrganisationService:
 
             # final result to return
             finalResult = {
-                "NoOfCabinetMinistries": len(activePortfolioList) - NoOfStateMinistries,
-                "NoOfStateMinistries": NoOfStateMinistries,
+                "NoOfCabinetMinistries": len(activePortfolioList) - noOfStateMinistries,
+                "NoOfStateMinistries": noOfStateMinistries,
                 "newMinistries": newMinistries,
                 "newMinisters": newMinisters,
                 "ministriesUnderPresident": ministriesUnderPresident,
