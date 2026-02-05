@@ -165,8 +165,10 @@ class OrganisationService:
             raise InternalServerError("An unexpected error occurred") from e
 
     def get_state_minister_or_not(self, minister_name: str) -> bool:
-        # check if the minister name starts with "State"
-        return minister_name.startswith("State")
+        # check if the minister name starts with "state","State","Non Cabinet","non cabinet","Non-cabinent","non-cabinent"
+        normalized = re.sub(r"\s+", " ", minister_name.lower().replace("-", " ")).strip()
+
+        return normalized.startswith("state minister") or normalized.startswith("non cabinet")
 
     # active portfolio list
     async def active_portfolio_list(self, president_id: str, selected_date: str):
