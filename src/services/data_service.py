@@ -384,6 +384,123 @@ class DataService:
             logger.error(f"Failed to fetch dataset root for dataset {dataset_id}: {e}")
             raise InternalServerError("An unexpected error occurred") from e
 
+    async def fetch_dataset_categories(self, dataset_id: str):
+        """
+        Fetches the full category hierarchy for a given dataset.
+
+        This function traverses from the dataset up through all parent categories
+        and returns the complete path.
+
+        Args:
+            dataset_id (str): The ID of the dataset.
+
+        Returns:
+            dict: Contains dataset info and list of categories from immediate parent to root.
+
+        Raises:
+            BadRequestError: If dataset_id is not provided.
+            NotFoundError: If no categories found for dataset.
+            InternalServerError: If an unexpected error occurs.
+        """
+        try:
+            if not dataset_id:
+                raise BadRequestError("Dataset ID is required")
+
+            # Get dataset entity info
+            dataset_entity = Entity(id=dataset_id)
+            dataset_results = await self.opengin_service.get_entities(entity=dataset_entity)
+
+            if not dataset_results:
+                raise NotFoundError(f"Dataset not found: {dataset_id}")
+
+            dataset = dataset_results[0]
+            dataset_name = Util.decode_protobuf_attribute_name(dataset.name)
+
+            # Fetch relation to get the immediate parent category
+            relation_instance = Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+            relations = await self.opengin_service.fetch_relation(
+                entityId=dataset_id,
+                relation=relation_instance
+            )
+
+            if not relations:
+                logger.error(f"No category relation found for dataset {dataset_id}")
+                raise NotFoundError("No category found for dataset")
+
+            category_id = relations[0].relatedEntityId
+
+            # Traverse up and collect all categories
+            categories = await self._collect_category_hierarchy(category_id)
+
+            return {
+                "dataset": {
+                    "id": dataset_id,
+                    "name": dataset_name,
+                    "kind": {
+                        "major": dataset.kind.major,
+                        "minor": dataset.kind.minor
+                    }
+                },
+                "categories": categories
+            }
+
+        except (BadRequestError, NotFoundError):
+            raise
+        except Exception as e:
+            logger.error(f"Failed to fetch categories for dataset {dataset_id}: {e}")
+            raise InternalServerError("An unexpected error occurred") from e
+
+    async def _collect_category_hierarchy(self, category_id: str) -> list:
+        """
+        Recursively collects all categories from the given category up to the root.
+
+        Args:
+            category_id (str): The starting category ID.
+
+        Returns:
+            list: List of category dictionaries from immediate parent to root.
+        """
+        categories = []
+        current_id = category_id
+
+        while current_id:
+            # Fetch the category entity
+            category_entity = Entity(id=current_id)
+            category_results = await self.opengin_service.get_entities(entity=category_entity)
+
+            if not category_results:
+                break
+
+            current_category = category_results[0]
+            category_name = Util.decode_protobuf_attribute_name(current_category.name)
+
+            categories.append({
+                "id": current_id,
+                "name": category_name,
+                "kind": {
+                    "major": current_category.kind.major,
+                    "minor": current_category.kind.minor
+                }
+            })
+
+            # Check if we've reached a department or minister (root)
+            if current_category.kind and current_category.kind.minor in ["department", "minister"]:
+                break
+
+            # Get parent category
+            relation_instance = Relation(name="AS_CATEGORY", direction="INCOMING")
+            parent_relations = await self.opengin_service.fetch_relation(
+                entityId=current_id,
+                relation=relation_instance
+            )
+
+            if not parent_relations:
+                break
+
+            current_id = parent_relations[0].relatedEntityId
+
+        return categories
+
     async def find_root_department_or_minister(self, category_id: str):
         """
         Recursively traverses the category hierarchy to find the root department or minister.
