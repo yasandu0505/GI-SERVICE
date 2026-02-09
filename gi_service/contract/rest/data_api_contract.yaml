@@ -233,6 +233,79 @@ paths:
         "500":
           description: Server Error
 
+  /datasets/{datasetId}/categories:
+    get:
+      tags:
+      - Data
+      summary: Get categories for the given dataset.
+      description: Returns the full category hierarchy for the given dataset, from immediate parent to root.
+      operationId: getCategoriesById
+      parameters:
+      - name: datasetId
+        required: true
+        in: path
+        schema:
+          type: string
+
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  body:
+                    type: object
+                    properties:
+                      dataset:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          kind:
+                            $ref: '#/components/schemas/kind'
+                      categories:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            kind:
+                              $ref: '#/components/schemas/kind'
+              
+              example:
+                body:
+                  dataset:
+                    id: 'dataset-123'
+                    name: 'SLBFE 2021'
+                    kind:
+                      major: Data
+                      minor: Dataset
+                  categories:
+                    - id: 'cat-1'
+                      name: 'Employment Statistics'
+                      kind:
+                        major: Category
+                        minor: childCategory
+                    - id: 'cat-2'
+                      name: 'Labor Force'
+                      kind:
+                        major: Category
+                        minor: parentCategory
+
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+
 components:
   schemas:
     category:
