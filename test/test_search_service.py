@@ -320,38 +320,6 @@ async def test_calculate_match_score_none_text(search_service):
     score = search_service._calculate_match_score("health", None)
     assert score == 0.0
 
-
-@pytest.mark.asyncio
-async def test_matches_query_true(search_service):
-    """Test _matches_query returns True for matching text"""
-    assert search_service._matches_query("health", "Ministry of Health") is True
-
-
-@pytest.mark.asyncio
-async def test_matches_query_false(search_service):
-    """Test _matches_query returns False for non-matching text"""
-    assert search_service._matches_query("health", "Education Department") is False
-
-
-@pytest.mark.asyncio
-async def test_matches_query_case_insensitive(search_service):
-    """Test _matches_query is case insensitive"""
-    assert search_service._matches_query("HEALTH", "ministry of health") is True
-    assert search_service._matches_query("health", "MINISTRY OF HEALTH") is True
-
-
-@pytest.mark.asyncio
-async def test_matches_query_empty_text(search_service):
-    """Test _matches_query returns False for empty text"""
-    assert search_service._matches_query("health", "") is False
-
-
-@pytest.mark.asyncio
-async def test_matches_query_empty_query(search_service):
-    """Test _matches_query returns False for empty query"""
-    assert search_service._matches_query("", "Ministry of Health") is False
-
-
 @pytest.mark.asyncio
 async def test_extract_year_valid_date(search_service):
     """Test _extract_year returns correct year from date string"""
@@ -425,7 +393,6 @@ async def test_entity_specific_search_departments(search_service, mock_opengin_s
     assert results[1]["name"] == "Ministry of Education"
     assert results[1]["terminated"] == "2021-12-31T00:00:00Z"
 
-
 @pytest.mark.asyncio
 async def test_entity_specific_search_ministers(search_service, mock_opengin_service):
     """Test entity_specific_search returns correct results for ministers"""
@@ -458,7 +425,6 @@ async def test_entity_specific_search_ministers(search_service, mock_opengin_ser
     assert results[0]["id"] == "minister_1"
     assert results[0]["name"] == "Health Minister"
     assert results[0]["created"] == "2019-06-15T00:00:00Z"
-
 
 @pytest.mark.asyncio
 async def test_entity_specific_search_datasets(search_service, mock_opengin_service):
@@ -499,7 +465,6 @@ async def test_entity_specific_search_datasets(search_service, mock_opengin_serv
     assert results[0]["name"] == "Health Statistics"
     assert results[0]["created"] == "2021-03-20T00:00:00Z"
 
-
 @pytest.mark.asyncio
 async def test_entity_specific_search_persons(search_service, mock_opengin_service):
     """Test entity_specific_search returns correct results for persons"""
@@ -533,7 +498,6 @@ async def test_entity_specific_search_persons(search_service, mock_opengin_servi
     assert results[0]["name"] == "John Doe"
     assert results[0]["created"] == "2018-12-01T00:00:00Z"
 
-
 @pytest.mark.asyncio
 async def test_entity_specific_search_empty_query(search_service):
     """Test entity_specific_search raises BadRequestError for empty query"""
@@ -546,7 +510,6 @@ async def test_entity_specific_search_empty_query(search_service):
         )
     
     assert "at least 2 characters" in str(exc_info.value)
-
 
 @pytest.mark.asyncio
 async def test_entity_specific_search_short_query(search_service):
@@ -561,7 +524,6 @@ async def test_entity_specific_search_short_query(search_service):
     
     assert "at least 2 characters" in str(exc_info.value)
 
-
 @pytest.mark.asyncio
 async def test_entity_specific_search_none_date(search_service):
     """Test entity_specific_search raises BadRequestError for None date"""
@@ -574,36 +536,6 @@ async def test_entity_specific_search_none_date(search_service):
         )
     
     assert "date is required" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
-async def test_entity_specific_search_no_matches(search_service, mock_opengin_service):
-    """Test entity_specific_search returns empty list when no entities match query"""
-    
-    mock_departments = [
-        Entity(
-            id="dept_1",
-            name="encoded_health",
-            kind=Kind(major="Organisation", minor="department"),
-            created="2020-01-01T00:00:00Z"
-        )
-    ]
-    
-    mock_opengin_service.get_entities.return_value = mock_departments
-    
-    with patch(
-        "src.services.search_service.Util.decode_protobuf_attribute_name",
-        return_value="Ministry of Health"
-    ):
-        results = await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
-            query="xyz123",  # Query that doesn't match
-            as_of_date="2022-01-01"
-        )
-    
-    assert len(results) == 0
-
 
 @pytest.mark.asyncio
 async def test_entity_specific_search_filters_by_date(search_service, mock_opengin_service):
@@ -641,7 +573,6 @@ async def test_entity_specific_search_filters_by_date(search_service, mock_openg
     assert len(results) == 1
     assert results[0]["id"] == "dept_1"
 
-
 @pytest.mark.asyncio
 async def test_entity_specific_search_sorted_by_score(search_service, mock_opengin_service):
     """Test entity_specific_search results are sorted by match score"""
@@ -671,7 +602,6 @@ async def test_entity_specific_search_sorted_by_score(search_service, mock_openg
     assert results[0]["match_score"] == 1.0  # "health" exact match
     assert results[1]["match_score"] == 0.8  # "Health Ministry" starts with
     assert results[2]["match_score"] == 0.6  # "Ministry of Health" contains
-
 
 @pytest.mark.asyncio
 async def test_entity_specific_search_respects_limit(search_service, mock_opengin_service):
@@ -704,7 +634,6 @@ async def test_entity_specific_search_respects_limit(search_service, mock_opengi
     
     assert len(results) == 3
 
-
 @pytest.mark.asyncio
 async def test_entity_specific_search_handles_exceptions(search_service, mock_opengin_service):
     """Test entity_specific_search returns empty list on exception"""
@@ -720,7 +649,6 @@ async def test_entity_specific_search_handles_exceptions(search_service, mock_op
     )
     
     assert results == []
-
 
 @pytest.mark.asyncio
 async def test_entity_specific_search_case_insensitive(search_service, mock_opengin_service):
@@ -750,7 +678,6 @@ async def test_entity_specific_search_case_insensitive(search_service, mock_open
     
     assert len(results) == 1
     assert results[0]["name"] == "Ministry of Health"
-
 
 @pytest.mark.asyncio
 async def test_entity_specific_search_handles_entities_without_created(search_service, mock_opengin_service):

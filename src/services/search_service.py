@@ -129,7 +129,7 @@ class SearchService:
 
         try:
             # Create entity based on major/minor
-            entity = Entity(kind=Kind(major=major, minor=minor))
+            entity = Entity(name=query,kind=Kind(major=major, minor=minor))
             all_entities = await self.opengin_service.get_entities(entity=entity)
 
             search_year = self._extract_year(as_of_date)
@@ -145,53 +145,20 @@ class SearchService:
                 # Extract year from created field
                 item_year = self._extract_year(item.created) if item.created else 9999
 
-                # Check if entity matches query and time criteria
-                if not self._matches_query(query, name):
-                    continue
-
                 if item_year > search_year:
                     continue
 
-                # Build result based on entity type
-                if entity_type == "department":
-                    matching.append({
-                        "type": "department",
-                        "id": item.id,
-                        "name": name,
-                        "created": item.created,
-                        "terminated": item.terminated if item.terminated else "",
-                        "match_score": self._calculate_match_score(query, name)
-                    })
-
-                elif entity_type == "minister":
-                    matching.append({
-                        "type": "minister",
-                        "id": item.id,
-                        "name": name,
-                        "created": item.created,
-                        "terminated": item.terminated if item.terminated else "",
-                        "match_score": self._calculate_match_score(query, name)
-                    })
-
-                elif entity_type == "dataset":
-                    # Remove year suffix from name for display
-                    display_name = Util.get_name_without_year(name)
-                    display_name = Util.to_title_case(display_name)
+                if entity_type in VALID_ENTITY_TYPES:
+                    display_name = name
+                    if entity_type == "dataset":
+                        # Remove year suffix from name for display
+                        display_name = Util.get_name_without_year(name)
+                        display_name = Util.to_title_case(display_name)
 
                     matching.append({
-                        "type": "dataset",
+                        "type": entity_type,
                         "id": item.id,
                         "name": display_name,
-                        "created": item.created,
-                        "terminated": item.terminated if item.terminated else "",
-                        "match_score": self._calculate_match_score(query, name)
-                    })
-
-                elif entity_type == "person":
-                    matching.append({
-                        "type": "person",
-                        "id": item.id,
-                        "name": name,
                         "created": item.created,
                         "terminated": item.terminated if item.terminated else "",
                         "match_score": self._calculate_match_score(query, name)
@@ -293,22 +260,6 @@ class SearchService:
         else:
             return 0.0
 
-    def _matches_query(self, query: str, text: str) -> bool:
-        """
-        Check if text contains query (case-insensitive).
-
-        Args:
-            query: Search query string
-            text: Text to check
-
-        Returns:
-            True if text contains query, False otherwise
-        """
-        if not text or not query:
-            return False
-
-        return query.lower().strip() in text.lower().strip()
-
     def _extract_year(self, date_string: str) -> int:
         """
         Extract year from a date string.
@@ -321,7 +272,7 @@ class SearchService:
             date_string: Date string to parse
 
         Returns:
-            Year as integer, or 0 if parsing fails
+            Year as integer, or 9999 if parsing fails
         """
         if not date_string:
             return 9999

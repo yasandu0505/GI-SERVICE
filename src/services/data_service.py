@@ -452,7 +452,7 @@ class DataService:
 
     async def _collect_category_hierarchy(self, category_id: str) -> list:
         """
-        Recursively collects all categories from the given category up to the root.
+        Iteratively collects all categories from the given category up to the root.
 
         Args:
             category_id (str): The starting category ID.

@@ -59,7 +59,7 @@ async def search(
     Args:
         q: Search query (minimum 2 characters)
         as_of_date: Optional date for historical search (YYYY-MM-DD)
-        limit: Maximum number of results (default 20, max 50)
+        limit: Maximum number of results. If not specified, all results are returned.
         entity_types: Optional filter by entity type(s)
 
     Returns:
