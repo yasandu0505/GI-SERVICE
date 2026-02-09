@@ -10,8 +10,6 @@ logger = logging.getLogger(__name__)
 
 # Valid entity types for filtering
 VALID_ENTITY_TYPES = {"department", "minister", "dataset", "person"}
-
-
 class SearchService:
     """
     This service handles unified search across departments, ministers, datasets, and persons.
@@ -22,8 +20,7 @@ class SearchService:
         self.config = config
         self.opengin_service = opengin_service
 
-    # ============ MAIN SEARCH METHOD ============
-
+    # Unified search
     async def unified_search(self, query: str, as_of_date: str, limit: Optional[int] = None, entity_types: Optional[List[str]] = None) -> SearchResponse:
         """
         Main entry point for unified search across all entity types.
@@ -52,25 +49,23 @@ class SearchService:
         types_to_search = self._get_types_to_search(entity_types)
 
         try:
-            # Build search tasks based on requested types
+            # Entity type configuration: maps entity type to (major, minor, display_name)
+            entity_config = {
+                "department": ("Organisation", "department", "departments"),
+                "minister": ("Organisation", "minister", "ministers"),
+                "dataset": ("Dataset", "tabular", "datasets"),
+                "person": ("Person", "citizen", "persons"),
+            }
+
+            # Build search tasks dynamically based on requested types
             search_tasks = []
             search_type_names = []
 
-            if "department" in types_to_search:
-                search_tasks.append(self.search_departments(query, as_of_date, limit))
-                search_type_names.append("departments")
-
-            if "minister" in types_to_search:
-                search_tasks.append(self.search_ministers(query, as_of_date, limit))
-                search_type_names.append("ministers")
-
-            if "dataset" in types_to_search:
-                search_tasks.append(self.search_datasets(query, as_of_date, limit))
-                search_type_names.append("datasets")
-
-            if "person" in types_to_search:
-                search_tasks.append(self.search_persons(query, as_of_date, limit))
-                search_type_names.append("persons")
+            for entity_type in types_to_search:
+                if entity_type in entity_config:
+                    major, minor, display_name = entity_config[entity_type]
+                    search_tasks.append(self.entity_specific_search(major, minor, query, as_of_date, limit))
+                    search_type_names.append(display_name)
 
             # Run selected searches in parallel
             results = await asyncio.gather(*search_tasks, return_exceptions=True)
@@ -106,196 +101,115 @@ class SearchService:
             logger.error(f"Unified search failed: {e}")
             raise InternalServerError("An unexpected error occurred") from e
 
-    # ============ ENTITY-SPECIFIC SEARCH METHODS ============
-
-    async def search_departments(self, query: str, as_of_date: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    # Entity specific search
+    async def entity_specific_search(self, major: str, minor: str, query: str, as_of_date: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
-        Search departments active on the given date.
-
-        Kind: major="Organisation", minor="department"
-        Time-sensitive: Filters entities that existed by the search date.
+        Generic search function that supports departments, ministers, datasets, and persons.
+        
+        Determines the search type based on major/minor parameters and executes
+        the appropriate search logic with type-specific result formatting.
 
         Args:
+            major: Major kind (e.g., "Organisation", "Dataset", "Person")
+            minor: Minor kind (e.g., "department", "minister", "tabular", "citizen")
             query: Search query string
             as_of_date: Date for filtering (YYYY-MM-DD)
             limit: Maximum results to return
 
         Returns:
-            List of department result dictionaries
+            List of result dictionaries with appropriate type-specific fields
         """
+        if not query or len(query.strip()) < 2:
+            raise BadRequestError("Search query must be at least 2 characters")
+
+        if not as_of_date:
+            raise BadRequestError("Search date is required")
+
+        query = query.strip()
+
         try:
-            entity = Entity(kind=Kind(major="Organisation", minor="department"))
-            all_departments = await self.opengin_service.get_entities(entity=entity)
+            # Create entity based on major/minor
+            entity = Entity(kind=Kind(major=major, minor=minor))
+            all_entities = await self.opengin_service.get_entities(entity=entity)
 
             search_year = self._extract_year(as_of_date)
             matching: List[Dict[str, Any]] = []
 
-            for dept in all_departments:
-                name = Util.decode_protobuf_attribute_name(dept.name)
+            # Determine entity type based on major/minor combination
+            entity_type = self._determine_entity_type(major, minor)
 
-                # Check if entity existed by the search date
-                dept_year = self._extract_year(dept.created) if dept.created else 0
+            # Process each entity based on its type
+            for item in all_entities:
+                name = Util.decode_protobuf_attribute_name(item.name)
 
-                if self._matches_query(query, name) and dept_year <= search_year:
+                # Extract year from created field
+                item_year = self._extract_year(item.created) if item.created else 9999
+
+                # Check if entity matches query and time criteria
+                if not self._matches_query(query, name):
+                    continue
+
+                if item_year > search_year:
+                    continue
+
+                # Build result based on entity type
+                if entity_type == "department":
                     matching.append({
                         "type": "department",
-                        "id": dept.id,
+                        "id": item.id,
                         "name": name,
-                        "active_from": dept.created,
-                        "active_to": dept.terminated if dept.terminated else None,
+                        "created": item.created,
+                        "terminated": item.terminated if item.terminated else "",
                         "match_score": self._calculate_match_score(query, name)
                     })
 
-            return matching[:limit] if limit else matching
-
-        except BadRequestError:
-            raise
-        except Exception as e:
-            logger.error(f"Error searching departments: {e}")
-            return []
-
-    async def search_ministers(self, query: str, as_of_date: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        """
-        Search ministers (portfolios) active on the given date.
-
-        Kind: major="Organisation", minor="minister"
-        Time-sensitive: Filters entities that existed by the search date.
-
-        Args:
-            query: Search query string
-            as_of_date: Date for filtering (YYYY-MM-DD)
-            limit: Maximum results to return
-
-        Returns:
-            List of minister result dictionaries
-        """
-        try:
-            entity = Entity(kind=Kind(major="Organisation", minor="minister"))
-            all_ministers = await self.opengin_service.get_entities(entity=entity)
-
-            search_year = self._extract_year(as_of_date)
-            matching: List[Dict[str, Any]] = []
-
-            for minister in all_ministers:
-                name = Util.decode_protobuf_attribute_name(minister.name)
-
-                # Check if entity existed by the search date
-                minister_year = self._extract_year(minister.created) if minister.created else 0
-
-                if self._matches_query(query, name) and minister_year <= search_year:
+                elif entity_type == "minister":
                     matching.append({
                         "type": "minister",
-                        "id": minister.id,
+                        "id": item.id,
                         "name": name,
-                        "term_start": minister.created,
-                        "term_end": minister.terminated if minister.terminated else None,
+                        "created": item.created,
+                        "terminated": item.terminated if item.terminated else "",
                         "match_score": self._calculate_match_score(query, name)
                     })
 
-            return matching[:limit] if limit else matching
-
-        except BadRequestError:
-            raise
-        except Exception as e:
-            logger.error(f"Error searching ministers: {e}")
-            return []
-
-    async def search_datasets(self, query: str, as_of_date: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        """
-        Search datasets by title, filtered by year.
-
-        Kind: major="Dataset", minor="tabular"
-        Time-sensitive: Filters datasets with created year <= search year.
-
-        Args:
-            query: Search query string
-            as_of_date: Date for filtering (YYYY-MM-DD)
-            limit: Maximum results to return
-
-        Returns:
-            List of dataset result dictionaries
-        """
-        try:
-            entity = Entity(kind=Kind(major="Dataset", minor="tabular"))
-            all_datasets = await self.opengin_service.get_entities(entity=entity)
-
-            search_year = self._extract_year(as_of_date)
-            matching: List[Dict[str, Any]] = []
-
-            for dataset in all_datasets:
-                name = Util.decode_protobuf_attribute_name(dataset.name)
-
-                # Check year from created field
-                dataset_year = self._extract_year(dataset.created) if dataset.created else 9999
-
-                if self._matches_query(query, name) and dataset_year <= search_year:
+                elif entity_type == "dataset":
                     # Remove year suffix from name for display
                     display_name = Util.get_name_without_year(name)
                     display_name = Util.to_title_case(display_name)
 
                     matching.append({
                         "type": "dataset",
-                        "id": dataset.id,
+                        "id": item.id,
                         "name": display_name,
-                        "year": str(dataset_year) if dataset_year != 9999 else None,
+                        "created": item.created,
+                        "terminated": item.terminated if item.terminated else "",
                         "match_score": self._calculate_match_score(query, name)
                     })
 
-            return matching[:limit] if limit else matching
-
-        except BadRequestError:
-            raise
-        except Exception as e:
-            logger.error(f"Error searching datasets: {e}")
-            return []
-
-    async def search_persons(self, query: str, as_of_date: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        """
-        Search persons (citizens) by name, filtered by year.
-
-        Kind: major="Person", minor="citizen"
-        Time-sensitive: Filters persons with created year <= search year.
-
-        Args:
-            query: Search query string
-            as_of_date: Date for filtering (YYYY-MM-DD)
-            limit: Maximum results to return
-
-        Returns:
-            List of person result dictionaries
-        """
-        try:
-            entity = Entity(kind=Kind(major="Person", minor="citizen"))
-            all_persons = await self.opengin_service.get_entities(entity=entity)
-
-            search_year = self._extract_year(as_of_date)
-            matching: List[Dict[str, Any]] = []
-
-            for person in all_persons:
-                name = Util.decode_protobuf_attribute_name(person.name)
-
-                # Check year from created field
-                person_year = self._extract_year(person.created) if person.created else 9999
-
-                if self._matches_query(query, name) and person_year <= search_year:
+                elif entity_type == "person":
                     matching.append({
                         "type": "person",
-                        "id": person.id,
+                        "id": item.id,
                         "name": name,
-                        "created": person.created,
+                        "created": item.created,
+                        "terminated": item.terminated if item.terminated else "",
                         "match_score": self._calculate_match_score(query, name)
                     })
 
+            # Sort by match score (highest first)
+            matching.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+
+            # Apply limit if specified
             return matching[:limit] if limit else matching
 
         except BadRequestError:
             raise
         except Exception as e:
-            logger.error(f"Error searching persons: {e}")
+            logger.error(f"Error in generic_search for {major}/{minor}: {e}")
             return []
 
-    # ============ HELPER METHODS ============
-
+    # Helper methods
     def _get_types_to_search(self, entity_types: Optional[List[str]]) -> set:
         """
         Validate and normalize entity types filter.
@@ -319,6 +233,33 @@ class SearchService:
             return VALID_ENTITY_TYPES.copy()
 
         return valid_requested
+
+    def _determine_entity_type(self, major: str, minor: str) -> str:
+        """
+        Determine the entity type based on major/minor kind combination.
+
+        Args:
+            major: Major kind (e.g., "Organisation", "Dataset", "Person")
+            minor: Minor kind (e.g., "department", "minister", "tabular", "citizen")
+
+        Returns:
+            Entity type string: "department", "minister", "dataset", or "person"
+        """
+        # Map major/minor combinations to entity types
+        type_mapping = {
+            ("Organisation".lower(), "department".lower()): "department",
+            ("Organisation".lower(), "minister".lower()): "minister",
+            ("Dataset".lower(), "tabular".lower()): "dataset",
+            ("Person".lower(), "citizen".lower()): "person",
+        }
+
+        key = (major.lower(), minor.lower())
+        entity_type = type_mapping.get(key, "unknown")
+
+        if entity_type == "unknown":
+            logger.warning(f"Unknown entity type for major={major}, minor={minor}")
+
+        return entity_type
 
     def _calculate_match_score(self, query: str, text: str) -> float:
         """
@@ -383,9 +324,9 @@ class SearchService:
             Year as integer, or 0 if parsing fails
         """
         if not date_string:
-            return 0
+            return 9999
 
         try:
             return int(date_string.split("-")[0])
         except (ValueError, IndexError):
-            return 0
+            return 9999

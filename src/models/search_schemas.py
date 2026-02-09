@@ -1,6 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
-
+from typing import List
 
 class SearchResult(BaseModel):
     """
@@ -8,32 +7,21 @@ class SearchResult(BaseModel):
 
     Represents a single entity from the search results, which can be
     a department, minister, dataset, or person.
+    
+    All entity types now share a consistent structure with:
+    - type: Entity type identifier
+    - id: Unique entity identifier
+    - name: Entity name (cleaned and formatted for datasets)
+    - created: Creation/start date (ISO format or empty string)
+    - terminated: Termination/end date (ISO format or empty string if still active)
+    - match_score: Relevance score (0.0 to 1.0)
     """
     type: str  # "department", "minister", "dataset", or "person"
     id: str
-    name: Optional[str] = None
-
-    # Department-specific fields
-    parent_portfolio: Optional[str] = None
-    active_from: Optional[str] = None
-    active_to: Optional[str] = None
-
-    # Minister-specific fields
-    portfolio: Optional[str] = None
-    term_start: Optional[str] = None
-    term_end: Optional[str] = None
-    is_president: Optional[bool] = None
-
-    # Dataset-specific fields
-    source: Optional[str] = None
-    year: Optional[str] = None
-
-    # Person-specific fields
-    created: Optional[str] = None
-
-    # Relevance score
+    name: str
+    created: str  
+    terminated: str  
     match_score: float = 0.0
-
 
 class SearchResponse(BaseModel):
     """
