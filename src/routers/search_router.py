@@ -22,7 +22,7 @@ def get_search_service(config: dict = Depends(get_config)):
     description="Search departments, ministers, datasets, and persons with time-sensitivity support. Returns mixed results sorted by relevance."
 )
 async def search(
-    q: str = Query(
+    search_query: str = Query(
         ...,
         min_length=2,
         description="Search query (minimum 2 characters)"
@@ -50,14 +50,14 @@ async def search(
     Supports time-sensitive queries to search historical data.
 
     Examples:
-        - Current search: GET /v1/search?q=health
-        - Historical search: GET /v1/search?q=health&as_of_date=2020-03-15
-        - Limited results: GET /v1/search?q=education&limit=10
-        - Filter by type: GET /v1/search?q=expenditure&type=dataset
-        - Multiple types: GET /v1/search?q=health&type=department&type=person
+        - Current search: GET /v1/search?search_query=health
+        - Historical search: GET /v1/search?search_query=health&as_of_date=2020-03-15
+        - Limited results: GET /v1/search?search_query=education&limit=10
+        - Filter by type: GET /v1/search?search_query=expenditure&type=dataset
+        - Multiple types: GET /v1/search?search_query=health&type=department&type=person
 
     Args:
-        q: Search query (minimum 2 characters)
+        search_query: Search query (minimum 2 characters)
         as_of_date: Optional date for historical search (YYYY-MM-DD)
         limit: Maximum number of results. If not specified, all results are returned.
         entity_types: Optional filter by entity type(s)
@@ -69,7 +69,7 @@ async def search(
     search_date = as_of_date or datetime.now().strftime("%Y-%m-%d")
 
     result = await service.unified_search(
-        query=q,
+        query=search_query,
         as_of_date=search_date,
         limit=limit,
         entity_types=entity_types

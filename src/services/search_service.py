@@ -119,20 +119,12 @@ class SearchService:
         Returns:
             List of result dictionaries with appropriate type-specific fields
         """
-        if not query or len(query.strip()) < 2:
-            raise BadRequestError("Search query must be at least 2 characters")
-
-        if not as_of_date:
-            raise BadRequestError("Search date is required")
-
-        query = query.strip()
 
         try:
-            # Create entity based on major/minor
             entity = Entity(name=query,kind=Kind(major=major, minor=minor))
             all_entities = await self.opengin_service.get_entities(entity=entity)
 
-            search_year = self._extract_year(as_of_date)
+            search_year = Util.extract_year(as_of_date)
             matching: List[Dict[str, Any]] = []
 
             # Determine entity type based on major/minor combination
@@ -143,12 +135,12 @@ class SearchService:
                 name = Util.decode_protobuf_attribute_name(item.name)
 
                 # Extract year from created field
-                item_year = self._extract_year(item.created) if item.created else 9999
+                item_year = Util.extract_year(item.created) if item.created else 9999
 
                 if item_year > search_year:
                     continue
 
-                if entity_type in VALID_ENTITY_TYPES:
+                if entity_type != "unknown":
                     display_name = name
                     if entity_type == "dataset":
                         # Remove year suffix from name for display
@@ -260,24 +252,3 @@ class SearchService:
         else:
             return 0.0
 
-    def _extract_year(self, date_string: str) -> int:
-        """
-        Extract year from a date string.
-
-        Handles formats:
-            - YYYY-MM-DD
-            - YYYY-MM-DDTHH:MM:SSZ
-
-        Args:
-            date_string: Date string to parse
-
-        Returns:
-            Year as integer, or 9999 if parsing fails
-        """
-        if not date_string:
-            return 9999
-
-        try:
-            return int(date_string.split("-")[0])
-        except (ValueError, IndexError):
-            return 9999

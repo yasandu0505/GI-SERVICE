@@ -246,4 +246,27 @@ class Util:
         
         # Default to unknown
         return "unknown"
+
+    @staticmethod
+    def extract_year(date_string: str) -> int:
+        """
+        Extract year from a date string.
+
+        Handles formats:
+            - YYYY-MM-DD
+            - YYYY-MM-DDTHH:MM:SSZ
+
+        Args:
+            date_string: Date string to parse
+
+        Returns:
+            Year as integer, or 9999 if parsing fails
+        """
+        if not date_string:
+            return 9999
+
+        try:
+            return int(date_string.split("-")[0])
+        except (ValueError, IndexError):
+            return 9999
     

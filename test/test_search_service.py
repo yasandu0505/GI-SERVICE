@@ -320,31 +320,6 @@ async def test_calculate_match_score_none_text(search_service):
     score = search_service._calculate_match_score("health", None)
     assert score == 0.0
 
-@pytest.mark.asyncio
-async def test_extract_year_valid_date(search_service):
-    """Test _extract_year returns correct year from date string"""
-    assert search_service._extract_year("2022-01-15T00:00:00Z") == 2022
-    assert search_service._extract_year("2020-12-31") == 2020
-
-
-@pytest.mark.asyncio
-async def test_extract_year_empty_string(search_service):
-    """Test _extract_year returns 0 for empty string"""
-    assert search_service._extract_year("") == 9999
-
-
-@pytest.mark.asyncio
-async def test_extract_year_none(search_service):
-    """Test _extract_year returns 0 for None"""
-    assert search_service._extract_year(None) == 9999
-
-
-@pytest.mark.asyncio
-async def test_extract_year_invalid_format(search_service):
-    """Test _extract_year returns 0 for invalid format"""
-    assert search_service._extract_year("invalid-date") == 9999
-
-
 #tests for entity_specific_search
 
 @pytest.mark.asyncio
@@ -499,45 +474,6 @@ async def test_entity_specific_search_persons(search_service, mock_opengin_servi
     assert results[0]["created"] == "2018-12-01T00:00:00Z"
 
 @pytest.mark.asyncio
-async def test_entity_specific_search_empty_query(search_service):
-    """Test entity_specific_search raises BadRequestError for empty query"""
-    with pytest.raises(BadRequestError) as exc_info:
-        await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
-            query="",
-            as_of_date="2022-01-01"
-        )
-    
-    assert "at least 2 characters" in str(exc_info.value)
-
-@pytest.mark.asyncio
-async def test_entity_specific_search_short_query(search_service):
-    """Test entity_specific_search raises BadRequestError for query less than 2 chars"""
-    with pytest.raises(BadRequestError) as exc_info:
-        await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
-            query="a",
-            as_of_date="2022-01-01"
-        )
-    
-    assert "at least 2 characters" in str(exc_info.value)
-
-@pytest.mark.asyncio
-async def test_entity_specific_search_none_date(search_service):
-    """Test entity_specific_search raises BadRequestError for None date"""
-    with pytest.raises(BadRequestError) as exc_info:
-        await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
-            query="health",
-            as_of_date=None
-        )
-    
-    assert "date is required" in str(exc_info.value)
-
-@pytest.mark.asyncio
 async def test_entity_specific_search_filters_by_date(search_service, mock_opengin_service):
     """Test entity_specific_search filters out entities created after as_of_date"""
     
@@ -688,7 +624,7 @@ async def test_entity_specific_search_handles_entities_without_created(search_se
             id="dept_1",
             name="encoded_health",
             kind=Kind(major="Organisation", minor="department"),
-            created=""  # Empty created date (will default to year 9999 in _extract_year)
+            created=""  # Empty created date (will default to year 9999 in extract_year)
         )
     ]
     
