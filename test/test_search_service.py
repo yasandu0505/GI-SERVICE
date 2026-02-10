@@ -277,49 +277,6 @@ async def test_unified_search_handles_partial_failures(search_service, mock_open
     assert result.total == 1
     assert result.results[0].type == "department"
 
-#tests for helper methods
-
-@pytest.mark.asyncio
-async def test_calculate_match_score_exact_match(search_service):
-    """Test _calculate_match_score returns 1.0 for exact match"""
-    score = search_service._calculate_match_score("health", "health")
-    assert score == 1.0
-
-
-@pytest.mark.asyncio
-async def test_calculate_match_score_starts_with(search_service):
-    """Test _calculate_match_score returns 0.8 for starts with match"""
-    score = search_service._calculate_match_score("health", "Health Ministry")
-    assert score == 0.8
-
-
-@pytest.mark.asyncio
-async def test_calculate_match_score_contains(search_service):
-    """Test _calculate_match_score returns 0.6 for contains match"""
-    score = search_service._calculate_match_score("health", "Ministry of Health")
-    assert score == 0.6
-
-
-@pytest.mark.asyncio
-async def test_calculate_match_score_no_match(search_service):
-    """Test _calculate_match_score returns 0.0 for no match"""
-    score = search_service._calculate_match_score("health", "Education Department")
-    assert score == 0.0
-
-
-@pytest.mark.asyncio
-async def test_calculate_match_score_empty_text(search_service):
-    """Test _calculate_match_score returns 0.0 for empty text"""
-    score = search_service._calculate_match_score("health", "")
-    assert score == 0.0
-
-
-@pytest.mark.asyncio
-async def test_calculate_match_score_none_text(search_service):
-    """Test _calculate_match_score returns 0.0 for None text"""
-    score = search_service._calculate_match_score("health", None)
-    assert score == 0.0
-
 #tests for entity_specific_search
 
 @pytest.mark.asyncio

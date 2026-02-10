@@ -153,7 +153,7 @@ class SearchService:
                         "name": display_name,
                         "created": item.created,
                         "terminated": item.terminated if item.terminated else "",
-                        "match_score": self._calculate_match_score(query, name)
+                        "match_score": Util.calculate_match_score(query, name)
                     })
 
             # Sort by match score (highest first)
@@ -220,35 +220,4 @@ class SearchService:
 
         return entity_type
 
-    def _calculate_match_score(self, query: str, text: str) -> float:
-        """
-        Calculate relevance score for search match.
-
-        Scoring:
-            - Exact match: 1.0
-            - Starts with query: 0.8
-            - Contains query: 0.6
-            - No match: 0.0
-
-        Args:
-            query: Search query string
-            text: Text to match against
-
-        Returns:
-            Float score between 0.0 and 1.0
-        """
-        if not text:
-            return 0.0
-
-        query_lower = query.lower().strip()
-        text_lower = text.lower().strip()
-
-        if text_lower == query_lower:
-            return 1.0
-        elif text_lower.startswith(query_lower):
-            return 0.8
-        elif query_lower in text_lower:
-            return 0.6
-        else:
-            return 0.0
 
