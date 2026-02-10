@@ -1,0 +1,238 @@
+openapi: 3.1.0
+
+info:
+  title: OpenGIN Service API - Search
+  description: This document gives the structure of APIs for the OpenGIN Search Services.
+  version: 1.0.0
+
+servers:
+- url: http://localhost:8081
+
+tags:
+- name: Search
+  description: APIs for searching across entities
+
+paths:
+  /search:
+    get:
+      tags:
+      - Search
+      summary: Unified search across all entities.
+      description: Search departments, ministers, datasets, and persons with time-sensitivity support. Returns mixed results sorted by relevance.
+      operationId: unifiedSearch
+
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 2
+        description: Search query (minimum 2 characters)
+      
+      - name: as_of_date
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        description: Date for historical search (YYYY-MM-DD). Defaults to today.
+        example: "2020-03-15"
+      
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+        description: Maximum number of results to return. If not specified, returns all results.
+        example: 10
+      
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+              - department
+              - minister
+              - dataset
+              - person
+        style: form
+        explode: true
+        description: "Filter by entity type(s): department, minister, dataset, person. Can specify multiple."
+        example: ["department", "person"]
+
+      responses:
+        "200":
+          description: Successfully returned search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+              
+              examples:
+                currentSearch:
+                  summary: Current search example
+                  value:
+                    query: "health"
+                    as_of_date: "2026-02-09"
+                    total: 3
+                    results:
+                      - type: "department"
+                        id: "dept-123"
+                        name: "Department of Health"
+                        created: "2015-06-01T00:00:00Z"
+                        terminated: ""
+                        match_score: 0.95
+                      - type: "minister"
+                        id: "min-456"
+                        name: "Minister of Health and Indigenous Medical Services"
+                        created: "2019-11-21T00:00:00Z"
+                        terminated: ""
+                        match_score: 0.92
+                      - type: "dataset"
+                        id: "ds-789"
+                        name: "Health Expenditure"
+                        created: "2021-01-01T00:00:00Z"
+                        terminated: ""
+                        match_score: 0.88
+                
+                historicalSearch:
+                  summary: Historical search example
+                  value:
+                    query: "education"
+                    as_of_date: "2018-03-15"
+                    total: 2
+                    results:
+                      - type: "department"
+                        id: "dept-234"
+                        name: "Department of Education"
+                        created: "2010-01-01T00:00:00Z"
+                        terminated: "2020-05-01T00:00:00Z"
+                        match_score: 0.97
+                      - type: "person"
+                        id: "per-567"
+                        name: "John Doe"
+                        created: "2015-06-01T00:00:00Z"
+                        terminated: "2019-12-31T00:00:00Z"
+                        match_score: 0.85
+                
+                filteredSearch:
+                  summary: Filtered by entity type
+                  value:
+                    query: "expenditure"
+                    as_of_date: "2026-02-09"
+                    total: 2
+                    results:
+                      - type: "dataset"
+                        id: "ds-101"
+                        name: "Government Expenditure 2021"
+                        created: "2021-01-01T00:00:00Z"
+                        terminated: ""
+                        match_score: 0.94
+                      - type: "dataset"
+                        id: "ds-102"
+                        name: "Healthcare Expenditure 2022"
+                        created: "2022-01-01T00:00:00Z"
+                        terminated: ""
+                        match_score: 0.89
+
+        "400":
+          description: Bad request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              example:
+                detail: "Query parameter 'q' must be at least 2 characters long"
+
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              example:
+                detail: "An unexpected error occurred"
+
+components:
+  schemas:
+    SearchResult:
+      type: object
+      required:
+        - type
+        - id
+        - name
+        - created
+        - terminated
+        - match_score
+      properties:
+        type:
+          type: string
+          description: "Entity type identifier"
+          enum:
+            - department
+            - minister
+            - dataset
+            - person
+          example: "department"
+        id:
+          type: string
+          description: "Unique entity identifier"
+          example: "dept-123"
+        name:
+          type: string
+          description: "Entity name (cleaned and formatted for datasets)"
+          example: "Department of Health"
+        created:
+          type: string
+          description: "Creation/start date (ISO format or empty string)"
+          example: "2015-06-01T00:00:00Z"
+        terminated:
+          type: string
+          description: "Termination/end date (ISO format or empty string if still active)"
+          example: ""
+        match_score:
+          type: number
+          format: float
+          description: "Relevance score (0.0 to 1.0)"
+          minimum: 0.0
+          maximum: 1.0
+          example: 0.95
+
+    SearchResponse:
+      type: object
+      required:
+        - query
+        - as_of_date
+        - total
+        - results
+      properties:
+        query:
+          type: string
+          description: "The search query that was executed"
+          example: "health"
+        as_of_date:
+          type: string
+          description: "The date context for the search (YYYY-MM-DD)"
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          example: "2026-02-09"
+        total:
+          type: integer
+          description: "Total number of results returned"
+          minimum: 0
+          example: 3
+        results:
+          type: array
+          description: "List of search results sorted by relevance (match_score)"
+          items:
+            $ref: '#/components/schemas/SearchResult'
