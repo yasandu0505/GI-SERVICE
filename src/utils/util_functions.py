@@ -246,4 +246,60 @@ class Util:
         
         # Default to unknown
         return "unknown"
+
+    @staticmethod
+    def extract_year(date_string: str) -> int:
+        """
+        Extract year from a date string.
+
+        Handles formats:
+            - YYYY-MM-DD
+            - YYYY-MM-DDTHH:MM:SSZ
+
+        Args:
+            date_string: Date string to parse
+
+        Returns:
+            Year as integer, or 9999 if parsing fails
+        """
+        if not date_string:
+            return 9999
+
+        try:
+            return int(date_string.split("-")[0])
+        except (ValueError, IndexError):
+            return 9999
+
+    @staticmethod
+    def calculate_match_score(query: str, text: str) -> float:
+        """
+        Calculate relevance score for search match.
+
+        Scoring:
+            - Exact match: 1.0
+            - Starts with query: 0.8
+            - Contains query: 0.6
+            - No match: 0.0
+
+        Args:
+            query: Search query string
+            text: Text to match against
+
+        Returns:
+            Float score between 0.0 and 1.0
+        """
+        if not text:
+            return 0.0
+
+        query_lower = query.lower().strip()
+        text_lower = text.lower().strip()
+
+        if text_lower == query_lower:
+            return 1.0
+        elif text_lower.startswith(query_lower):
+            return 0.8
+        elif query_lower in text_lower:
+            return 0.6
+        else:
+            return 0.0
     

@@ -43,4 +43,12 @@ async def get_dataset_root(
     service: DataService = Depends(get_data_service)
 ):
     service_response = await service.fetch_dataset_root(datasetId)
+    return service_response
+
+@router.get('/datasets/{datasetId}/categories', summary="Get categories for the given dataset.", description="Returns the full category hierarchy for the given dataset, from immediate parent to root.")
+async def get_dataset_categories(
+    datasetId: str = Path(..., description="The ID of the dataset"),
+    service: DataService = Depends(get_data_service)
+):
+    service_response = await service.fetch_dataset_categories(datasetId)
     return service_response    
