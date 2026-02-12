@@ -118,7 +118,7 @@ class OrganisationService:
                 portfolio_dict["name"] = Util.decode_protobuf_attribute_name(
                     portfolio_data.name
                 )
-                portfolio_dict["type"] = "State" if self.get_state_minister_or_not(portfolio_dict["name"]) else "Cabinet"
+                portfolio_dict["type"] = portfolio_data.kind.minor
                 # check if the portfolio is newly created or not
                 start_time = portfolio_relation.startTime
                 portfolio_dict["isNew"] = start_time == Util.normalize_timestamp(selected_date)
@@ -163,12 +163,6 @@ class OrganisationService:
         except Exception as e:
             logger.error(f"Error fetching portfolio item: {e}")
             raise InternalServerError("An unexpected error occurred") from e
-
-    def get_state_minister_or_not(self, minister_name: str) -> bool:
-        # check if the minister name starts with "state","State","Non Cabinet","non cabinet","Non-cabinent","non-cabinent"
-        normalized = re.sub(r"\s+", " ", minister_name.lower().replace("-", " ")).strip()
-
-        return normalized.startswith("state minister") or normalized.startswith("non cabinet")
 
     # active portfolio list
     async def active_portfolio_list(self, president_id: str, selected_date: str):
@@ -244,7 +238,7 @@ class OrganisationService:
             for portfolio in successful_portfolios:
                 newMinistries += portfolio.get("isNew", False)
                 ministers = portfolio.get("ministers",[])
-                noOfStateMinistries += 1 if self.get_state_minister_or_not(portfolio.get("name", "")) else 0
+                noOfStateMinistries += 1 if portfolio.get("type", "") == "stateMinister" else 0
                 for minister in ministers:
                     if isinstance(minister, dict):
                         newMinisters += minister.get("isNew", False)
