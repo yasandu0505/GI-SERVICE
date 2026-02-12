@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from src.routers import payload_incoming_router
-from src.routers import organisation_router, data_router, search_router
+from src.routers import organisation_router, data_router, search_router, person_router
 from dotenv import load_dotenv
 import os
 from fastapi.middleware.cors import CORSMiddleware
@@ -57,3 +57,4 @@ app.include_router(payload_incoming_router.router)
 app.include_router(organisation_router)
 app.include_router(data_router)
 app.include_router(search_router)
+app.include_router(person_router)

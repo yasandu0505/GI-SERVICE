@@ -58,7 +58,7 @@ class Util:
 
     # helper: term helper
     @staticmethod
-    def term(startTime, endTime) -> str:
+    def term(startTime, endTime, show_full_date: bool = False) -> str:
         """
         Generate a term string based on start and end dates.
 
@@ -66,17 +66,30 @@ class Util:
         endDate format: YYYY-MM-DDT00:00:00Z
 
         return format:
+            (show_full_date=False)
             YYYY MM - YYYY MM
             YYYY MM - Present
 
             ex: 2020 Jan - 2022 May
                 2020 Jan - Present
+
+            (show_full_date=True)
+            YYYY-MM-DD - YYYY-MM-DD
+            YYYY-MM-DD - Present
+
         """
 
         if not startTime:
             return "Unknown"
         
         start_date = startTime.split("T")[0]
+
+        if show_full_date:
+            if not endTime or endTime == "":
+                return f"{start_date} - Present"
+            else:
+                end_date = endTime.split("T")[0]
+                return f"{start_date} - {end_date}"
 
         start_date_object = datetime.strptime(start_date, "%Y-%m-%d")
         start_year = start_date_object.year
