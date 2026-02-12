@@ -238,7 +238,7 @@ class OrganisationService:
             for portfolio in successful_portfolios:
                 newMinistries += portfolio.get("isNew", False)
                 ministers = portfolio.get("ministers",[])
-                noOfStateMinistries += 1 if portfolio.get("type", "") == "stateMinister" else 0
+                noOfStateMinistries += 1 if portfolio.get("type", "").lower() == "stateminister" else 0
                 for minister in ministers:
                     if isinstance(minister, dict):
                         newMinisters += minister.get("isNew", False)
