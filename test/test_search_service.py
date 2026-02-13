@@ -37,12 +37,22 @@ async def test_unified_search_success(search_service, mock_opengin_service):
         )
     ]
 
-    # Mock ministers
-    mock_ministers = [
+    # Mock state ministers
+    mock_state_ministers = [
         Entity(
             id="minister_1",
             name="encoded_minister",
-            kind=Kind(major="Organisation", minor="minister"),
+            kind=Kind(major="Organisation", minor="stateMinister"),
+            created="2019-06-15T00:00:00Z"
+        )
+    ]
+
+    # Mock cabinet ministers
+    mock_cabinet_ministers = [
+        Entity(
+            id="minister_1",
+            name="encoded_minister",
+            kind=Kind(major="Organisation", minor="cabinetMinister"),
             created="2019-06-15T00:00:00Z"
         )
     ]
@@ -71,8 +81,10 @@ async def test_unified_search_success(search_service, mock_opengin_service):
     def get_entities_side_effect(entity):
         if entity.kind.minor == "department":
             return mock_departments
-        elif entity.kind.minor == "minister":
-            return mock_ministers
+        elif entity.kind.minor == "stateMinister":
+            return mock_state_ministers
+        elif entity.kind.minor == "cabinetMinister":
+            return mock_cabinet_ministers
         elif entity.kind.minor == "tabular":
             return mock_datasets
         elif entity.kind.minor == "citizen":
@@ -83,7 +95,7 @@ async def test_unified_search_success(search_service, mock_opengin_service):
 
     with patch(
         "src.services.search_service.Util.decode_protobuf_attribute_name",
-        side_effect=["Ministry of Health", "Health Minister", "Health Statistics", "John Health"]
+        side_effect=["Ministry of Health", "State Health Minister", "Cabinet Health Minister", "Health Statistics", "John Health"]
     ):
         result = await search_service.unified_search(
             query="health",
@@ -94,13 +106,14 @@ async def test_unified_search_success(search_service, mock_opengin_service):
     assert isinstance(result, SearchResponse)
     assert result.query == "health"
     assert result.as_of_date == "2022-01-01"
-    assert result.total == 4
-    assert len(result.results) == 4
+    assert result.total == 5
+    assert len(result.results) == 5
 
     # Verify all types are present
     types = [r.type for r in result.results]
     assert "department" in types
-    assert "minister" in types
+    assert "stateMinister" in types
+    assert "cabinetMinister" in types
     assert "dataset" in types
     assert "person" in types
 
@@ -333,7 +346,7 @@ async def test_entity_specific_search_ministers(search_service, mock_opengin_ser
         Entity(
             id="minister_1",
             name="encoded_minister",
-            kind=Kind(major="Organisation", minor="minister"),
+            kind=Kind(major="Organisation", minor="stateMinister"),
             created="2019-06-15T00:00:00Z",
             terminated=""
         )
@@ -347,13 +360,13 @@ async def test_entity_specific_search_ministers(search_service, mock_opengin_ser
     ):
         results = await search_service.entity_specific_search(
             major="Organisation",
-            minor="minister",
+            minor="stateMinister",
             query="Health",
             as_of_date="2022-01-01"
         )
     
     assert len(results) == 1
-    assert results[0]["type"] == "minister"
+    assert results[0]["type"] == "stateMinister"
     assert results[0]["id"] == "minister_1"
     assert results[0]["name"] == "Health Minister"
     assert results[0]["created"] == "2019-06-15T00:00:00Z"
@@ -612,8 +625,8 @@ def test_determine_entity_type_department(search_service):
 
 def test_determine_entity_type_minister(search_service):
     """Test _determine_entity_type returns 'minister' for Organisation/minister"""
-    entity_type = search_service._determine_entity_type("Organisation", "minister")
-    assert entity_type == "minister"
+    entity_type = search_service._determine_entity_type("Organisation", "stateMinister")
+    assert entity_type == "stateMinister"
 
 
 def test_determine_entity_type_dataset(search_service):
@@ -631,7 +644,8 @@ def test_determine_entity_type_person(search_service):
 def test_determine_entity_type_case_insensitive(search_service):
     """Test _determine_entity_type is case insensitive"""
     assert search_service._determine_entity_type("organisation", "department") == "department"
-    assert search_service._determine_entity_type("ORGANISATION", "MINISTER") == "minister"
+    assert search_service._determine_entity_type("ORGANISATION", "stateMinister") == "stateMinister"
+    assert search_service._determine_entity_type("organisation", "cabinetMinister") == "cabinetMinister"
     assert search_service._determine_entity_type("dataset", "TABULAR") == "dataset"
     assert search_service._determine_entity_type("PERSON", "citizen") == "person"
 

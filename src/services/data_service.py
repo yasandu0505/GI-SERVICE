@@ -324,21 +324,21 @@ class DataService:
 
     async def fetch_dataset_root(self, dataset_id: str):
         """
-        Fetches the root department or minister for a given dataset by traversing the category hierarchy.
+        Fetches the root department, state minister or cabinet minister for a given dataset by traversing the category hierarchy.
         
         This function follows these steps:
         1. Gets the category ID from the dataset using IS_ATTRIBUTE relation (INCOMING)
-        2. Traverses up the category hierarchy until it finds a department or minister
+        2. Traverses up the category hierarchy until it finds a department or state minister or cabinet minister
         
         Args:
             dataset_id (str): The ID of the dataset.
         
         Returns:
-            Entity: The root entity (department or minister) for the dataset.
+            Entity: The root entity (department, state minister or cabinet minister) for the dataset.
             
         Raises:
             BadRequestError: If dataset_id is not provided.
-            NotFoundError: If no root department or minister is found.
+            NotFoundError: If no root department, state minister or cabinet minister is found.
             InternalServerError: If an unexpected error occurs.
         """
         try:
@@ -358,7 +358,7 @@ class DataService:
 
             category_id = relations[0].relatedEntityId
             
-            # Find the root department or minister
+            # Find the root department, state minister or cabinet minister
             root_entity = await self.find_root_department_or_minister(category_id)
 
             if not root_entity:
@@ -483,8 +483,8 @@ class DataService:
                 }
             })
 
-            # Check if we've reached a department or minister (root)
-            if current_category.kind and current_category.kind.minor in ["department", "minister"]:
+            # Check if we've reached a department, state minister or cabinet minister (root)
+            if current_category.kind and current_category.kind.minor in ["department", "stateMinister", "cabinetMinister"]:
                 break
 
             # Get parent category
@@ -525,7 +525,7 @@ class DataService:
             current_category = category_results[0]
             
             # Check if this is a department or minister
-            if current_category.kind and current_category.kind.minor in ["department", "minister"]:
+            if current_category.kind and current_category.kind.minor in ["department", "cabinetMinister", "stateMinister"]:
                 return current_category
             
             # If not, traverse up the hierarchy using AS_CATEGORY INCOMING relation
@@ -546,6 +546,6 @@ class DataService:
         except (BadRequestError, NotFoundError):
             raise
         except Exception as e:
-            logger.error(f"Failed to find root department or minister for category {category_id}: {e}")
+            logger.error(f"Failed to find root department, state minister or cabinet minister for category {category_id}: {e}")
             raise InternalServerError("An unexpected error occurred") from e
             

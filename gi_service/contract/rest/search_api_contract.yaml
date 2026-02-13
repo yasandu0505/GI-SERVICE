@@ -6,64 +6,65 @@ info:
   version: 1.0.0
 
 servers:
-- url: http://localhost:8081
+  - url: http://localhost:8081
 
 tags:
-- name: Search
-  description: APIs for searching across entities
+  - name: Search
+    description: APIs for searching across entities
 
 paths:
   /search:
     get:
       tags:
-      - Search
+        - Search
       summary: Unified search across all entities.
       description: Search departments, ministers, datasets, and persons with time-sensitivity support. Returns mixed results sorted by relevance.
       operationId: unifiedSearch
 
       parameters:
-      - name: q
-        in: query
-        required: true
-        schema:
-          type: string
-          minLength: 2
-        description: Search query (minimum 2 characters)
-      
-      - name: as_of_date
-        in: query
-        required: false
-        schema:
-          type: string
-          pattern: '^\d{4}-\d{2}-\d{2}$'
-        description: Date for historical search (YYYY-MM-DD). Defaults to today.
-        example: "2020-03-15"
-      
-      - name: limit
-        in: query
-        required: false
-        schema:
-          type: integer
-          minimum: 1
-        description: Maximum number of results to return. If not specified, returns all results.
-        example: 10
-      
-      - name: type
-        in: query
-        required: false
-        schema:
-          type: array
-          items:
+        - name: q
+          in: query
+          required: true
+          schema:
             type: string
-            enum:
-              - department
-              - minister
-              - dataset
-              - person
-        style: form
-        explode: true
-        description: "Filter by entity type(s): department, minister, dataset, person. Can specify multiple."
-        example: ["department", "person"]
+            minLength: 2
+          description: Search query (minimum 2 characters)
+
+        - name: as_of_date
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Date for historical search (YYYY-MM-DD). Defaults to today.
+          example: "2020-03-15"
+
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: Maximum number of results to return. If not specified, returns all results.
+          example: 10
+
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - department
+                - stateMinister
+                - cabinetMinister
+                - dataset
+                - person
+          style: form
+          explode: true
+          description: "Filter by entity type(s): department, stateMinister, cabinetMinister, dataset, person. Can specify multiple."
+          example: ["department", "person"]
 
       responses:
         "200":
@@ -71,8 +72,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SearchResponse'
-              
+                $ref: "#/components/schemas/SearchResponse"
+
               examples:
                 currentSearch:
                   summary: Current search example
@@ -99,7 +100,7 @@ paths:
                         created: "2021-01-01T00:00:00Z"
                         terminated: ""
                         match_score: 0.88
-                
+
                 historicalSearch:
                   summary: Historical search example
                   value:
@@ -119,7 +120,7 @@ paths:
                         created: "2015-06-01T00:00:00Z"
                         terminated: "2019-12-31T00:00:00Z"
                         match_score: 0.85
-                
+
                 filteredSearch:
                   summary: Filtered by entity type
                   value:
@@ -235,4 +236,4 @@ components:
           type: array
           description: "List of search results sorted by relevance (match_score)"
           items:
-            $ref: '#/components/schemas/SearchResult'
+            $ref: "#/components/schemas/SearchResult"
