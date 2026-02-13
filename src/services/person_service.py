@@ -104,6 +104,25 @@ class PersonService:
                 r for r in results if r and not isinstance(r, Exception)
             ]
 
+            #Sort ministry history:
+            #1.if end_time is None (ongoing), it comes first
+            #2.if multiple end_time is None (ongoing), latest start_time first - descending
+            #3.if end_time is present, sort by end_time descending
+            def sort_key(item):
+                end = item.get("end_time")
+                start = item.get("start_time")
+                
+                effective_end = end if end else "9999-12-31" 
+                
+                return (effective_end, start)
+
+            ministry_history.sort(key=sort_key, reverse=True)
+
+            # Remove start_time and end_time
+            for item in ministry_history:
+                item.pop("start_time", None)
+                item.pop("end_time", None)
+
             final_result = {
                 "body": {
                     "ministry_history": ministry_history,
@@ -136,7 +155,9 @@ class PersonService:
                     "id": ministry.id,
                     "name": name,
                     "term": term,
-                    "is_president": is_president
+                    "is_president": is_president,
+                    "start_time": relation.startTime,
+                    "end_time": relation.endTime
                 }
             return None
         except Exception as e:
