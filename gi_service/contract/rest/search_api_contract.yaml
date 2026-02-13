@@ -13,7 +13,7 @@ tags:
     description: APIs for searching across entities
 
 paths:
-  /search:
+  /v1/search:
     get:
       tags:
         - Search
@@ -22,7 +22,7 @@ paths:
       operationId: unifiedSearch
 
       parameters:
-        - name: q
+        - name: search_query
           in: query
           required: true
           schema:
@@ -151,7 +151,7 @@ paths:
                   detail:
                     type: string
               example:
-                detail: "Query parameter 'q' must be at least 2 characters long"
+                detail: "Query parameter 'search_query' must be at least 2 characters long"
 
         "500":
           description: Server Error

@@ -6,19 +6,19 @@ info:
   version: 1.0.0
 
 servers:
-- url: http://localhost:8081
+  - url: http://localhost:8081
 
 tags:
-- name: Organization
-  description: APIs for organization
-- name: Data
-  description: APIs for data
+  - name: Organization
+    description: APIs for organization
+  - name: Data
+    description: APIs for data
 
 paths:
-  /all-presidents:
+  /v1/all-presidents:
     get:
       tags:
-      - Organization
+        - Organization
       summary: Get all president list with terms
       description: Returns the list of presidents and terms.
       operationId: getPresidents
@@ -33,23 +33,23 @@ paths:
                   body:
                     type: array
                     items:
-                      $ref: '#/components/schemas/President'
+                      $ref: "#/components/schemas/President"
               example:
                 body:
-                - name: Anura Kumara Dissanayake
-                  id: 2403-03-01_cit_1
-                  terms:
-                  - startDate:
-                      date: 2024-09-23T00:00:00Z
-                    endDate:
-                      date: ""
+                  - name: Anura Kumara Dissanayake
+                    id: 2403-03-01_cit_1
+                    terms:
+                      - startDate:
+                          date: 2024-09-23T00:00:00Z
+                        endDate:
+                          date: ""
         "500":
           description: Server Error
 
-  /all-gazettes:
+  /v1/all-gazettes:
     get:
       tags:
-      - Organization
+        - Organization
       summary: Get all published gazettes
       description: Returns a list of sorted date objects that are related to gazette published.
       operationId: getGazettes
@@ -66,42 +66,42 @@ paths:
                     items:
                       type: object
                       required:
-                      - gazetteId
-                      - publishedDate
+                        - gazetteId
+                        - publishedDate
                       properties:
                         gazetteId:
                           type: string
                         publishedDate:
                           type: object
                           required:
-                          - date
+                            - date
                           properties:
                             date:
                               type: string
               example:
                 body:
-                - gazetteId: 2411-09
-                  publishedDate:
-                    date: 2024-11-18T00:00:00Z
-                - gazetteId: 2411-10
-                  publishedDate:
-                    date: 2024-11-18T00:00:00Z
+                  - gazetteId: 2411-09
+                    publishedDate:
+                      date: 2024-11-18T00:00:00Z
+                  - gazetteId: 2411-10
+                    publishedDate:
+                      date: 2024-11-18T00:00:00Z
         "500":
           description: Server Error
 
-  /prime-minister/{date}:
-    get:
+  /v1/organisation/prime-minister:
+    post:
       tags:
-      - Organization
+        - Organization
       summary: Get prime minister Data
       description: Returns the prime minister details based on the given date.
       operationId: getPrimeMinister
-      parameters:
-      - name: date
-        in: path
+      requestBody:
         required: true
-        schema:
-          type: string
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Date"
       responses:
         "200":
           description: Successfully returned
@@ -113,8 +113,8 @@ paths:
                   body:
                     type: object
                     required:
-                    - name
-                    - id
+                      - name
+                      - id
                     properties:
                       name:
                         type: string
@@ -127,19 +127,19 @@ paths:
         "500":
           description: Server Error
 
-  /person-history/{personId}:
+  /v1/person-history/{personId}:
     get:
       tags:
-      - Organization
+        - Organization
       summary: get person history
       description: Returns the history of the person.
       operationId: getPersonHistory
       parameters:
-      - name: personId
-        in: path
-        required: true
-        schema:
-          type: string
+        - name: personId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: Successfully returned.
@@ -156,14 +156,14 @@ paths:
                         startDate:
                           type: object
                           required:
-                          - date
+                            - date
                           properties:
                             date:
                               type: string
                         endDate:
                           type: object
                           required:
-                          - date
+                            - date
                           properties:
                             date:
                               type: string
@@ -172,8 +172,8 @@ paths:
                         portfolio:
                           type: object
                           required:
-                          - name
-                          - id
+                            - name
+                            - id
                           properties:
                             name:
                               type: string
@@ -184,8 +184,8 @@ paths:
                               items:
                                 type: object
                                 required:
-                                - name
-                                - id
+                                  - name
+                                  - id
                                 properties:
                                   name:
                                     type: string
@@ -193,34 +193,34 @@ paths:
                                     type: string
               example:
                 body:
-                - startDate:
-                    date: 2024-11-18
-                  endDate:
-                    date: Present
-                  isPresident: true
-                  portfolio:
-                    name: Minister of Digital Economy
-                    id: 2434-min-1
+                  - startDate:
+                      date: 2024-11-18
+                    endDate:
+                      date: Present
+                    isPresident: true
+                    portfolio:
+                      name: Minister of Digital Economy
+                      id: 2434-min-1
         "400":
           description: Bad request
         "404":
           description: Not found
         "500":
           description: Server Error
-          
-  /department-history/{departmentId}:
+
+  /v1/department-history/{departmentId}:
     get:
       tags:
-      - Organization
+        - Organization
       summary: Get department history.
       description: Returns the history of the department.
       operationId: getDepartmentHistory
       parameters:
-      - name: departmentId
-        in: path
-        required: true
-        schema:
-          type: string
+        - name: departmentId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: Successfully returned.
@@ -237,22 +237,22 @@ paths:
                         startDate:
                           type: object
                           required:
-                          - date
+                            - date
                           properties:
                             date:
                               type: string
                         endDate:
                           type: object
                           required:
-                          - date
+                            - date
                           properties:
                             date:
                               type: string
                         portfolio:
                           type: object
                           required:
-                          - name
-                          - id
+                            - name
+                            - id
                           properties:
                             name:
                               type: string
@@ -263,8 +263,8 @@ paths:
                               items:
                                 type: object
                                 required:
-                                - name
-                                - id
+                                  - name
+                                  - id
                                 properties:
                                   name:
                                     type: string
@@ -272,16 +272,16 @@ paths:
                                     type: string
               example:
                 body:
-                - startDate: 
-                    date: 2024-11-18
-                  endDate: 
-                    date: Present
-                  portfolio:
-                    name: Minister of Plantation and Community Infrastructure
-                    id: 2434-min-2
-                    ministers:
-                    - name: Samantha Vidyarathna
-                      id: 2405-cit-4
+                  - startDate:
+                      date: 2024-11-18
+                    endDate:
+                      date: Present
+                    portfolio:
+                      name: Minister of Plantation and Community Infrastructure
+                      id: 2434-min-2
+                      ministers:
+                        - name: Samantha Vidyarathna
+                          id: 2405-cit-4
         "400":
           description: Bad request
         "404":
@@ -289,35 +289,26 @@ paths:
         "500":
           description: Server Error
 
-  /active-portfolio-list/{presidentId}:
+  /v1/active-portfolio-list:
     post:
       tags:
-      - Organization
+        - Organization
       summary: Get active portfolio list.
       description: Returns a list of portfolios under a given president and a given date.
       operationId: getActivePortfolioList
       parameters:
-      - name: presidentId
-        in: path
-        required: true
-        schema:
-          type: string
+        - name: presidentId
+          in: query
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         description: This request body corresponds to the date used to retrive the list of active portfolios.
         content:
           application/json:
             schema:
-              type: object
-              description: required date
-              properties:
-                activeDate:
-                  type: object
-                  required:
-                  - date
-                  properties:
-                    date:
-                      type: string
+              $ref: "#/components/schemas/Date"
       responses:
         "200":
           description: Successfully returned
@@ -334,8 +325,8 @@ paths:
                         items:
                           type: object
                           required:
-                          - name
-                          - id
+                            - name
+                            - id
                           properties:
                             name:
                               type: string
@@ -348,8 +339,8 @@ paths:
                               items:
                                 type: object
                                 required:
-                                - name
-                                - id
+                                  - name
+                                  - id
                                 properties:
                                   name:
                                     type: string
@@ -374,19 +365,19 @@ paths:
         "500":
           description: Server Error
 
-  /gazettes-by-president/{presidentId}:
+  /v1/gazettes-by-president/{presidentId}:
     post:
       tags:
-      - Organization
+        - Organization
       summary: Get a list of gazettes for a given time range and president.
       description: Returns a list of gazettes for a given time range and president, sort the values according to the date.
       operationId: getGazettesByPresident
       parameters:
-      - name: presidentId
-        required: true
-        in: path
-        schema:
-          type: string
+        - name: presidentId
+          required: true
+          in: path
+          schema:
+            type: string
       requestBody:
         required: true
         description: This request body corresponds to the date range used to retrieve the gazette list for the given president term and date range.
@@ -399,14 +390,14 @@ paths:
                 startDate:
                   type: object
                   required:
-                  - date
+                    - date
                   properties:
                     date:
                       type: string
                 endDate:
                   type: object
                   required:
-                  - date
+                    - date
                   properties:
                     date:
                       type: string
@@ -427,35 +418,35 @@ paths:
                         items:
                           type: object
                           required:
-                          - gazetteId
-                          - publishedDate
+                            - gazetteId
+                            - publishedDate
                           properties:
                             gazetteId:
                               type: string
                             publishedDate:
                               type: object
                               required:
-                              - date
+                                - date
                               properties:
                                 date:
                                   type: string
               example:
                 body:
-                - "2025-04-23":
-                  - gazetteId: 2411-09
-                    publishedDate:
-                      date: 2024-11-23T00:00:00Z
-                  - gazetteId: 2411-10
-                    publishedDate:
-                      date: 2024-11-23T00:00:00Z
-                - "2025-04-24":
-                  - gazetteId: 2411-10
-                    publishedDate:
-                      date: 2024-11-24T00:00:00Z
-                - "2025-04-25":
-                  - gazetteId: 2411-10
-                    publishedDate:
-                      date: 2024-11-25T00:00:00Z
+                  - "2025-04-23":
+                      - gazetteId: 2411-09
+                        publishedDate:
+                          date: 2024-11-23T00:00:00Z
+                      - gazetteId: 2411-10
+                        publishedDate:
+                          date: 2024-11-23T00:00:00Z
+                  - "2025-04-24":
+                      - gazetteId: 2411-10
+                        publishedDate:
+                          date: 2024-11-24T00:00:00Z
+                  - "2025-04-25":
+                      - gazetteId: 2411-10
+                        publishedDate:
+                          date: 2024-11-25T00:00:00Z
         "400":
           description: Bad request
         "404":
@@ -463,10 +454,10 @@ paths:
         "500":
           description: Server Error
 
-  /presidents-by-range:
+  /v1/presidents-by-range:
     post:
       tags:
-      - Organization
+        - Organization
       summary: Get a list of presidents for a given time range.
       description: Returns a list of presidents for a given time range.
       operationId: getPresidentsForRange
@@ -482,14 +473,14 @@ paths:
                 startDate:
                   type: object
                   required:
-                  - date
+                    - date
                   properties:
                     date:
                       type: string
                 endDate:
                   type: object
                   required:
-                  - date
+                    - date
                   properties:
                     date:
                       type: string
@@ -505,84 +496,75 @@ paths:
                     type: array
                     items:
                       allOf:
-                      - type: object
-                        allOf:
+                        - type: object
+                          allOf:
+                            - type: object
+                              required:
+                                - name
+                                - id
+                              properties:
+                                name:
+                                  type: string
+                                id:
+                                  type: string
                         - type: object
                           required:
-                          - name
-                          - id
+                            - terms
                           properties:
-                            name:
-                              type: string
-                            id:
-                              type: string
-                      - type: object
-                        required:
-                        - terms
-                        properties:
-                          terms:
-                            type: array
-                            items:
-                              type: object
-                              required:
-                              - startDate
-                              - endDate
-                              properties:
-                                startDate:
-                                  type: object
-                                  required:
-                                  - date
-                                  properties:
-                                    date:
-                                      type: string
-                                endDate:
-                                  type: object
-                                  required:
-                                  - date
-                                  properties:
-                                    date:
-                                      type: string
+                            terms:
+                              type: array
+                              items:
+                                type: object
+                                required:
+                                  - startDate
+                                  - endDate
+                                properties:
+                                  startDate:
+                                    type: object
+                                    required:
+                                      - date
+                                    properties:
+                                      date:
+                                        type: string
+                                  endDate:
+                                    type: object
+                                    required:
+                                      - date
+                                    properties:
+                                      date:
+                                        type: string
               example:
                 body:
-                - name: Anura Kumara Dissanayake
-                  id: 2403-03-01_cit_1
-                  terms:  
-                  - startDate:  
-                      date: 2024-09-23T00:00:00Z  
-                    endDate:  
-                      date: ""
+                  - name: Anura Kumara Dissanayake
+                    id: 2403-03-01_cit_1
+                    terms:
+                      - startDate:
+                          date: 2024-09-23T00:00:00Z
+                        endDate:
+                          date: ""
         "500":
           description: Server Error
 
-  /departments-by-portfolio/{portfolioId}:
+  /v1/departments-by-portfolio/{portfolio_id}:
     post:
       tags:
-      - Organization
+        - Organization
       summary: Get active departments for a portfolio.
       description: Returns a list of departments under a given portfolio and a given date.
       operationId: getDepartmentsByPortfolio
       parameters:
-      - name: portfolioId
-        in: path
-        required: true
-        schema:
-          type: string
+        - name: portfolio_id
+          in: path
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         description: This request body corresponds to the date used to retrive the list of active departments.
         content:
           application/json:
             schema:
-              type: object
-              description: Required date.
-              properties:
-                activeDate:
-                  type: object
-                  required:
-                  - date
-                  properties:
-                    date:
-                      type: string
+              $ref: "#/components/schemas/Date"
       responses:
         "200":
           description: Successfully returned
@@ -596,8 +578,8 @@ paths:
                     items:
                       type: object
                       required:
-                      - name
-                      - id
+                        - name
+                        - id
                       properties:
                         name:
                           type: string
@@ -607,20 +589,20 @@ paths:
                           type: boolean
                         hasData:
                           type: boolean
-              
+
               example:
                 body:
-                - totalDepartments: 2
-                  newDepartments: 2
-                  departmentList:
-                  - name: National Police Academy
-                    id: 2187-27_dep_4
-                    isNew: false
-                    hasData: true
-                  - name: Assets vested to the Secretary to the Treasury, under the Act, No. 43 of 2011
-                    id: 2153-12_dep_437
-                    isNew: false
-                    hasData: false
+                  - totalDepartments: 2
+                    newDepartments: 2
+                    departmentList:
+                      - name: National Police Academy
+                        id: 2187-27_dep_4
+                        isNew: false
+                        hasData: true
+                      - name: Assets vested to the Secretary to the Treasury, under the Act, No. 43 of 2011
+                        id: 2153-12_dep_437
+                        isNew: false
+                        hasData: false
         "400":
           description: Bad request
         "404":
@@ -628,19 +610,19 @@ paths:
         "500":
           description: Server Error
 
-  /persons-by-portfolio/{portfolioId}:
+  /v1/persons-by-portfolio/{portfolioId}:
     post:
       tags:
-      - Organization
+        - Organization
       summary: Get active persons for a portfolio.
       description: Returns a list of persons under a given portfolio and a given date.
       operationId: getPersonsByMinistry
       parameters:
-      - name: portfolioId
-        in: path
-        required: true
-        schema:
-          type: string
+        - name: portfolioId
+          in: path
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         description: This request body corresponds to the date used to retrieve the list of active persons.
@@ -653,7 +635,7 @@ paths:
                 activeDate:
                   type: object
                   required:
-                  - date
+                    - date
                   properties:
                     date:
                       type: string
@@ -670,8 +652,8 @@ paths:
                     items:
                       type: object
                       required:
-                      - name
-                      - id
+                        - name
+                        - id
                       properties:
                         name:
                           type: string
@@ -684,15 +666,15 @@ paths:
 
               example:
                 body:
-                - name: Anura Kumara Dissanayake
-                  id: 2403-03_cit_1
-                  isPresident: true
-                  isNew: false
-                - name: Gotabaya Rajapaksa
-                  id: 2149-34_cit_1
-                  isPresident: false
-                  isNew: false
-                  
+                  - name: Anura Kumara Dissanayake
+                    id: 2403-03_cit_1
+                    isPresident: true
+                    isNew: false
+                  - name: Gotabaya Rajapaksa
+                    id: 2149-34_cit_1
+                    isPresident: false
+                    isNew: false
+
         "400":
           description: Bad request
         "404":
@@ -705,7 +687,7 @@ components:
     Date:
       type: object
       required:
-      - date
+        - date
       properties:
         date:
           type: string
@@ -713,69 +695,69 @@ components:
     Term:
       type: object
       required:
-      - startDate
-      - endDate
+        - startDate
+        - endDate
       properties:
         startDate:
           type: object
           required:
-          - date
+            - date
           properties:
             date:
               type: string
         endDate:
           type: object
           required:
-          - date
+            - date
           properties:
             date:
               type: string
 
     President:
       allOf:
-      - type: object
-        allOf:
+        - type: object
+          allOf:
+            - type: object
+              required:
+                - name
+                - id
+              properties:
+                name:
+                  type: string
+                id:
+                  type: string
         - type: object
           required:
-          - name
-          - id
+            - terms
           properties:
-            name:
-              type: string
-            id:
-              type: string
-      - type: object
-        required:
-        - terms
-        properties:
-          terms:
-            type: array
-            items:
-              type: object
-              required:
-              - startDate
-              - endDate
-              properties:
-                startDate:
-                  type: object
-                  required:
-                  - date
-                  properties:
-                    date:
-                      type: string
-                endDate:
-                  type: object
-                  required:
-                  - date
-                  properties:
-                    date:
-                      type: string
+            terms:
+              type: array
+              items:
+                type: object
+                required:
+                  - startDate
+                  - endDate
+                properties:
+                  startDate:
+                    type: object
+                    required:
+                      - date
+                    properties:
+                      date:
+                        type: string
+                  endDate:
+                    type: object
+                    required:
+                      - date
+                    properties:
+                      date:
+                        type: string
 
     Person:
       type: object
       required:
-      - name
-      - id
+        - name
+        - id
       properties:
         name:
           type: string
@@ -785,15 +767,15 @@ components:
     Gazette:
       type: object
       required:
-      - gazetteId
-      - publishedDate
+        - gazetteId
+        - publishedDate
       properties:
         gazetteId:
           type: string
         publishedDate:
           type: object
           required:
-          - date
+            - date
           properties:
             date:
               type: string
@@ -801,8 +783,8 @@ components:
     Portfolio:
       type: object
       required:
-      - name
-      - id
+        - name
+        - id
       properties:
         name:
           type: string
@@ -813,19 +795,19 @@ components:
           items:
             type: object
             required:
-            - name
-            - id
+              - name
+              - id
             properties:
               name:
                 type: string
               id:
                 type: string
-                
+
     Department:
       type: object
       required:
-      - name
-      - id
+        - name
+        - id
       properties:
         name:
           type: string

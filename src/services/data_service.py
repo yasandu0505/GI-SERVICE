@@ -512,7 +512,7 @@ class DataService:
             category_id (str): The ID of the category to check.
         
         Returns:
-            Entity: The root entity with name, id and type as "department" or "minister".
+            Entity: The root entity with name, id and type as "department" or "cabinetMinister" or "stateMinister".
         """
         try:
             if not category_id:

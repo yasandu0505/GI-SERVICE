@@ -13,7 +13,7 @@ tags:
     description: APIs for Data
 
 paths:
-  /data-catalog:
+  /v1/data-catalog:
     post:
       tags:
         - Data
@@ -74,7 +74,7 @@ paths:
         "500":
           description: Server Error
 
-  /datasets/years:
+  /v1/datasets/years:
     post:
       tags:
         - Data
@@ -134,7 +134,7 @@ paths:
         "500":
           description: Server Error
 
-  /datasets/{datasetId}/data:
+  /v1/datasets/{datasetId}/data:
     get:
       tags:
         - Data
@@ -182,7 +182,7 @@ paths:
         "500":
           description: Server Error
 
-  /datasets/{datasetId}/root:
+  /v1/datasets/{datasetId}/root:
     get:
       tags:
         - Data
@@ -229,7 +229,7 @@ paths:
         "500":
           description: Server Error
 
-  /datasets/{datasetId}/categories:
+  /v1/datasets/{datasetId}/categories:
     get:
       tags:
         - Data

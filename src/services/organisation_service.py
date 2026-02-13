@@ -174,7 +174,8 @@ class OrganisationService:
 
         output type: 
         {
-            "activeMinistries": 0,
+            "NoOfCabinetMinistries": 0,
+            "NoOfStateMinistries": 0,
             "newMinistries": 0,
             "newMinisters": 0,
             "ministriesUnderPresident": 0,
