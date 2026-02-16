@@ -136,10 +136,8 @@ class PersonService:
 
     async def enrich_history_item(self, person_id: str, relation: Relation, president_relations: list[Relation]):
         try:
-            ministry_task = self.opengin_service.get_entities(Entity(id=relation.relatedEntityId))
+            ministry_data = await self.opengin_service.get_entities(Entity(id=relation.relatedEntityId))
             is_president = self.is_president_during(president_relations, relation.startTime, relation.endTime)
-            
-            ministry_data = await ministry_task
 
             if ministry_data:
                 ministry = ministry_data[0]
