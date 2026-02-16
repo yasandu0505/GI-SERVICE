@@ -389,13 +389,18 @@ class OrganisationService:
             )
 
             if not prime_minister_relations:
-                raise NotFoundError("Prime minister not found for the given date.")
+                return {
+                    "body": {}
+                }
+                
             first_prime_minister_relation = prime_minister_relations[0]
 
             prime_minister_data = await self.enrich_person_data(person_relation=first_prime_minister_relation, selected_date=selected_date)
 
             if not prime_minister_data:
-                raise NotFoundError("Prime minister data not found for the given date.")
+                return {
+                    "body": {}
+                }
 
             prime_minister_data.pop("isPresident", None)
             
