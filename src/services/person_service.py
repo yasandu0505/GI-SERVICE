@@ -24,21 +24,16 @@ class PersonService:
         """Access the global session"""
         return http_client.session  
     
-    async def is_president_during(self, person_id: str, ministry_relation_start: str, ministry_relation_end: str) -> bool:
+    def is_president_during(self, president_relations: list[Relation], ministry_relation_start: str, ministry_relation_end: str) -> bool:
         """
         Check if the person is president during the given ministry term
         
-        :param person_id: Person Id
+        :param president_relations: List of president relations
         :param ministry_relation_start: Ministry relation start time
         :param ministry_relation_end: Ministry relation end time
 
         return type: bool
         """
-        relation = Relation(name="AS_PRESIDENT", direction="INCOMING")
-        president_relations = await self.opengin_service.fetch_relation(
-            entityId=person_id,
-            relation=relation
-        )
         if not president_relations:
             return False
 
@@ -91,11 +86,11 @@ class PersonService:
             president_relations = results_relations[1] if not isinstance(results_relations[1], Exception) else []
 
             tasks = [
-                self.enrich_history_item(person_id, rel)
-                for rel in ministry_relations
-                if rel.startTime and (
-                    not rel.endTime or #if this is true, the second condition will not be evaluated
-                    rel.startTime.split("T")[0] != rel.endTime.split("T")[0] #short circuit evaluation
+                self.enrich_history_item(person_id, relation, president_relations)
+                for relation in ministry_relations
+                if relation.startTime and (
+                    not relation.endTime or #if this is true, the second condition will not be evaluated
+                    relation.startTime.split("T")[0] != relation.endTime.split("T")[0] #short circuit evaluation
                 ) 
             ]
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -139,12 +134,12 @@ class PersonService:
             logger.error(f'Error fetching person history: {e}')
             raise InternalServerError("An unexpected error occurred") from e
 
-    async def enrich_history_item(self, person_id: str, relation: Relation):
+    async def enrich_history_item(self, person_id: str, relation: Relation, president_relations: list[Relation]):
         try:
             ministry_task = self.opengin_service.get_entities(Entity(id=relation.relatedEntityId))
-            is_president_task = self.is_president_during(person_id, relation.startTime, relation.endTime)
+            is_president = self.is_president_during(president_relations, relation.startTime, relation.endTime)
             
-            ministry_data, is_president = await asyncio.gather(ministry_task, is_president_task)
+            ministry_data = await ministry_task
 
             if ministry_data:
                 ministry = ministry_data[0]
