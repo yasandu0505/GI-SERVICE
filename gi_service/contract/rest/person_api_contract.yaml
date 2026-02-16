@@ -1,0 +1,143 @@
+openapi: 3.1.0
+
+info:
+  title: OpenGIN Service API - Person
+  description: This document gives the structure of APIs for the OpenGIN Person Services.
+  version: 1.0.0
+
+servers:
+- url: http://localhost:8081
+
+tags:
+- name: Person
+  description: APIs for person-related information and history
+
+paths:
+  /v1/person/person-history/{person_id}:
+    post:
+      tags:
+      - Person
+      summary: Get person history.
+      description: Returns a ministry history and president history for a given person.
+      operationId: getPersonHistory
+      
+      parameters:
+      - name: person_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the person
+        example: "per-123"
+
+      responses:
+        "200":
+          description: Successfully returned person history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonHistoryResponse'
+              example:
+                body:
+                  ministry_history:
+                  - id: "min-456"
+                    name: "Ministry of Health"
+                    term: "2020-01-01 - 2022-05-15"
+                    is_president: false
+                  - id: "min-789"
+                    name: "Ministry of Education"
+                    term: "2022-05-15 - Present"
+                    is_president: true
+                  ministries_worked_at: 2
+                  worked_as_president: 1
+        
+        "400":
+          description: Bad request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              example:
+                detail: "Person ID is required"
+
+        "404":
+          description: Person not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              example:
+                detail: "Person not found"
+
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              example:
+                detail: "An unexpected error occurred"
+
+components:
+  schemas:
+    MinistryHistoryItem:
+      type: object
+      required:
+        - id
+        - name
+        - term
+        - is_president
+      properties:
+        id:
+          type: string
+          description: "Unique ministry identifier"
+          example: "min-456"
+        name:
+          type: string
+          description: "Name of the ministry"
+          example: "Ministry of Health"
+        term:
+          type: string
+          description: "Formatted term string (e.g., '2020-01-01 - 2022-05-15')"
+          example: "2020-01-01 - 2022-05-15"
+        is_president:
+          type: boolean
+          description: "Whether the person was president during this ministry term"
+          example: false
+
+    PersonHistoryResponse:
+      type: object
+      required:
+        - body
+      properties:
+        body:
+          type: object
+          required:
+            - ministry_history
+            - ministries_worked_at
+            - worked_as_president
+          properties:
+            ministry_history:
+              type: array
+              description: "List of ministry assignments sorted by date"
+              items:
+                $ref: '#/components/schemas/MinistryHistoryItem'
+            ministries_worked_at:
+              type: integer
+              description: "Total count of ministries the person has worked at"
+              minimum: 0
+              example: 2
+            worked_as_president:
+              type: integer
+              description: "Total count of times the person has served as president"
+              minimum: 0
+              example: 1
