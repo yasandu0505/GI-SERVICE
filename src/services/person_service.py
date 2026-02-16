@@ -119,11 +119,9 @@ class PersonService:
                 item.pop("end_time", None)
 
             final_result = {
-                "body": {
-                    "ministry_history": ministry_history,
-                    "ministries_worked_at": len(ministry_history),
-                    "worked_as_president": len(president_relations)
-                }
+                "ministry_history": ministry_history,
+                "ministries_worked_at": len(ministry_history),
+                "worked_as_president": len(president_relations)
             }
 
             return final_result

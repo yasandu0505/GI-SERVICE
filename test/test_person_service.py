@@ -59,8 +59,8 @@ async def test_fetch_person_history_success(person_service, mock_opengin_service
     with patch.object(person_service, 'enrich_history_item', new_callable=AsyncMock) as mock_enrich:
         mock_enrich.return_value = {"id": "min_1", "name": "Min", "term": "T", "is_president": False, "start_time": "2020", "end_time": "2021"}
         result = await person_service.fetch_person_history(person_id)
-        assert result["body"]["ministries_worked_at"] == 1
-        assert len(result["body"]["ministry_history"]) == 1
+        assert result["ministries_worked_at"] == 1
+        assert len(result["ministry_history"]) == 1
 
 @pytest.mark.asyncio
 async def test_fetch_person_history_sorting(person_service, mock_opengin_service):
@@ -84,7 +84,7 @@ async def test_fetch_person_history_sorting(person_service, mock_opengin_service
     
     with patch.object(person_service, 'enrich_history_item', side_effect=side_effect):
         result = await person_service.fetch_person_history(person_id)
-        history = result["body"]["ministry_history"]
+        history = result["ministry_history"]
         
         # Expected order: ongoing (""), then 2021, then 2012
         assert history[0]["id"] == "ongoing"
@@ -96,8 +96,8 @@ async def test_fetch_person_history_no_ministries(person_service, mock_opengin_s
     person_id = "person_123"
     mock_opengin_service.fetch_relation.return_value = []
     result = await person_service.fetch_person_history(person_id)
-    assert result["body"]["ministries_worked_at"] == 0
-    assert result["body"]["ministry_history"] == []
+    assert result["ministries_worked_at"] == 0
+    assert result["ministry_history"] == []
 
 @pytest.mark.asyncio
 async def test_fetch_person_history_internal_error(person_service, mock_opengin_service):

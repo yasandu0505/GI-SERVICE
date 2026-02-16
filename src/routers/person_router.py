@@ -8,7 +8,7 @@ def get_person_service(config: dict = Depends(get_config)):
     opengin_service = OpenGINService(config=config)
     return PersonService(config, opengin_service)
 
-@router.post('/person-history/{person_id}', summary="Get person history.", description="Returns a ministry history and president history for a given person.")
+@router.get('/person-history/{person_id}', summary="Get person history.", description="Returns a ministry history and president history for a given person.")
 async def person_history(
     person_id: str = Path(..., description="ID of the person"),
     service: PersonService = Depends(get_person_service)
