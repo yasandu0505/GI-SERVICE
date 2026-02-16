@@ -142,7 +142,7 @@ class PersonService:
             if ministry_data:
                 ministry = ministry_data[0]
                 name = Util.decode_protobuf_attribute_name(ministry.name)
-                term = Util.term(relation.startTime, relation.endTime, show_full_date=True)
+                term = Util.term(relation.startTime, relation.endTime, get_full_date=True)
                 
                 return {
                     "id": ministry.id,
