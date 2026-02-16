@@ -41,6 +41,39 @@ def test_term_success_without_end_date(util):
 
     assert result == "2022 Jul - Present"
 
+# Testing the new parameter in term function get_full_date
+def test_term_success_with_get_full_date(util):
+    start_date = "2022-07-26"
+    end_date = "2024-09-23"
+
+    result = util.term(start_date, end_date, get_full_date=True)
+
+    assert result == "2022-07-26 - 2024-09-23"
+
+def test_term_success_with_get_full_date_present(util):
+    start_date = "2022-07-26"
+    end_date = None
+
+    result = util.term(start_date, end_date, get_full_date=True)
+
+    assert result == "2022-07-26 - Present"
+
+def test_term_success_with_empty_start_date_full_date(util):
+    start_date = ""
+    end_date = "2022-07-26"
+    
+    result = util.term(start_date, end_date, get_full_date=True)
+
+    assert result == "Unknown"
+
+def test_term_success_with_empty_both_dates_full_date(util):
+    start_date = ""
+    end_date = ""
+    
+    result = util.term(start_date, end_date, get_full_date=True)
+
+    assert result == "Unknown"
+
 # test extract year function
 def test_extract_year_valid_date(util):
     """Test _extract_year returns correct year from date string"""
