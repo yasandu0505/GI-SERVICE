@@ -40,7 +40,7 @@ async def search(
     entity_types: Optional[List[str]] = Query(
         None,
         alias="type",
-        description="Filter by entity type(s): department, minister, dataset, person. Can specify multiple."
+        description="Filter by entity type(s): department, stateMinister, cabinetMinister, dataset, person. Can specify multiple."
     ),
     service: SearchService = Depends(get_search_service)
 ):

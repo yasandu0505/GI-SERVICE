@@ -890,7 +890,7 @@ async def test_find_root_department_or_minister_found_minister(data_service, moc
     mock_minister = Entity(
         id=category_id,
         name="encoded_minister_name",
-        kind=Kind(major="Category", minor="minister")
+        kind=Kind(major="Category", minor="stateMinister")
     )
     
     mock_opengin_service.get_entities.return_value = [mock_minister]
@@ -899,7 +899,7 @@ async def test_find_root_department_or_minister_found_minister(data_service, moc
     
     assert result is not None
     assert result.id == category_id
-    assert result.kind.minor == "minister"
+    assert result.kind.minor == "stateMinister"
 
 @pytest.mark.asyncio
 async def test_find_root_department_or_minister_recursive_traversal(data_service, mock_opengin_service):
@@ -1084,7 +1084,7 @@ async def test_fetch_dataset_root_success_with_minister(data_service, mock_openg
     mock_minister = Entity(
         id=minister_id,
         name="encoded_minister_name",
-        kind=Kind(major="Category", minor="minister")
+        kind=Kind(major="Category", minor="stateMinister")
     )
     
     # Mock relation from category to minister
@@ -1109,13 +1109,13 @@ async def test_fetch_dataset_root_success_with_minister(data_service, mock_openg
         [mock_minister]
     ]
     
-    with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="Prime Minister"):
+    with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="Minister of Health"):
         result = await data_service.fetch_dataset_root(dataset_id)
     
     assert result is not None
     assert result["id"] == minister_id
-    assert result["name"] == "Prime Minister"
-    assert result["type"] == "minister"
+    assert result["name"] == "Minister of Health"
+    assert result["type"] == "stateMinister"
 
 @pytest.mark.asyncio
 async def test_fetch_dataset_root_without_dataset_id(data_service):

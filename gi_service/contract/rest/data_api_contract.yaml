@@ -6,17 +6,17 @@ info:
   version: 1.0.0
 
 servers:
-- url: http://localhost:8081
+  - url: http://localhost:8081
 
 tags:
-- name: Data
-  description: APIs for Data
+  - name: Data
+    description: APIs for Data
 
 paths:
-  /data-catalog:
+  /v1/data-catalog:
     post:
       tags:
-      - Data
+        - Data
       summary: Get all parent/child categories and datasets.
       description: "Returns parent/child categories and datasets based on the given category id lists. If the list is empty, it returns the top level parent categories. If the list is not empty, it returns the categories/datasets in the next level for the given categories. The API traverses only one level."
       operationId: getCategoriesAndDatasets
@@ -32,7 +32,7 @@ paths:
                   type: array
                   items:
                     type: string
-      
+
       responses:
         "200":
           description: Successfully returned
@@ -49,9 +49,9 @@ paths:
                         items:
                           type: object
                           properties:
-                            name: 
+                            name:
                               type: string
-                            categoryIds: 
+                            categoryIds:
                               type: array
                               items:
                                 type: string
@@ -73,15 +73,15 @@ paths:
           description: Not found
         "500":
           description: Server Error
-  
-  /datasets/years:
+
+  /v1/datasets/years:
     post:
       tags:
-      - Data
+        - Data
       summary: Get all the dataset available years for the given datasets.
       description: Returns the list of years and datasetIds for available datasets with dataset name.
       operationId: getAvailableDataYears
-      
+
       requestBody:
         required: true
         content:
@@ -93,7 +93,7 @@ paths:
                   type: array
                   items:
                     type: string
-      
+
       responses:
         "200":
           description: Successfully returned
@@ -113,21 +113,20 @@ paths:
                         items:
                           type: object
                           properties:
-                            year: 
+                            year:
                               type: string
-                            datasetId: 
+                            datasetId:
                               type: string
-              
+
               example:
                 body:
                   name: SLBFE
-                  years: 
+                  years:
                     - year: "2021"
                       datasetId: "id-1"
                     - year: "2022"
                       datasetId: "id-2"
 
-        
         "400":
           description: Bad request
         "404":
@@ -135,20 +134,20 @@ paths:
         "500":
           description: Server Error
 
-  /datasets/{datasetId}/data:
+  /v1/datasets/{datasetId}/data:
     get:
       tags:
-      - Data
+        - Data
       summary: Get the data attributes for the given dataset.
       description: "Returns the data attributes for the given dataset"
       operationId: getDataAttributes
       parameters:
-      - name: datasetId
-        required: true
-        in: path
-        schema:
-          type: string
-      
+        - name: datasetId
+          required: true
+          in: path
+          schema:
+            type: string
+
       responses:
         "200":
           description: Successfully returned
@@ -164,7 +163,7 @@ paths:
                         type: string
                       data:
                         type: object
-              
+
               example:
                 body:
                   type: tabular
@@ -175,7 +174,6 @@ paths:
                       - number_of_rooms
                     rows:
                       - [1, Colombo, 8758]
-                        
 
         "400":
           description: Bad request
@@ -184,19 +182,19 @@ paths:
         "500":
           description: Server Error
 
-  /datasets/{datasetId}/root:
+  /v1/datasets/{datasetId}/root:
     get:
       tags:
-      - Data
+        - Data
       summary: Get the root of the given dataset.
       description: Returns the root of the given dataset.
       operationId: getRootById
       parameters:
-      - name: datasetId
-        required: true
-        in: path
-        schema:
-          type: string
+        - name: datasetId
+          required: true
+          in: path
+          schema:
+            type: string
 
       responses:
         "200":
@@ -215,16 +213,14 @@ paths:
                         type: string
                       type:
                         type: string
-              
+
               example:
                 body:
                   name: Minister of Energy
-                  id: 'id-1'
+                  id: "id-1"
                   kind:
                     major: Organization
-                    minor: Minister
-
-                        
+                    minor: cabinetMinister
 
         "400":
           description: Bad request
@@ -233,19 +229,19 @@ paths:
         "500":
           description: Server Error
 
-  /datasets/{datasetId}/categories:
+  /v1/datasets/{datasetId}/categories:
     get:
       tags:
-      - Data
+        - Data
       summary: Get categories for the given dataset.
       description: Returns the full category hierarchy for the given dataset, from immediate parent to root.
       operationId: getCategoriesById
       parameters:
-      - name: datasetId
-        required: true
-        in: path
-        schema:
-          type: string
+        - name: datasetId
+          required: true
+          in: path
+          schema:
+            type: string
 
       responses:
         "200":
@@ -266,7 +262,7 @@ paths:
                           name:
                             type: string
                           kind:
-                            $ref: '#/components/schemas/kind'
+                            $ref: "#/components/schemas/kind"
                       categories:
                         type: array
                         items:
@@ -277,24 +273,24 @@ paths:
                             name:
                               type: string
                             kind:
-                              $ref: '#/components/schemas/kind'
-              
+                              $ref: "#/components/schemas/kind"
+
               example:
                 body:
                   dataset:
-                    id: 'dataset-123'
-                    name: 'SLBFE 2021'
+                    id: "dataset-123"
+                    name: "SLBFE 2021"
                     kind:
                       major: Data
                       minor: Dataset
                   categories:
-                    - id: 'cat-1'
-                      name: 'Employment Statistics'
+                    - id: "cat-1"
+                      name: "Employment Statistics"
                       kind:
                         major: Category
                         minor: childCategory
-                    - id: 'cat-2'
-                      name: 'Labor Force'
+                    - id: "cat-2"
+                      name: "Labor Force"
                       kind:
                         major: Category
                         minor: parentCategory
@@ -315,18 +311,18 @@ components:
           type: string
         name:
           type: string
-        kind: 
-          $ref: '#/components/schemas/kind'
-    
+        kind:
+          $ref: "#/components/schemas/kind"
+
     source:
       type: object
       properties:
-        id: 
+        id:
           type: string
         name:
           type: string
         kind:
-          $ref: '#/components/schemas/kind'
+          $ref: "#/components/schemas/kind"
 
     kind:
       type: object
@@ -339,10 +335,10 @@ components:
     label:
       type: object
       properties:
-          name:
-              type: string
-          code: 
-              type: string
+        name:
+          type: string
+        code:
+          type: string
 
     dateRange:
       type: object
@@ -360,9 +356,8 @@ components:
         id:
           type: string
         label:
-          $ref: '#/components/schemas/label'
+          $ref: "#/components/schemas/label"
         parentId:
           type: string
-        kind: 
-          $ref: '#/components/schemas/kind'
-      
+        kind:
+          $ref: "#/components/schemas/kind"

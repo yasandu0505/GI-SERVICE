@@ -9,7 +9,7 @@ from src.utils.util_functions import Util
 logger = logging.getLogger(__name__)
 
 # Valid entity types for filtering
-VALID_ENTITY_TYPES = {"department", "minister", "dataset", "person"}
+VALID_ENTITY_TYPES = {"department", "stateMinister", "cabinetMinister", "dataset", "person"}
 class SearchService:
     """
     This service handles unified search across departments, ministers, datasets, and persons.
@@ -32,7 +32,7 @@ class SearchService:
             query: Search query string (min 2 characters)
             as_of_date: Date for time-sensitive search (YYYY-MM-DD)
             limit: Maximum number of results to return
-            entity_types: Optional list of entity types to filter (department, minister, dataset, person)
+            entity_types: Optional list of entity types to filter (department, stateMinister, cabinetMinister, dataset, person)
 
         Returns:
             SearchResponse with merged results from all entity types
@@ -52,7 +52,8 @@ class SearchService:
             # Entity type configuration: maps entity type to (major, minor, display_name)
             entity_config = {
                 "department": ("Organisation", "department", "departments"),
-                "minister": ("Organisation", "minister", "ministers"),
+                "stateMinister": ("Organisation", "stateMinister", "stateMinisters"),
+                "cabinetMinister": ("Organisation", "cabinetMinister", "cabinetMinisters"),
                 "dataset": ("Dataset", "tabular", "datasets"),
                 "person": ("Person", "citizen", "persons"),
             }
@@ -111,7 +112,7 @@ class SearchService:
 
         Args:
             major: Major kind (e.g., "Organisation", "Dataset", "Person")
-            minor: Minor kind (e.g., "department", "minister", "tabular", "citizen")
+            minor: Minor kind (e.g., "department", "stateMinister", "cabinetMinister", "tabular", "citizen")
             query: Search query string
             as_of_date: Date for filtering (YYYY-MM-DD)
             limit: Maximum results to return
@@ -199,15 +200,16 @@ class SearchService:
 
         Args:
             major: Major kind (e.g., "Organisation", "Dataset", "Person")
-            minor: Minor kind (e.g., "department", "minister", "tabular", "citizen")
+            minor: Minor kind (e.g., "department", "stateMinister", "cabinetMinister", "tabular", "citizen")
 
         Returns:
-            Entity type string: "department", "minister", "dataset", or "person"
+            Entity type string: "department", "stateMinister", "cabinetMinister", "dataset", or "person"
         """
         # Map major/minor combinations to entity types
         type_mapping = {
             ("Organisation".lower(), "department".lower()): "department",
-            ("Organisation".lower(), "minister".lower()): "minister",
+            ("Organisation".lower(), "stateMinister".lower()): "stateMinister",
+            ("Organisation".lower(), "cabinetMinister".lower()): "cabinetMinister",
             ("Dataset".lower(), "tabular".lower()): "dataset",
             ("Person".lower(), "citizen".lower()): "person",
         }

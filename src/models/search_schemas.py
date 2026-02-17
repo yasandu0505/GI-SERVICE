@@ -6,7 +6,7 @@ class SearchResult(BaseModel):
     Individual search result item.
 
     Represents a single entity from the search results, which can be
-    a department, minister, dataset, or person.
+    a department, stateMinister, cabinetMinister, dataset, or person.
     
     All entity types now share a consistent structure with:
     - type: Entity type identifier
@@ -16,7 +16,7 @@ class SearchResult(BaseModel):
     - terminated: Termination/end date (ISO format or empty string if still active)
     - match_score: Relevance score (0.0 to 1.0)
     """
-    type: str  # "department", "minister", "dataset", or "person"
+    type: str  # "department", "stateMinister", "cabinetMinister", "dataset", or "person"
     id: str
     name: str
     created: str  
