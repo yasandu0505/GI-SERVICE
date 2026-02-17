@@ -284,11 +284,12 @@ async def test_prime_minister_without_person_data(organisation_service, mock_ope
     ) as mock_enrich_person:
         mock_enrich_person.return_value = {}
 
-        with pytest.raises(NotFoundError):
-            await organisation_service.fetch_prime_minister(selected_date=selected_date)
+        result = await organisation_service.fetch_prime_minister(selected_date=selected_date)
+
+    assert result == {"body": {}}
 
     # Check fetch_relation was called correctly
-    mock_opengin_service.fetch_relation.assert_called_once_with(
+    mock_opengin_service.fetch_relation.assert_called_with(
         entityId='gov_01',
         relation=Relation(name='AS_PRIME_MINISTER', activeAt=Util.normalize_timestamp(selected_date), direction='OUTGOING')
     )
@@ -317,8 +318,8 @@ async def test_prime_minister_with_no_relation(organisation_service, mock_opengi
 
     mock_opengin_service.fetch_relation.return_value = []
 
-    with pytest.raises(NotFoundError):
-        await organisation_service.fetch_prime_minister(selected_date=selected_date)
+    result = await organisation_service.fetch_prime_minister(selected_date=selected_date)
+    assert result == {"body": {}}
 
 @pytest.mark.asyncio 
 async def test_prime_minister_with_internal_server_error(organisation_service, mock_opengin_service):
