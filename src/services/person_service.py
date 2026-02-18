@@ -101,15 +101,7 @@ class PersonService:
             #1.if end_time is None (ongoing), it comes first
             #2.if multiple end_time is None (ongoing), latest start_time first - descending
             #3.if end_time is present, sort by end_time descending
-            def sort_key(item):
-                end = item.get("end_time")
-                start = item.get("start_time")
-                
-                effective_end = end if end else "9999-12-31" 
-                
-                return (effective_end, start)
-
-            ministry_history.sort(key=sort_key, reverse=True)
+            ministry_history.sort(key=Util.history_sort_key, reverse=True)
 
             # Remove start_time and end_time
             for item in ministry_history:

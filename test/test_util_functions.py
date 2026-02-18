@@ -122,3 +122,26 @@ def test_calculate_match_score_none_text(util):
     """Test calculate_match_score returns 0.0 for None text"""
     score = util.calculate_match_score("health", None)
     assert score == 0.0
+
+# test history sort key
+def test_history_sort_key(util):
+    """
+    Test history_sort_key with various scenarios:
+    1. Ongoing (end_time="") should come first.
+    2. Among multiple ongoing, latest start_time comes first.
+    3. Completed roles sort by end_time descending.
+    """
+    items = [
+        {"id": "oldest", "start_time": "2010-01-01", "end_time": "2012-01-01"},
+        {"id": "ongoing_late", "start_time": "2023-01-01", "end_time": ""},
+        {"id": "ongoing_early", "start_time": "2022-01-01", "end_time": ""},
+        {"id": "recent", "start_time": "2020-01-01", "end_time": "2021-01-01"}
+    ]
+    
+    # Sort with reverse=True
+    items.sort(key=util.history_sort_key, reverse=True)
+    
+    assert items[0]["id"] == "ongoing_late"   # Effective end: 9999, Start: 2023
+    assert items[1]["id"] == "ongoing_early"  # Effective end: 9999, Start: 2022
+    assert items[2]["id"] == "recent"         # Effective end: 2021
+    assert items[3]["id"] == "oldest"         # Effective end: 2012

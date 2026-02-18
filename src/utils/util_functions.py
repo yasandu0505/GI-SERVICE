@@ -316,3 +316,16 @@ class Util:
         else:
             return 0.0
     
+    @staticmethod
+    def history_sort_key(item: dict):
+        """
+            1.if end_time is None (ongoing), it comes first
+            2.if multiple end_time is None (ongoing), latest start_time first - descending
+            3.if end_time is present, sort by end_time descending
+        """
+        end = item.get("end_time")
+        start = item.get("start_time")
+        
+        effective_end = end if end else "9999-12-31" 
+        
+        return (effective_end, start)
