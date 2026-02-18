@@ -75,7 +75,7 @@ async def test_fetch_person_history_sorting(person_service, mock_opengin_service
     ]
     
     # We need to mock enrich_history_item to return items with different end times
-    async def side_effect(p_id, rel, pres_rels):
+    async def side_effect(rel, pres_rels):
         return {
             "id": rel.relatedEntityId,
             "start_time": rel.startTime,
@@ -123,7 +123,7 @@ async def test_enrich_history_item_success(person_service, mock_opengin_service)
     with patch("src.services.person_service.Util.decode_protobuf_attribute_name", return_value="Ministry of Magic"), \
          patch("src.services.person_service.Util.term", return_value="2020-01-01 - 2021-01-01"):
         
-        result = await person_service.enrich_history_item(person_id, relation, [])
+        result = await person_service.enrich_history_item(relation, [])
         assert result["id"] == "min_1"
         assert result["name"] == "Ministry of Magic"
         assert result["is_president"] is False
@@ -135,7 +135,7 @@ async def test_enrich_history_item_not_found(person_service, mock_opengin_servic
     
     mock_opengin_service.get_entities.return_value = [] # Not found
     
-    result = await person_service.enrich_history_item(person_id, relation, [])
+    result = await person_service.enrich_history_item(relation, [])
     assert result is None
 
 @pytest.mark.asyncio
@@ -145,5 +145,5 @@ async def test_enrich_history_item_error(person_service, mock_opengin_service):
     
     mock_opengin_service.get_entities.side_effect = Exception("Timeout")
     
-    result = await person_service.enrich_history_item(person_id, relation, [])
+    result = await person_service.enrich_history_item(relation, [])
     assert result is None # Service returns None on error within enrichment
