@@ -101,7 +101,7 @@ paths:
           schema:
             type: string
           description: ID of the person
-          example: "2403-03-01_cit_1"
+          example: "per-123"
 
       responses:
         "200":
