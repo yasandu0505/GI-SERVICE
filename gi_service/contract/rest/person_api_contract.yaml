@@ -6,29 +6,29 @@ info:
   version: 1.0.0
 
 servers:
-- url: http://localhost:8081
+  - url: http://localhost:8081
 
 tags:
-- name: Person
-  description: APIs for person-related information and history
+  - name: Person
+    description: APIs for person-related information and history
 
 paths:
   /v1/person/person-history/{person_id}:
     get:
       tags:
-      - Person
+        - Person
       summary: Get person history.
       description: Returns a ministry history and president history for a given person.
       operationId: getPersonHistory
-      
+
       parameters:
-      - name: person_id
-        in: path
-        required: true
-        schema:
-          type: string
-        description: ID of the person
-        example: "per-123"
+        - name: person_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the person
+          example: "per-123"
 
       responses:
         "200":
@@ -36,20 +36,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PersonHistoryResponse'
+                $ref: "#/components/schemas/PersonHistoryResponse"
               example:
                 ministry_history:
-                - id: "min-456"
-                  name: "Ministry of Health"
-                  term: "2020-01-01 - 2022-05-15"
-                  is_president: false
-                - id: "min-789"
-                  name: "Ministry of Education"
-                  term: "2022-05-15 - Present"
-                  is_president: true
+                  - id: "min-456"
+                    name: "Ministry of Health"
+                    term: "2020-01-01 - 2022-05-15"
+                    is_president: false
+                  - id: "min-789"
+                    name: "Ministry of Education"
+                    term: "2022-05-15 - Present"
+                    is_president: true
                 ministries_worked_at: 2
                 worked_as_president: 1
-        
+
         "400":
           description: Bad request - Invalid parameters
           content:
@@ -64,6 +64,79 @@ paths:
 
         "404":
           description: Person not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              example:
+                detail: "Person not found"
+
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              example:
+                detail: "An unexpected error occurred"
+
+  /v1/person/person-profile/{person_id}:
+    get:
+      tags:
+        - Person
+      summary: Get person profile.
+      description: Returns the full profile of a given person, including personal details, qualifications, and their currently active ministry portfolio.
+      operationId: getPersonProfile
+
+      parameters:
+        - name: person_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the person
+          example: "2403-03-01_cit_1"
+
+      responses:
+        "200":
+          description: Successfully returned person profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonProfileResponse"
+              example:
+                name: "Sunil Handunneththi"
+                political_party: "National People's Power"
+                date_of_birth: "1971-10-19"
+                religion: "Buddhism"
+                profession: "Politician"
+                email: "handunnetti_s@parliament.lk"
+                phone_number: "0112580429"
+                education_qualifications: "B. Sc. (Bus. Adm). Special"
+                professional_qualifications: "Licentiate Examination - Part 1 in Business Management of the Institute of Chartered Accountants - Sri Lanka."
+                image_URL: "data/people/images/sunil-handunnetti-npp.jpg"
+                active_portfolio: "Minister of Industry and Entrepreneurship Development"
+
+        "400":
+          description: Bad request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              example:
+                detail: "Person ID is required"
+
+        "404":
+          description: Person not found or profile data unavailable
           content:
             application/json:
               schema:
@@ -124,7 +197,7 @@ components:
           type: array
           description: "List of ministry assignments sorted by date"
           items:
-            $ref: '#/components/schemas/MinistryHistoryItem'
+            $ref: "#/components/schemas/MinistryHistoryItem"
         ministries_worked_at:
           type: integer
           description: "Total count of ministries the person has worked at"
@@ -135,3 +208,64 @@ components:
           description: "Total count of times the person has served as president"
           minimum: 0
           example: 1
+
+    PersonProfileResponse:
+      type: object
+      required:
+        - name
+        - political_party
+        - date_of_birth
+        - religion
+        - profession
+        - email
+        - phone_number
+        - education_qualifications
+        - professional_qualifications
+        - image_URL
+      properties:
+        name:
+          type: string
+          description: "Full name of the person"
+          examples: ["Sunil Handunneththi"]
+        political_party:
+          type: string
+          description: "Political party the person is affiliated with"
+          examples: ["National People's Power"]
+        date_of_birth:
+          type: string
+          format: date
+          description: "Date of birth in YYYY-MM-DD format"
+          examples: ["1971-10-19"]
+        religion:
+          type: string
+          description: "Religion of the person"
+          examples: ["Buddhism"]
+        profession:
+          type: string
+          description: "Profession of the person"
+          examples: ["Politician"]
+        email:
+          type: string
+          format: email
+          description: "Official email address of the person"
+          examples: ["handunnetti_s@parliament.lk"]
+        phone_number:
+          type: string
+          description: "Contact phone number of the person"
+          examples: ["0112580429"]
+        education_qualifications:
+          type: string
+          description: "Educational qualifications of the person"
+          examples: ["B. Sc. (Bus. Adm). Special"]
+        professional_qualifications:
+          type: string
+          description: "Professional qualifications of the person"
+          examples: ["Licentiate Examination - Part 1 in Business Management of the Institute of Chartered Accountants - Sri Lanka."]
+        image_URL:
+          type: string
+          description: "Path or URL to the profile image of the person"
+          examples: ["data/people/images/sunil-handunnetti-npp.jpg"]
+        active_portfolio:
+          type: [string, "null"]
+          description: "The person's currently active ministry portfolio. Null if the person does not currently hold an active position."
+          examples: ["Minister of Industry and Entrepreneurship Development", null]
