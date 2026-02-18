@@ -40,7 +40,7 @@ class PersonService:
         for r in president_relations:
             pres_start = r.startTime
             pres_end = r.endTime
-            if (not pres_end or ministry_relation_start <= pres_end) and (not ministry_relation_end or ministry_relation_end >= pres_start):
+            if (not pres_end or ministry_relation_start < pres_end) and (not ministry_relation_end or ministry_relation_end > pres_start):
                 return True
         
         return False

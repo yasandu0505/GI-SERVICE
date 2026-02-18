@@ -45,7 +45,7 @@ async def test_is_president_during_exact_touch(person_service):
     president_relations = [Relation(startTime="2020-06-01T00:00:00Z", endTime="2021-01-01T00:00:00Z")]
     # ministry ends same day presidency starts
     result = person_service.is_president_during(president_relations, ministry_start, ministry_end)
-    assert result is True
+    assert result is False
 
 # --- Tests for fetch_person_history ---
 
