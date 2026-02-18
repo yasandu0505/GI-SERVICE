@@ -58,7 +58,7 @@ class Util:
 
     # helper: term helper
     @staticmethod
-    def term(startTime, endTime) -> str:
+    def term(startTime, endTime, get_full_date: bool = False) -> str:
         """
         Generate a term string based on start and end dates.
 
@@ -66,17 +66,30 @@ class Util:
         endDate format: YYYY-MM-DDT00:00:00Z
 
         return format:
+            (get_full_date=False)
             YYYY MM - YYYY MM
             YYYY MM - Present
 
             ex: 2020 Jan - 2022 May
                 2020 Jan - Present
+
+            (get_full_date=True)
+            YYYY-MM-DD - YYYY-MM-DD
+            YYYY-MM-DD - Present
+
         """
 
         if not startTime:
             return "Unknown"
         
         start_date = startTime.split("T")[0]
+
+        if get_full_date:
+            if not endTime or endTime == "":
+                return f"{start_date} - Present"
+            else:
+                end_date = endTime.split("T")[0]
+                return f"{start_date} - {end_date}"
 
         start_date_object = datetime.strptime(start_date, "%Y-%m-%d")
         start_year = start_date_object.year
@@ -303,3 +316,16 @@ class Util:
         else:
             return 0.0
     
+    @staticmethod
+    def history_sort_key(item: dict):
+        """
+            1.if end_time is None (ongoing), it comes first
+            2.if multiple end_time is None (ongoing), latest start_time first - descending
+            3.if end_time is present, sort by end_time descending
+        """
+        end = item.get("end_time")
+        start = item.get("start_time")
+        
+        effective_end = end if end else "9999-12-31" 
+        
+        return (effective_end, start)

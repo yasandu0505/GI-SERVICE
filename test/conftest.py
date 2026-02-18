@@ -8,6 +8,7 @@ from src.utils.http_client import HTTPClient
 from services.organisation_service import OrganisationService
 from unittest.mock import AsyncMock
 from src.utils.util_functions import Util
+from src.services.person_service import PersonService
 
 # MockResponse class to simulate aiohttp responses
 class MockResponse:
@@ -65,4 +66,11 @@ def data_service(mock_opengin_service):
     """DataService fixture with mocked OpenGINService"""
     config = {}
     return DataService(config, mock_opengin_service)
+
+
+@pytest.fixture
+def person_service(mock_opengin_service):
+    """PersonService fixture with mocked OpenGINService"""
+    config = {}
+    return PersonService(config, mock_opengin_service)
 
