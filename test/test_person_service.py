@@ -309,3 +309,16 @@ async def test_fetch_person_profile_success(person_service, mock_opengin_service
         category_id=person_id,
         dataset_name=f"{person_id}_profile",
     )
+
+@pytest.mark.asyncio
+async def test_fetch_person_profile_invalid_id(person_service):
+    with pytest.raises(BadRequestError):
+        await person_service.fetch_person_profile(" ")
+
+@pytest.mark.asyncio
+async def test_fetch_person_profile_internal_error(person_service, mock_opengin_service):
+    mock_opengin_service.get_entities.return_value = None
+    mock_opengin_service.get_attributes.side_effect = Exception("boom")
+
+    with pytest.raises(InternalServerError):
+        await person_service.fetch_person_profile("person_123")
