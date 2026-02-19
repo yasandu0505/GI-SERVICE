@@ -15,3 +15,11 @@ async def person_history(
 ):
     service_response = await service.fetch_person_history(person_id)
     return service_response
+
+@router.get('/person-profile/{person_id}', summary="Get person profile.", description="Returns a person profile for a given person.")
+async def person_profile(
+    person_id: str = Path(..., description="ID of the person"),
+    service: PersonService = Depends(get_person_service)
+):
+    service_response = await service.fetch_person_profile(person_id)
+    return service_response

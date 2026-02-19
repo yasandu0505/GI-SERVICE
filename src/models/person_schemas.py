@@ -14,11 +14,10 @@ class PersonSource(BaseModel):
     phone_number: str
     education_qualifications: str
     professional_qualifications: str
-    image_URL: str
+    image_url: str
 
 class PersonResponse(PersonSource):
     """
-    Person response schema
+    Person response schema inherited from the PersonSource
     """
     age: int
-    active_portfolio: str | None = None
