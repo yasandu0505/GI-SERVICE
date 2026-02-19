@@ -1,4 +1,3 @@
-import _pytest._io.pprint
 from src.exception.exceptions import BadRequestError
 from src.exception.exceptions import NotFoundError
 from src.exception.exceptions import InternalServerError
@@ -193,10 +192,16 @@ class PersonService:
             formatted_person_profile_data = Util.transform_data_for_chart(
                 attribute_data_out={"data": encoded_person_profile_data}
             )
-            row = formatted_person_profile_data["data"]["rows"][0]
+            rows = formatted_person_profile_data["data"]["rows"]
+
+            if not rows:
+                raise NotFoundError(f"Profile data not found for person {person_id}")
+            
+            row = rows[0]
+
             columns = formatted_person_profile_data["data"]["columns"]
 
-            person_profile_dict = { col: value for col, value in zip(columns, row) }
+            person_profile_dict = { col: value for col, value in zip(columns, row)}
 
             person_profile = PersonSource(**person_profile_dict)
 
