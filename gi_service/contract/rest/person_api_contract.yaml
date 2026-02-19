@@ -111,17 +111,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/PersonProfileResponse"
               example:
-                name: "Sunil Handunneththi"
-                political_party: "National People's Power"
-                date_of_birth: "1971-10-19"
-                religion: "Buddhism"
-                profession: "Politician"
-                email: "handunnetti_s@parliament.lk"
-                phone_number: "0112580429"
-                education_qualifications: "B. Sc. (Bus. Adm). Special"
-                professional_qualifications: "Licentiate Examination - Part 1 in Business Management of the Institute of Chartered Accountants - Sri Lanka."
-                image_URL: "data/people/images/sunil-handunnetti-npp.jpg"
-                active_portfolio: "Minister of Industry and Entrepreneurship Development"
+                name: "Michael Carter"
+                political_party: "Progressive Alliance"
+                date_of_birth: "1974-02-11"
+                religion: "Christianity"
+                profession: "Lawyer"
+                email: "m.carter@example.org"
+                phone_number: "2025550147"
+                education_qualifications: "LLB (Hons)"
+                professional_qualifications: "Barrister-at-Law"
+                image_URL: "data/people/images/michael-carter.jpg"
+                active_portfolio: "Minister of Justice"
 
         "400":
           description: Bad request - Invalid parameters
@@ -226,46 +226,46 @@ components:
         name:
           type: string
           description: "Full name of the person"
-          examples: ["Sunil Handunneththi"]
+          examples: ["Michael Carter"]
         political_party:
           type: string
           description: "Political party the person is affiliated with"
-          examples: ["National People's Power"]
+          examples: ["Progressive Alliance"]
         date_of_birth:
           type: string
           format: date
           description: "Date of birth in YYYY-MM-DD format"
-          examples: ["1971-10-19"]
+          examples: ["1974-02-11"]
         religion:
           type: string
           description: "Religion of the person"
-          examples: ["Buddhism"]
+          examples: ["Christianity"]
         profession:
           type: string
           description: "Profession of the person"
-          examples: ["Politician"]
+          examples: ["Lawyer"]
         email:
           type: string
           format: email
           description: "Official email address of the person"
-          examples: ["handunnetti_s@parliament.lk"]
+          examples: ["m.carter@example.org"]
         phone_number:
           type: string
           description: "Contact phone number of the person"
-          examples: ["0112580429"]
+          examples: ["2025550147"]
         education_qualifications:
           type: string
           description: "Educational qualifications of the person"
-          examples: ["B. Sc. (Bus. Adm). Special"]
+          examples: ["LLB (Hons)"]
         professional_qualifications:
           type: string
           description: "Professional qualifications of the person"
-          examples: ["Licentiate Examination - Part 1 in Business Management of the Institute of Chartered Accountants - Sri Lanka."]
+          examples: ["Barrister-at-Law"]
         image_URL:
           type: string
           description: "Path or URL to the profile image of the person"
-          examples: ["data/people/images/sunil-handunnetti-npp.jpg"]
+          examples: ["data/people/images/michael-carter.jpg"]
         active_portfolio:
           type: [string, "null"]
           description: "The person's currently active ministry portfolio. Null if the person does not currently hold an active position."
-          examples: ["Minister of Industry and Entrepreneurship Development", null]
+          examples: ["Minister of Justice", null]
