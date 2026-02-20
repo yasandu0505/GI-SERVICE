@@ -3,7 +3,7 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 from src.models.organisation_schemas import Entity, Relation
 from src.models.person_schemas import PersonResponse
-from src.exception.exceptions import BadRequestError, InternalServerError
+from src.exception.exceptions import BadRequestError, InternalServerError, NotFoundError
 from datetime import date
 
 # --- Tests for is_president_during ---
@@ -244,13 +244,12 @@ async def test_enrich_history_item_error(person_service, mock_opengin_service):
 async def test_fetch_person_profile_success(person_service, mock_opengin_service):
     person_id = "person_123"
 
-    # Mock OpenGovService calls
-    mock_opengin_service.get_entities.return_value = None
-    mock_opengin_service.get_attributes.return_value = {
+    mock_opengin_service.get_entities = AsyncMock(return_value=None)
+    mock_opengin_service.get_attributes = AsyncMock(return_value={
         "start": "",
         "end": "",
         "value": "encoded",
-    }
+    })
 
     fake_json = {
         "type": "tabular",
@@ -284,7 +283,6 @@ async def test_fetch_person_profile_success(person_service, mock_opengin_service
         },
     }
 
-    # Mock Util functions
     with (
         patch(
             "src.services.person_service.Util.transform_data_for_chart",
@@ -314,6 +312,43 @@ async def test_fetch_person_profile_success(person_service, mock_opengin_service
 async def test_fetch_person_profile_invalid_id(person_service):
     with pytest.raises(BadRequestError):
         await person_service.fetch_person_profile(" ")
+
+@pytest.mark.asyncio
+async def test_fetch_person_profile_rows_empty_should_raise_not_found(
+    person_service,
+    mock_opengin_service
+):
+    person_id = "person_123"
+
+    mock_opengin_service.get_entities = AsyncMock(return_value=None)
+    mock_opengin_service.get_attributes = AsyncMock(return_value={
+        "start": "",
+        "end": "",
+        "value": "encoded",
+    })
+
+    with (
+        patch(
+            "src.services.person_service.Util.transform_data_for_chart",
+            return_value={
+                "data": {
+                    "columns": [
+                        "name","political_party","date_of_birth","religion","profession",
+                        "email","phone_number","education_qualifications",
+                        "professional_qualifications","image_url"
+                    ],
+                    "rows": []  
+                }
+            }
+        ),
+        patch("src.services.person_service.Util.calculate_age") as mock_calculate_age
+    ):
+        with pytest.raises(NotFoundError) as exc:
+            await person_service.fetch_person_profile(person_id)
+
+        assert f"Profile data not found for person {person_id}" in str(exc.value)
+
+        mock_calculate_age.assert_not_called()
 
 @pytest.mark.asyncio
 async def test_fetch_person_profile_internal_error(person_service, mock_opengin_service):
