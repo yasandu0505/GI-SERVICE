@@ -1,3 +1,5 @@
+from src.enums.relationEnum import RelationNameEnum
+from src.enums.relationEnum import RelationDirectionEnum
 import pytest
 import asyncio
 from src.exception.exceptions import InternalServerError, BadRequestError, NotFoundError
@@ -28,8 +30,8 @@ async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_s
     """Test enrich_dataset with a dataset relation"""
     dataset_relation = Relation(
         relatedEntityId="dataset_456",
-        name="IS_ATTRIBUTE",
-        direction="OUTGOING"
+        name=RelationNameEnum.IS_ATTRIBUTE,
+        direction=RelationDirectionEnum.OUTGOING
     )
     dataset_dictionary = {}
     
@@ -74,8 +76,8 @@ async def test_enrich_dataset_with_internal_error(data_service, mock_opengin_ser
     """Test enrich_dataset handles internal errors"""
     dataset_relation = Relation(
         relatedEntityId="dataset_123",
-        name="IS_ATTRIBUTE",
-        direction="OUTGOING"
+        name=RelationNameEnum.IS_ATTRIBUTE,
+        direction=RelationDirectionEnum.OUTGOING
     )
     dataset_dictionary = {}
     
@@ -121,8 +123,8 @@ async def test_enrich_category_with_category_relation(data_service, mock_opengin
     """Test enrich_category with a category relation"""
     category_relation = Relation(
         relatedEntityId="category_456",
-        name="AS_CATEGORY",
-        direction="OUTGOING"
+        name=RelationNameEnum.AS_CATEGORY,
+        direction=RelationDirectionEnum.OUTGOING
     )
     categories_dictionary = {}
     
@@ -161,8 +163,8 @@ async def test_enrich_category_with_internal_error(data_service, mock_opengin_se
     """Test enrich_category handles internal errors"""
     category_relation = Relation(
         relatedEntityId="category_456",
-        name="AS_CATEGORY",
-        direction="OUTGOING"
+        name=RelationNameEnum.AS_CATEGORY,
+        direction=RelationDirectionEnum.OUTGOING
     )
     
     mock_opengin_service.get_entities.side_effect = Exception("Database Error")
@@ -213,12 +215,12 @@ async def test_fetch_data_catalog_with_entity_id_and_relations(data_service, moc
     
     # Mock category and dataset relations
     category_relations = [
-        Relation(relatedEntityId="cat_1", name="AS_CATEGORY", direction="OUTGOING"),
-        Relation(relatedEntityId="cat_2", name="AS_CATEGORY", direction="OUTGOING")
+        Relation(relatedEntityId="cat_1", name=RelationNameEnum.AS_CATEGORY, direction=RelationDirectionEnum.OUTGOING),
+        Relation(relatedEntityId="cat_2", name=RelationNameEnum.AS_CATEGORY, direction=RelationDirectionEnum.OUTGOING)
     ]
     
     dataset_relations = [
-        Relation(relatedEntityId="ds_1", name="IS_ATTRIBUTE", direction="OUTGOING")
+        Relation(relatedEntityId="ds_1", name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.OUTGOING)
     ]
     
     mock_opengin_service.fetch_relation.side_effect = [category_relations, dataset_relations]
@@ -271,7 +273,7 @@ async def test_fetch_data_catalog_with_only_categories(data_service, mock_opengi
     entity_id = "parent_789"
     
     category_relations = [
-        Relation(relatedEntityId="cat_1", name="AS_CATEGORY", direction="OUTGOING")
+        Relation(relatedEntityId="cat_1", name=RelationNameEnum.AS_CATEGORY, direction=RelationDirectionEnum.OUTGOING)
     ]
     
     mock_opengin_service.fetch_relation.side_effect = [category_relations, []]
@@ -297,8 +299,8 @@ async def test_fetch_data_catalog_with_only_datasets(data_service, mock_opengin_
     entity_id = "parent_101"
     
     dataset_relations = [
-        Relation(relatedEntityId="ds_1", name="IS_ATTRIBUTE", direction="OUTGOING"),
-        Relation(relatedEntityId="ds_2", name="IS_ATTRIBUTE", direction="OUTGOING")
+        Relation(relatedEntityId="ds_1", name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.OUTGOING),
+        Relation(relatedEntityId="ds_2", name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.OUTGOING)
     ]
     
     mock_opengin_service.fetch_relation.side_effect = [[], dataset_relations]
@@ -544,8 +546,8 @@ async def test_fetch_data_attributes_success(data_service, mock_opengin_service)
     # Mock dataset relation
     mock_relation = Relation(
         relatedEntityId="category_456",
-        name="IS_ATTRIBUTE",
-        direction="INCOMING"
+        name=RelationNameEnum.IS_ATTRIBUTE,
+        direction=RelationDirectionEnum.INCOMING
     )
     
     # Mock get_entities and fetch_relation to return values
@@ -587,7 +589,7 @@ async def test_fetch_data_attributes_success(data_service, mock_opengin_service)
     mock_opengin_service.get_entities.assert_called_once_with(entity=Entity(id=dataset_id))
     mock_opengin_service.fetch_relation.assert_called_once_with(
         entityId=dataset_id,
-        relation=Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+        relation=Relation(name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.INCOMING)
     )
     mock_opengin_service.get_attributes.assert_called_once_with(
         category_id="category_456",
@@ -619,7 +621,7 @@ async def test_fetch_data_attributes_dataset_not_found(data_service, mock_opengi
     # Mock get_entities to return empty list (dataset not found)
     mock_opengin_service.get_entities.return_value = []
     mock_opengin_service.fetch_relation.return_value = [
-        Relation(relatedEntityId="category_123", name="IS_ATTRIBUTE")
+        Relation(relatedEntityId="category_123", name=RelationNameEnum.IS_ATTRIBUTE)
     ]
     
     result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
@@ -664,7 +666,7 @@ async def test_fetch_data_attributes_with_empty_attributes(data_service, mock_op
     
     mock_relation = Relation(
         relatedEntityId="category_empty",
-        name="IS_ATTRIBUTE"
+        name=RelationNameEnum.IS_ATTRIBUTE
     )
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
@@ -735,7 +737,7 @@ async def test_fetch_data_attributes_with_get_attributes_error(data_service, moc
     
     mock_relation = Relation(
         relatedEntityId="category_123",
-        name="IS_ATTRIBUTE"
+        name=RelationNameEnum.IS_ATTRIBUTE
     )
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
@@ -762,8 +764,8 @@ async def test_fetch_data_attributes_with_multiple_relations(data_service, mock_
     
     # Multiple relations, function should use the first one
     mock_relations = [
-        Relation(relatedEntityId="category_first", name="IS_ATTRIBUTE"),
-        Relation(relatedEntityId="category_second", name="IS_ATTRIBUTE")
+        Relation(relatedEntityId="category_first", name=RelationNameEnum.IS_ATTRIBUTE),
+        Relation(relatedEntityId="category_second", name=RelationNameEnum.IS_ATTRIBUTE)
     ]
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
@@ -932,15 +934,15 @@ async def test_find_root_department_or_minister_recursive_traversal(data_service
     # Mock relation from child to parent
     mock_child_to_parent_relation = Relation(
         relatedEntityId=parent_category_id,
-        name="AS_CATEGORY",
-        direction="INCOMING"
+        name=RelationNameEnum.AS_CATEGORY,
+        direction=RelationDirectionEnum.INCOMING
     )
     
     # Mock relation from parent to grandparent
     mock_parent_to_grandparent_relation = Relation(
         relatedEntityId=grandparent_category_id,
-        name="AS_CATEGORY",
-        direction="INCOMING"
+        name=RelationNameEnum.AS_CATEGORY,
+        direction=RelationDirectionEnum.INCOMING
     )
     
     # Setup mock behavior:
@@ -1031,8 +1033,8 @@ async def test_fetch_dataset_root_success_with_department(data_service, mock_ope
     # Mock relation from dataset to category
     mock_dataset_relation = Relation(
         relatedEntityId=category_id,
-        name="IS_ATTRIBUTE",
-        direction="INCOMING"
+        name=RelationNameEnum.IS_ATTRIBUTE,
+        direction=RelationDirectionEnum.INCOMING
     )
     
     # Mock department entity
@@ -1056,7 +1058,7 @@ async def test_fetch_dataset_root_success_with_department(data_service, mock_ope
     # Verify fetch_relation was called with correct parameters
     mock_opengin_service.fetch_relation.assert_called_once_with(
         entityId=dataset_id,
-        relation=Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+        relation=Relation(name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.INCOMING)
     )
 
 @pytest.mark.asyncio
@@ -1069,8 +1071,8 @@ async def test_fetch_dataset_root_success_with_minister(data_service, mock_openg
     # Mock relation from dataset to category
     mock_dataset_relation = Relation(
         relatedEntityId=category_id,
-        name="IS_ATTRIBUTE",
-        direction="INCOMING"
+        name=RelationNameEnum.IS_ATTRIBUTE,
+        direction=RelationDirectionEnum.INCOMING
     )
     
     # Mock category (not a department/minister)
@@ -1090,8 +1092,8 @@ async def test_fetch_dataset_root_success_with_minister(data_service, mock_openg
     # Mock relation from category to minister
     mock_category_relation = Relation(
         relatedEntityId=minister_id,
-        name="AS_CATEGORY",
-        direction="INCOMING"
+        name=RelationNameEnum.AS_CATEGORY,
+        direction=RelationDirectionEnum.INCOMING
     )
     
     # Setup call sequence:
@@ -1156,8 +1158,8 @@ async def test_fetch_dataset_root_no_root_entity_found(data_service, mock_opengi
     # Mock relation from dataset to category
     mock_dataset_relation = Relation(
         relatedEntityId=category_id,
-        name="IS_ATTRIBUTE",
-        direction="INCOMING"
+        name=RelationNameEnum.IS_ATTRIBUTE,
+        direction=RelationDirectionEnum.INCOMING
     )
     
     # Mock category (not a department/minister)
@@ -1201,8 +1203,8 @@ async def test_fetch_dataset_root_with_find_root_error(data_service, mock_opengi
     # Mock relation from dataset to category
     mock_dataset_relation = Relation(
         relatedEntityId=category_id,
-        name="IS_ATTRIBUTE",
-        direction="INCOMING"
+        name=RelationNameEnum.IS_ATTRIBUTE,
+        direction=RelationDirectionEnum.INCOMING
     )
     
     mock_opengin_service.fetch_relation.return_value = [mock_dataset_relation]
@@ -1224,8 +1226,8 @@ async def test_fetch_dataset_root_multiple_relations_uses_first(data_service, mo
     
     # Mock multiple relations (should use first one)
     mock_relations = [
-        Relation(relatedEntityId=category_id_1, name="IS_ATTRIBUTE", direction="INCOMING"),
-        Relation(relatedEntityId=category_id_2, name="IS_ATTRIBUTE", direction="INCOMING")
+        Relation(relatedEntityId=category_id_1, name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.INCOMING),
+        Relation(relatedEntityId=category_id_2, name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.INCOMING)
     ]
     
     # Mock department entity

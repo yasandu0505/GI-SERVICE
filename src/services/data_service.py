@@ -1,3 +1,5 @@
+from src.enums.relationEnum import RelationNameEnum
+from src.enums.relationEnum import RelationDirectionEnum
 import logging  
 import asyncio
 from typing import Dict
@@ -162,8 +164,8 @@ class DataService:
                     }
             
             else:
-                category_relation_instance = Relation(name="AS_CATEGORY", direction="OUTGOING")
-                dataset_relation_instance = Relation(name="IS_ATTRIBUTE", direction="OUTGOING")
+                category_relation_instance = Relation(name=RelationNameEnum.AS_CATEGORY, direction=RelationDirectionEnum.OUTGOING)
+                dataset_relation_instance = Relation(name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.OUTGOING)
                 
                 fetch_category_relation_tasks = [self.opengin_service.fetch_relation(entityId=category_id, relation=category_relation_instance) for category_id in category_ids]
                 fetch_dataset_relation_tasks = [self.opengin_service.fetch_relation(entityId=category_id, relation=dataset_relation_instance) for category_id in category_ids]
@@ -488,7 +490,7 @@ class DataService:
                 break
 
             # Get parent category
-            relation_instance = Relation(name="AS_CATEGORY", direction="INCOMING")
+            relation_instance = Relation(name=RelationNameEnum.AS_CATEGORY, direction=RelationDirectionEnum.INCOMING)
             parent_relations = await self.opengin_service.fetch_relation(
                 entityId=current_id,
                 relation=relation_instance
@@ -529,7 +531,7 @@ class DataService:
                 return current_category
             
             # If not, traverse up the hierarchy using AS_CATEGORY INCOMING relation
-            relation_instance = Relation(name="AS_CATEGORY", direction="INCOMING")
+            relation_instance = Relation(name=RelationNameEnum.AS_CATEGORY, direction=RelationDirectionEnum.INCOMING)
             parent_relations = await self.opengin_service.fetch_relation(
                 entityId=category_id,
                 relation=relation_instance

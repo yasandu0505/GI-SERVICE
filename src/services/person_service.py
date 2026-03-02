@@ -1,3 +1,5 @@
+from src.enums.relationEnum import RelationDirectionEnum
+from src.enums.relationEnum import RelationNameEnum
 from src.exception.exceptions import BadRequestError
 from src.exception.exceptions import NotFoundError
 from src.exception.exceptions import InternalServerError
@@ -84,11 +86,11 @@ class PersonService:
 
             ministry_relations_task = self.opengin_service.fetch_relation(
                 entityId=person_id,
-                relation=Relation(name="AS_APPOINTED", direction="INCOMING"),
+                relation=Relation(name=RelationNameEnum.AS_APPOINTED, direction=RelationDirectionEnum.INCOMING),
             )
             president_relations_task = self.opengin_service.fetch_relation(
                 entityId=person_id,
-                relation=Relation(name="AS_PRESIDENT", direction="INCOMING"),
+                relation=Relation(name=RelationNameEnum.AS_PRESIDENT, direction=RelationDirectionEnum.INCOMING),
             )
 
             results_relations = await asyncio.gather(
