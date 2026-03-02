@@ -1,3 +1,4 @@
+from typing import Optional
 from src.enums.relationEnum import RelationDirectionEnum
 from src.enums.relationEnum import RelationNameEnum
 from pydantic import BaseModel
@@ -22,13 +23,13 @@ class Entity(BaseModel):
 
 class Relation(BaseModel):
     """Relation refers to the relation between two entities in the OpenGIN Specification"""
-    name: RelationNameEnum = ""
+    name: Optional[RelationNameEnum] = None
     activeAt: str = ""
     relatedEntityId: str = ""
     startTime: str = ""
     endTime: str = ""
     id: str = ""
-    direction: RelationDirectionEnum = ""
+    direction: Optional[RelationDirectionEnum] = None
 
 class Category(BaseModel):
     """Category refers to the parent/child category in the OpenGIN Specification"""
