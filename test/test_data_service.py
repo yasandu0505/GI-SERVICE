@@ -1,16 +1,15 @@
-from src.enums.relationEnum import RelationNameEnum
-from src.enums.relationEnum import RelationDirectionEnum
 import pytest
 import asyncio
 from src.exception.exceptions import InternalServerError, BadRequestError, NotFoundError
 from unittest.mock import patch
-from src.models.organisation_schemas import Entity, Relation, Kind, Dataset, Category
+from src.models.organisation_schemas import Entity, Relation, Kind
+from src.enums import KindMajorEnum, KindMinorEnum, RelationNameEnum, RelationDirectionEnum
 
 # Tests for enrich_dataset
 @pytest.mark.asyncio
 async def test_enrich_dataset_with_dataset_entity(data_service, mock_opengin_service):
     """Test enrich_dataset with a dataset entity"""
-    dataset = Entity(id="dataset_123", name="population-2020", kind=Kind(major="Dataset", minor="tabular"))
+    dataset = Entity(id="dataset_123", name="population-2020", kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value))
     dataset_dictionary = {}
     
     with patch(
@@ -30,15 +29,15 @@ async def test_enrich_dataset_with_dataset_relation(data_service, mock_opengin_s
     """Test enrich_dataset with a dataset relation"""
     dataset_relation = Relation(
         relatedEntityId="dataset_456",
-        name=RelationNameEnum.IS_ATTRIBUTE,
-        direction=RelationDirectionEnum.OUTGOING
+        name=RelationNameEnum.IS_ATTRIBUTE.value,
+        direction=RelationDirectionEnum.OUTGOING.value
     )
     dataset_dictionary = {}
     
     mock_entity = Entity(
         id="dataset_456",
         name="gdp-2021",
-        kind=Kind(major="Dataset", minor="tabular")
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value)
     )
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
@@ -76,8 +75,8 @@ async def test_enrich_dataset_with_internal_error(data_service, mock_opengin_ser
     """Test enrich_dataset handles internal errors"""
     dataset_relation = Relation(
         relatedEntityId="dataset_123",
-        name=RelationNameEnum.IS_ATTRIBUTE,
-        direction=RelationDirectionEnum.OUTGOING
+        name=RelationNameEnum.IS_ATTRIBUTE.value,
+        direction=RelationDirectionEnum.OUTGOING.value
     )
     dataset_dictionary = {}
     
@@ -102,7 +101,7 @@ async def test_enrich_category_with_category_entity(data_service):
     category = Entity(
         id="category_123",
         name="encoded_category_name",
-        kind=Kind(major="Category", minor="parentCategory")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.PARENT_CATEGORY.value)
     )
     categories_dictionary = {}
     
@@ -123,15 +122,15 @@ async def test_enrich_category_with_category_relation(data_service, mock_opengin
     """Test enrich_category with a category relation"""
     category_relation = Relation(
         relatedEntityId="category_456",
-        name=RelationNameEnum.AS_CATEGORY,
-        direction=RelationDirectionEnum.OUTGOING
+        name=RelationNameEnum.AS_CATEGORY.value,
+        direction=RelationDirectionEnum.OUTGOING.value
     )
     categories_dictionary = {}
     
     mock_entity = Entity(
         id="category_456",
         name="encoded_category_name",
-        kind=Kind(major="Category", minor="childCategory")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value)
     )
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
@@ -163,8 +162,8 @@ async def test_enrich_category_with_internal_error(data_service, mock_opengin_se
     """Test enrich_category handles internal errors"""
     category_relation = Relation(
         relatedEntityId="category_456",
-        name=RelationNameEnum.AS_CATEGORY,
-        direction=RelationDirectionEnum.OUTGOING
+        name=RelationNameEnum.AS_CATEGORY.value,
+        direction=RelationDirectionEnum.OUTGOING.value
     )
     
     mock_opengin_service.get_entities.side_effect = Exception("Database Error")
@@ -185,8 +184,8 @@ async def test_enrich_category_with_internal_error(data_service, mock_opengin_se
 async def test_fetch_data_catalog_without_parent_id(data_service, mock_opengin_service):
     """Test fetch_data_catalog fetches parent categories when no parent_id is provided"""
     mock_categories = [
-        Entity(id="cat_1", name="encoded_1", kind=Kind(major="Category", minor="parentCategory")),
-        Entity(id="cat_2", name="encoded_2", kind=Kind(major="Category", minor="parentCategory"))
+        Entity(id="cat_1", name="encoded_1", kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.PARENT_CATEGORY.value)),
+        Entity(id="cat_2", name="encoded_2", kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.PARENT_CATEGORY.value))
     ]
     
     mock_opengin_service.get_entities.return_value = mock_categories
@@ -215,20 +214,20 @@ async def test_fetch_data_catalog_with_entity_id_and_relations(data_service, moc
     
     # Mock category and dataset relations
     category_relations = [
-        Relation(relatedEntityId="cat_1", name=RelationNameEnum.AS_CATEGORY, direction=RelationDirectionEnum.OUTGOING),
-        Relation(relatedEntityId="cat_2", name=RelationNameEnum.AS_CATEGORY, direction=RelationDirectionEnum.OUTGOING)
+        Relation(relatedEntityId="cat_1", name=RelationNameEnum.AS_CATEGORY.value, direction=RelationDirectionEnum.OUTGOING.value),
+        Relation(relatedEntityId="cat_2", name=RelationNameEnum.AS_CATEGORY.value, direction=RelationDirectionEnum.OUTGOING.value)
     ]
     
     dataset_relations = [
-        Relation(relatedEntityId="ds_1", name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.OUTGOING)
+        Relation(relatedEntityId="ds_1", name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.OUTGOING.value)
     ]
     
     mock_opengin_service.fetch_relation.side_effect = [category_relations, dataset_relations]
     
     mock_opengin_service.get_entities.side_effect = [
-        [Entity(id="cat_1", name="encoded_cat_1", kind=Kind(major="Category", minor="childCategory"))],
-        [Entity(id="cat_2", name="encoded_cat_2", kind=Kind(major="Category", minor="childCategory"))],
-        [Entity(id="ds_1", name="encoded_ds_1", kind=Kind(major="Dataset", minor="dataset"))]
+        [Entity(id="cat_1", name="encoded_cat_1", kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value))],
+        [Entity(id="cat_2", name="encoded_cat_2", kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value))],
+        [Entity(id="ds_1", name="encoded_ds_1", kind=Kind(major=KindMajorEnum.DATASET.value, minor="dataset"))]
     ]
     
     with patch(
@@ -273,13 +272,13 @@ async def test_fetch_data_catalog_with_only_categories(data_service, mock_opengi
     entity_id = "parent_789"
     
     category_relations = [
-        Relation(relatedEntityId="cat_1", name=RelationNameEnum.AS_CATEGORY, direction=RelationDirectionEnum.OUTGOING)
+        Relation(relatedEntityId="cat_1", name=RelationNameEnum.AS_CATEGORY.value, direction=RelationDirectionEnum.OUTGOING.value)
     ]
     
     mock_opengin_service.fetch_relation.side_effect = [category_relations, []]
     
     mock_opengin_service.get_entities.return_value = [
-        Entity(id="cat_1", name="encoded_cat_1", kind=Kind(major="Category", minor="childCategory"))
+        Entity(id="cat_1", name="encoded_cat_1", kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value))
     ]
     
     with patch(
@@ -299,15 +298,15 @@ async def test_fetch_data_catalog_with_only_datasets(data_service, mock_opengin_
     entity_id = "parent_101"
     
     dataset_relations = [
-        Relation(relatedEntityId="ds_1", name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.OUTGOING),
-        Relation(relatedEntityId="ds_2", name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.OUTGOING)
+        Relation(relatedEntityId="ds_1", name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.OUTGOING.value),
+        Relation(relatedEntityId="ds_2", name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.OUTGOING.value)
     ]
     
     mock_opengin_service.fetch_relation.side_effect = [[], dataset_relations]
     
     mock_opengin_service.get_entities.side_effect = [
-        [Entity(id="ds_1", name="encoded_ds_1", kind=Kind(major="Dataset", minor="dataset"))],
-        [Entity(id="ds_2", name="encoded_ds_2", kind=Kind(major="Dataset", minor="dataset"))]
+        [Entity(id="ds_1", name="encoded_ds_1", kind=Kind(major=KindMajorEnum.DATASET.value, minor="dataset"))],
+        [Entity(id="ds_2", name="encoded_ds_2", kind=Kind(major=KindMajorEnum.DATASET.value, minor="dataset"))]
     ]
     
     with patch(
@@ -343,7 +342,7 @@ async def test_fetch_dataset_available_years_success(data_service, mock_opengin_
     mock_entity_1 = Entity(
         id="dataset_123",
         name="dataset_name",
-        kind=Kind(major="Dataset", minor="tabular"),
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
         created="2020-12-31T00:00:00Z",
         terminated=""
     )
@@ -351,7 +350,7 @@ async def test_fetch_dataset_available_years_success(data_service, mock_opengin_
     mock_entity_2 = Entity(
         id="dataset_124",
         name="dataset_name",
-        kind=Kind(major="Dataset", minor="tabular"),
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
         created="2021-06-15T00:00:00Z",
         terminated=""
     )
@@ -359,7 +358,7 @@ async def test_fetch_dataset_available_years_success(data_service, mock_opengin_
     mock_entity_3 = Entity(
         id="dataset_125",
         name="dataset_name",
-        kind=Kind(major="Dataset", minor="tabular"),
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
         created="2022-03-20T00:00:00Z",
         terminated=""
     )
@@ -407,7 +406,7 @@ async def test_fetch_dataset_available_years_single_year(data_service, mock_open
     mock_entity = Entity(
         id="dataset_123",
         name="encoded_name",
-        kind=Kind(major="Dataset", minor="tabular"),
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
         created="2023-06-15T00:00:00Z"
     )
     
@@ -448,7 +447,7 @@ async def test_fetch_dataset_available_years_with_missing_created_date(data_serv
     mock_entity = Entity(
         id="dataset_123",
         name="encoded_name",
-        kind=Kind(major="Dataset", minor="tabular"),
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
         created=""
     )
     
@@ -488,21 +487,21 @@ async def test_fetch_dataset_available_years_multiple_years_sorted(data_service,
     mock_entity_1 = Entity(
         id="dataset_2019",
         name="encoded_name",
-        kind=Kind(major="Dataset", minor="tabular"),
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
         created="2019-12-31T00:00:00Z"
     )
     
     mock_entity_2 = Entity(
         id="dataset_2024",
         name="encoded_name",
-        kind=Kind(major="Dataset", minor="tabular"),
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
         created="2024-03-15T00:00:00Z"
     )
     
     mock_entity_3 = Entity(
         id="dataset_2022",
         name="encoded_name",
-        kind=Kind(major="Dataset", minor="tabular"),
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
         created="2022-07-20T00:00:00Z"
     )
     
@@ -540,14 +539,14 @@ async def test_fetch_data_attributes_success(data_service, mock_opengin_service)
     mock_entity = Entity(
         id=dataset_id,
         name="dataset_name",
-        kind=Kind(major="Dataset", minor="tabular")
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value)
     )
     
     # Mock dataset relation
     mock_relation = Relation(
         relatedEntityId="category_456",
-        name=RelationNameEnum.IS_ATTRIBUTE,
-        direction=RelationDirectionEnum.INCOMING
+        name=RelationNameEnum.IS_ATTRIBUTE.value,
+        direction=RelationDirectionEnum.INCOMING.value
     )
     
     # Mock get_entities and fetch_relation to return values
@@ -563,7 +562,7 @@ async def test_fetch_data_attributes_success(data_service, mock_opengin_service)
     
     # Mock the formatted response from transform_data_for_chart
     mock_formatted_data = {
-        "type": "tabular",
+        "type": KindMinorEnum.TABULAR.value,
         "data": {
             "columns": ["attribute1", "attribute2"],
             "rows": [
@@ -580,7 +579,7 @@ async def test_fetch_data_attributes_success(data_service, mock_opengin_service)
     
     # Assertions
     assert result is not None
-    assert result["type"] == "tabular"
+    assert result["type"] == KindMinorEnum.TABULAR.value
     assert "data" in result
     assert result["data"]["columns"] == ["attribute1", "attribute2"]
     assert len(result["data"]["rows"]) == 2
@@ -589,7 +588,7 @@ async def test_fetch_data_attributes_success(data_service, mock_opengin_service)
     mock_opengin_service.get_entities.assert_called_once_with(entity=Entity(id=dataset_id))
     mock_opengin_service.fetch_relation.assert_called_once_with(
         entityId=dataset_id,
-        relation=Relation(name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.INCOMING)
+        relation=Relation(name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.INCOMING.value)
     )
     mock_opengin_service.get_attributes.assert_called_once_with(
         category_id="category_456",
@@ -621,7 +620,7 @@ async def test_fetch_data_attributes_dataset_not_found(data_service, mock_opengi
     # Mock get_entities to return empty list (dataset not found)
     mock_opengin_service.get_entities.return_value = []
     mock_opengin_service.fetch_relation.return_value = [
-        Relation(relatedEntityId="category_123", name=RelationNameEnum.IS_ATTRIBUTE)
+        Relation(relatedEntityId="category_123", name=RelationNameEnum.IS_ATTRIBUTE.value)
     ]
     
     result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
@@ -639,7 +638,7 @@ async def test_fetch_data_attributes_no_relations_found(data_service, mock_openg
     mock_entity = Entity(
         id=dataset_id,
         name="encoded_name",
-        kind=Kind(major="Dataset", minor="tabular")
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value)
     )
     
     # Mock get_entities to return entity but fetch_relation returns empty list
@@ -661,12 +660,12 @@ async def test_fetch_data_attributes_with_empty_attributes(data_service, mock_op
     mock_entity = Entity(
         id=dataset_id,
         name="encoded_empty_dataset",
-        kind=Kind(major="Dataset", minor="tabular")
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value)
     )
     
     mock_relation = Relation(
         relatedEntityId="category_empty",
-        name=RelationNameEnum.IS_ATTRIBUTE
+        name=RelationNameEnum.IS_ATTRIBUTE.value
     )
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
@@ -674,7 +673,7 @@ async def test_fetch_data_attributes_with_empty_attributes(data_service, mock_op
     mock_opengin_service.get_attributes.return_value = []
     
     mock_formatted_empty = {
-        "type": "tabular",
+        "type": KindMinorEnum.TABULAR.value,
         "data": {
             "columns": [],
             "rows": []
@@ -686,7 +685,7 @@ async def test_fetch_data_attributes_with_empty_attributes(data_service, mock_op
         
         result = await data_service.fetch_data_attributes(dataset_id=dataset_id)
     
-    assert result["type"] == "tabular"
+    assert result["type"] == KindMinorEnum.TABULAR.value
     assert result["data"]["columns"] == []
     assert result["data"]["rows"] == []
 
@@ -712,7 +711,7 @@ async def test_fetch_data_attributes_with_fetch_relation_error(data_service, moc
     mock_entity = Entity(
         id=dataset_id,
         name="encoded_name",
-        kind=Kind(major="Dataset", minor="tabular")
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value)
     )
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
@@ -732,12 +731,12 @@ async def test_fetch_data_attributes_with_get_attributes_error(data_service, moc
     mock_entity = Entity(
         id=dataset_id,
         name="encoded_name",
-        kind=Kind(major="Dataset", minor="tabular")
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value)
     )
     
     mock_relation = Relation(
         relatedEntityId="category_123",
-        name=RelationNameEnum.IS_ATTRIBUTE
+        name=RelationNameEnum.IS_ATTRIBUTE.value
     )
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
@@ -759,20 +758,20 @@ async def test_fetch_data_attributes_with_multiple_relations(data_service, mock_
     mock_entity = Entity(
         id=dataset_id,
         name="encoded_multi",
-        kind=Kind(major="Dataset", minor="tabular")
+        kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value)
     )
     
     # Multiple relations, function should use the first one
     mock_relations = [
-        Relation(relatedEntityId="category_first", name=RelationNameEnum.IS_ATTRIBUTE),
-        Relation(relatedEntityId="category_second", name=RelationNameEnum.IS_ATTRIBUTE)
+        Relation(relatedEntityId="category_first", name=RelationNameEnum.IS_ATTRIBUTE.value),
+        Relation(relatedEntityId="category_second", name=RelationNameEnum.IS_ATTRIBUTE.value)
     ]
     
     mock_opengin_service.get_entities.return_value = [mock_entity]
     mock_opengin_service.fetch_relation.return_value = mock_relations
     mock_opengin_service.get_attributes.return_value = []
     
-    mock_formatted = {"type": "tabular", "data": {"columns": [], "rows": []}}
+    mock_formatted = {"type": KindMinorEnum.TABULAR.value, "data": {"columns": [], "rows": []}}
     
     with patch("src.services.data_service.Util.decode_protobuf_attribute_name", return_value="multi_dataset"), \
          patch("src.services.data_service.Util.transform_data_for_chart", return_value=mock_formatted):
@@ -794,7 +793,7 @@ async def test_enrich_category_with_lock_prevents_race_condition(data_service):
     
     # Create multiple categories with the same name
     categories = [
-        Entity(id=f"cat_{i}", name=f"encoded_category_name_{i % 3}", kind=Kind(major="Category", minor="parentCategory"))
+        Entity(id=f"cat_{i}", name=f"encoded_category_name_{i % 3}", kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.PARENT_CATEGORY.value))
         for i in range(10)
     ]
     
@@ -830,7 +829,7 @@ async def test_enrich_dataset_with_lock_prevents_race_condition(data_service, mo
     
     # Create multiple datasets with the same name (with years)
     datasets = [
-        Entity(id=f"ds_{i}", name=f"dataset_name_{i % 2}-202{i % 2}", kind=Kind(major="Dataset", minor="tabular"))
+        Entity(id=f"ds_{i}", name=f"dataset_name_{i % 2}-202{i % 2}", kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value))
         for i in range(8)
     ]
     
@@ -870,7 +869,7 @@ async def test_find_root_department_or_minister_found_department(data_service, m
     mock_department = Entity(
         id=category_id,
         name="department_name",
-        kind=Kind(major="Category", minor="department")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.DEPARTMENT.value)
     )
     
     mock_opengin_service.get_entities.return_value = [mock_department]
@@ -880,7 +879,7 @@ async def test_find_root_department_or_minister_found_department(data_service, m
     assert result is not None
     assert result.id == category_id
     assert result.name == "department_name"
-    assert result.kind.minor == "department"
+    assert result.kind.minor == KindMinorEnum.DEPARTMENT.value
     mock_opengin_service.get_entities.assert_called_once_with(entity=Entity(id=category_id))
 
 @pytest.mark.asyncio
@@ -892,7 +891,7 @@ async def test_find_root_department_or_minister_found_minister(data_service, moc
     mock_minister = Entity(
         id=category_id,
         name="encoded_minister_name",
-        kind=Kind(major="Category", minor="stateMinister")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.STATE_MINISTER.value)
     )
     
     mock_opengin_service.get_entities.return_value = [mock_minister]
@@ -901,7 +900,7 @@ async def test_find_root_department_or_minister_found_minister(data_service, moc
     
     assert result is not None
     assert result.id == category_id
-    assert result.kind.minor == "stateMinister"
+    assert result.kind.minor == KindMinorEnum.STATE_MINISTER.value
 
 @pytest.mark.asyncio
 async def test_find_root_department_or_minister_recursive_traversal(data_service, mock_opengin_service):
@@ -914,35 +913,35 @@ async def test_find_root_department_or_minister_recursive_traversal(data_service
     mock_child_category = Entity(
         id=child_category_id,
         name="encoded_child",
-        kind=Kind(major="Category", minor="subCategory")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value)
     )
     
     # Mock parent category (not a department/minister)
     mock_parent_category = Entity(
         id=parent_category_id,
         name="encoded_parent",
-        kind=Kind(major="Category", minor="parentCategory")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.PARENT_CATEGORY.value)
     )
     
     # Mock grandparent category (is a department)
     mock_grandparent_department = Entity(
         id=grandparent_category_id,
         name="encoded_grandparent_dept",
-        kind=Kind(major="Category", minor="department")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.DEPARTMENT.value)
     )
     
     # Mock relation from child to parent
     mock_child_to_parent_relation = Relation(
         relatedEntityId=parent_category_id,
-        name=RelationNameEnum.AS_CATEGORY,
-        direction=RelationDirectionEnum.INCOMING
+        name=RelationNameEnum.AS_CATEGORY.value,
+        direction=RelationDirectionEnum.INCOMING.value
     )
     
     # Mock relation from parent to grandparent
     mock_parent_to_grandparent_relation = Relation(
         relatedEntityId=grandparent_category_id,
-        name=RelationNameEnum.AS_CATEGORY,
-        direction=RelationDirectionEnum.INCOMING
+        name=RelationNameEnum.AS_CATEGORY.value,
+        direction=RelationDirectionEnum.INCOMING.value
     )
     
     # Setup mock behavior:
@@ -966,7 +965,7 @@ async def test_find_root_department_or_minister_recursive_traversal(data_service
     
     assert result is not None
     assert result.id == grandparent_category_id
-    assert result.kind.minor == "department"
+    assert result.kind.minor == KindMinorEnum.DEPARTMENT.value
     
     # Verify recursive calls
     assert mock_opengin_service.get_entities.call_count == 3
@@ -981,7 +980,7 @@ async def test_find_root_department_or_minister_no_parent_found(data_service, mo
     mock_category = Entity(
         id=category_id,
         name="encoded_orphan",
-        kind=Kind(major="Category", minor="childCategory")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value)
     )
     
     mock_opengin_service.get_entities.return_value = [mock_category]
@@ -1033,15 +1032,15 @@ async def test_fetch_dataset_root_success_with_department(data_service, mock_ope
     # Mock relation from dataset to category
     mock_dataset_relation = Relation(
         relatedEntityId=category_id,
-        name=RelationNameEnum.IS_ATTRIBUTE,
-        direction=RelationDirectionEnum.INCOMING
+        name=RelationNameEnum.IS_ATTRIBUTE.value,
+        direction=RelationDirectionEnum.INCOMING.value
     )
     
     # Mock department entity
     mock_department = Entity(
         id=department_id,
         name="department_name",
-        kind=Kind(major="Category", minor="department")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.DEPARTMENT.value)
     )
     
     mock_opengin_service.fetch_relation.return_value = [mock_dataset_relation]
@@ -1053,12 +1052,12 @@ async def test_fetch_dataset_root_success_with_department(data_service, mock_ope
     assert result is not None
     assert result["id"] == department_id
     assert result["name"] == "Ministry of Health"
-    assert result["type"] == "department"
+    assert result["type"] == KindMinorEnum.DEPARTMENT.value
     
     # Verify fetch_relation was called with correct parameters
     mock_opengin_service.fetch_relation.assert_called_once_with(
         entityId=dataset_id,
-        relation=Relation(name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.INCOMING)
+        relation=Relation(name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.INCOMING.value)
     )
 
 @pytest.mark.asyncio
@@ -1071,29 +1070,29 @@ async def test_fetch_dataset_root_success_with_minister(data_service, mock_openg
     # Mock relation from dataset to category
     mock_dataset_relation = Relation(
         relatedEntityId=category_id,
-        name=RelationNameEnum.IS_ATTRIBUTE,
-        direction=RelationDirectionEnum.INCOMING
+        name=RelationNameEnum.IS_ATTRIBUTE.value,
+        direction=RelationDirectionEnum.INCOMING.value
     )
     
     # Mock category (not a department/minister)
     mock_category = Entity(
         id=category_id,
         name="encoded_category",
-        kind=Kind(major="Category", minor="subCategory")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value)
     )
     
     # Mock minister entity
     mock_minister = Entity(
         id=minister_id,
         name="encoded_minister_name",
-        kind=Kind(major="Category", minor="stateMinister")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.STATE_MINISTER.value)
     )
     
     # Mock relation from category to minister
     mock_category_relation = Relation(
         relatedEntityId=minister_id,
-        name=RelationNameEnum.AS_CATEGORY,
-        direction=RelationDirectionEnum.INCOMING
+        name=RelationNameEnum.AS_CATEGORY.value,
+        direction=RelationDirectionEnum.INCOMING.value
     )
     
     # Setup call sequence:
@@ -1117,7 +1116,7 @@ async def test_fetch_dataset_root_success_with_minister(data_service, mock_openg
     assert result is not None
     assert result["id"] == minister_id
     assert result["name"] == "Minister of Health"
-    assert result["type"] == "stateMinister"
+    assert result["type"] == KindMinorEnum.STATE_MINISTER.value
 
 @pytest.mark.asyncio
 async def test_fetch_dataset_root_without_dataset_id(data_service):
@@ -1158,15 +1157,15 @@ async def test_fetch_dataset_root_no_root_entity_found(data_service, mock_opengi
     # Mock relation from dataset to category
     mock_dataset_relation = Relation(
         relatedEntityId=category_id,
-        name=RelationNameEnum.IS_ATTRIBUTE,
-        direction=RelationDirectionEnum.INCOMING
+        name=RelationNameEnum.IS_ATTRIBUTE.value,
+        direction=RelationDirectionEnum.INCOMING.value
     )
     
     # Mock category (not a department/minister)
     mock_category = Entity(
         id=category_id,
         name="encoded_category",
-        kind=Kind(major="Category", minor="subCategory")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value)
     )
     
     mock_opengin_service.fetch_relation.side_effect = [
@@ -1203,8 +1202,8 @@ async def test_fetch_dataset_root_with_find_root_error(data_service, mock_opengi
     # Mock relation from dataset to category
     mock_dataset_relation = Relation(
         relatedEntityId=category_id,
-        name=RelationNameEnum.IS_ATTRIBUTE,
-        direction=RelationDirectionEnum.INCOMING
+        name=RelationNameEnum.IS_ATTRIBUTE.value,
+        direction=RelationDirectionEnum.INCOMING.value
     )
     
     mock_opengin_service.fetch_relation.return_value = [mock_dataset_relation]
@@ -1226,15 +1225,15 @@ async def test_fetch_dataset_root_multiple_relations_uses_first(data_service, mo
     
     # Mock multiple relations (should use first one)
     mock_relations = [
-        Relation(relatedEntityId=category_id_1, name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.INCOMING),
-        Relation(relatedEntityId=category_id_2, name=RelationNameEnum.IS_ATTRIBUTE, direction=RelationDirectionEnum.INCOMING)
+        Relation(relatedEntityId=category_id_1, name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.INCOMING.value),
+        Relation(relatedEntityId=category_id_2, name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.INCOMING.value)
     ]
     
     # Mock department entity
     mock_department = Entity(
         id=department_id,
         name="encoded_dept",
-        kind=Kind(major="Category", minor="department")
+        kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.DEPARTMENT.value)
     )
     
     mock_opengin_service.fetch_relation.return_value = mock_relations

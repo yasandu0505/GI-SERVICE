@@ -1,13 +1,12 @@
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, patch
 from src.models.organisation_schemas import Entity, Relation
 from src.models.person_schemas import PersonResponse
 from src.exception.exceptions import BadRequestError, InternalServerError, NotFoundError
 from datetime import date
+from src.enums import KindMinorEnum
 
 # --- Tests for is_president_during ---
-
 
 @pytest.mark.asyncio
 async def test_is_president_during_true(person_service):
@@ -252,7 +251,7 @@ async def test_fetch_person_profile_success(person_service, mock_opengin_service
     }
 
     fake_json = {
-        "type": "tabular",
+        "type": KindMinorEnum.TABULAR.value,
         "data": {
             "columns": [
                 "name",

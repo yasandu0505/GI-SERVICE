@@ -1,10 +1,9 @@
 
+import pytest
 from src.enums.relationEnum import RelationDirectionEnum
 from src.enums.relationEnum import RelationNameEnum
-from src.exception.exceptions import InternalServerError
 from src.models.organisation_schemas import Kind
 from src.exception.exceptions import NotFoundError, BadRequestError
-import pytest
 from src.models.organisation_schemas import Entity, Relation
 from test.conftest import MockResponse
 
@@ -107,19 +106,19 @@ async def test_get_entity_by_terminated_empty_response(mock_service, mock_sessio
 async def test_fetch_relation_success(mock_service, mock_session):
     entity_id = "entity_123"
 
-    mock_response = MockResponse([Relation(id="relation_123",relationName=RelationNameEnum.AS_MINISTER,direction=RelationDirectionEnum.OUTGOING)])
+    mock_response = MockResponse([Relation(id="relation_123",relationName=RelationNameEnum.AS_MINISTER.value,direction=RelationDirectionEnum.OUTGOING.value)])
 
     mock_session.post.return_value = mock_response
 
-    result = await mock_service.fetch_relation(entity_id,relation=Relation(id="relation_123",direction=RelationDirectionEnum.OUTGOING))
+    result = await mock_service.fetch_relation(entity_id,relation=Relation(id="relation_123",direction=RelationDirectionEnum.OUTGOING.value))
 
-    assert result == [Relation(id="relation_123",relationName=RelationNameEnum.AS_MINISTER,direction=RelationDirectionEnum.OUTGOING)]
+    assert result == [Relation(id="relation_123",relationName=RelationNameEnum.AS_MINISTER.value,direction=RelationDirectionEnum.OUTGOING.value)]
     mock_session.post.assert_called_once()
 
 @pytest.mark.asyncio 
 async def test_fetch_relation_empty_entity_id(mock_service, mock_session):
     entity_id = ""
-    mock_response = MockResponse([Relation(id="relation_123",relationName=RelationNameEnum.AS_MINISTER,direction=RelationDirectionEnum.OUTGOING)])
+    mock_response = MockResponse([Relation(id="relation_123",relationName=RelationNameEnum.AS_MINISTER.value,direction=RelationDirectionEnum.OUTGOING.value)])
     
     mock_session.post.return_value = mock_response
 
@@ -129,7 +128,7 @@ async def test_fetch_relation_empty_entity_id(mock_service, mock_session):
 @pytest.mark.asyncio 
 async def test_fetch_relation_none_entity_id(mock_service, mock_session):
     entity_id = None
-    mock_response = MockResponse([Relation(id="relation_123",relationName=RelationNameEnum.AS_MINISTER,direction=RelationDirectionEnum.OUTGOING)])
+    mock_response = MockResponse([Relation(id="relation_123",relationName=RelationNameEnum.AS_MINISTER.value,direction=RelationDirectionEnum.OUTGOING.value)])
     
     mock_session.post.return_value = mock_response
 

@@ -86,11 +86,11 @@ class PersonService:
 
             ministry_relations_task = self.opengin_service.fetch_relation(
                 entityId=person_id,
-                relation=Relation(name=RelationNameEnum.AS_APPOINTED, direction=RelationDirectionEnum.INCOMING),
+                relation=Relation(name=RelationNameEnum.AS_APPOINTED.value, direction=RelationDirectionEnum.INCOMING.value),
             )
             president_relations_task = self.opengin_service.fetch_relation(
                 entityId=person_id,
-                relation=Relation(name=RelationNameEnum.AS_PRESIDENT, direction=RelationDirectionEnum.INCOMING),
+                relation=Relation(name=RelationNameEnum.AS_PRESIDENT.value, direction=RelationDirectionEnum.INCOMING.value),
             )
 
             results_relations = await asyncio.gather(

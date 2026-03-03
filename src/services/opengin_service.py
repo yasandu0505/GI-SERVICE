@@ -52,7 +52,7 @@ class OpenGINService:
 
         url = f"{settings.BASE_URL_QUERY}/v1/entities/search"
         headers = {"Content-Type":"application/json"}      
-        payload = entity.model_dump()
+        payload = entity.model_dump(mode="json")
 
         try:
             async with self.session.post(url, json=payload, headers=headers) as response:
