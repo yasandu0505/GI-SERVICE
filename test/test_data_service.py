@@ -227,7 +227,7 @@ async def test_fetch_data_catalog_with_entity_id_and_relations(data_service, moc
     mock_opengin_service.get_entities.side_effect = [
         [Entity(id="cat_1", name="encoded_cat_1", kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value))],
         [Entity(id="cat_2", name="encoded_cat_2", kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.CHILD_CATEGORY.value))],
-        [Entity(id="ds_1", name="encoded_ds_1", kind=Kind(major=KindMajorEnum.DATASET.value, minor="dataset"))]
+        [Entity(id="ds_1", name="encoded_ds_1", kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value))]
     ]
     
     with patch(
