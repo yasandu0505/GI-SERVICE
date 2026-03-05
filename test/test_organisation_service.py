@@ -1,8 +1,7 @@
 import pytest
-from src.exception.exceptions import InternalServerError
+from src.enums.relationEnum import RelationNameEnum, RelationDirectionEnum
+from src.exception.exceptions import InternalServerError, BadRequestError
 from src.utils.util_functions import Util
-from src.exception.exceptions import NotFoundError
-from src.exception.exceptions import BadRequestError
 from unittest.mock import AsyncMock, patch
 from src.models.organisation_schemas import Entity, Relation
 
@@ -67,7 +66,7 @@ async def test_enrich_department_item(organisation_service, mock_opengin_service
 
     mock_opengin_service.get_entities.return_value = [Entity(id="department_123",name="mocked_protobuf_name")]
 
-    mock_opengin_service.fetch_relation.return_value = [ Relation(id="", relatedEntityId="department_123", name= "AS_CATEGORY", startTime="2020-08-09T00:00:00Z", endTime="2022-03-08T00:00:00Z", direction="OUTGOING")]
+    mock_opengin_service.fetch_relation.return_value = [ Relation(id="", relatedEntityId="department_123", name=RelationNameEnum.AS_CATEGORY.value, startTime="2020-08-09T00:00:00Z", endTime="2022-03-08T00:00:00Z", direction=RelationDirectionEnum.OUTGOING.value)]
     
     with patch(
         "services.organisation_service.Util.decode_protobuf_attribute_name",
@@ -146,7 +145,7 @@ async def test_departments_by_portfolio_id_success(organisation_service, mock_op
     portfolio_id = "portfolio_123"
     selected_date = "2021-10-27"
 
-    mock_opengin_service.fetch_relation.return_value = [ Relation(id="", relatedEntityId="portfolio_123", name= "AS_DEPARTMENT", startTime="2020-08-09T00:00:00Z", endTime="2022-03-08T00:00:00Z", direction="OUTGOING")]
+    mock_opengin_service.fetch_relation.return_value = [ Relation(id="", relatedEntityId="portfolio_123", name= RelationNameEnum.AS_DEPARTMENT.value, startTime="2020-08-09T00:00:00Z", endTime="2022-03-08T00:00:00Z", direction=RelationDirectionEnum.OUTGOING.value)]
 
     # Patch enrich_department_item with AsyncMock returning the department dict
     with patch(
@@ -181,7 +180,7 @@ async def test_departments_by_portfolio_id_success(organisation_service, mock_op
     # Check fetch_relation was called correctly
     mock_opengin_service.fetch_relation.assert_called_once_with(
         entityId=portfolio_id,
-        relation=Relation(name= "AS_DEPARTMENT", activeAt=f'{selected_date}T00:00:00Z', direction="OUTGOING")
+        relation=Relation(name=RelationNameEnum.AS_DEPARTMENT.value, activeAt=f'{selected_date}T00:00:00Z', direction=RelationDirectionEnum.OUTGOING.value)
     )
 
     # Ensure enrich_department_item was called once with the correct args
@@ -238,7 +237,7 @@ async def test_departments_by_portfolio_id_none_selected_date(organisation_servi
 async def test_prime_minister_success(organisation_service, mock_opengin_service):
     selected_date = "2021-10-27"
 
-    mock_response = Relation(name='AS_PRIME_MINISTER', activeAt='', relatedEntityId='cit_3', startTime='2022-07-26T00:00:00Z', endTime='2024-09-23T00:00:00Z', id='person_123', direction='OUTGOING')
+    mock_response = Relation(name=RelationNameEnum.AS_PRIME_MINISTER.value, activeAt='', relatedEntityId='cit_3', startTime='2022-07-26T00:00:00Z', endTime='2024-09-23T00:00:00Z', id='person_123', direction=RelationDirectionEnum.OUTGOING.value)
     mock_opengin_service.fetch_relation.return_value = [mock_response]
 
     # Patch enrich_department_item with AsyncMock returning the department dict
@@ -267,14 +266,14 @@ async def test_prime_minister_success(organisation_service, mock_opengin_service
     # Check fetch_relation was called correctly
     mock_opengin_service.fetch_relation.assert_called_once_with(
         entityId='gov_01',
-        relation=Relation(name='AS_PRIME_MINISTER', activeAt=Util.normalize_timestamp(selected_date), direction='OUTGOING')
+        relation=Relation(name=RelationNameEnum.AS_PRIME_MINISTER.value, activeAt=Util.normalize_timestamp(selected_date), direction=RelationDirectionEnum.OUTGOING.value)
     )
 
 @pytest.mark.asyncio 
 async def test_prime_minister_without_person_data(organisation_service, mock_opengin_service):
     selected_date = "2021-10-27"
 
-    mock_response = Relation(name='AS_PRIME_MINISTER', activeAt='', relatedEntityId='cit_3', startTime='2022-07-26T00:00:00Z', endTime='2024-09-23T00:00:00Z', id='person_123', direction='OUTGOING')
+    mock_response = Relation(name=RelationNameEnum.AS_PRIME_MINISTER.value, activeAt='', relatedEntityId='cit_3', startTime='2022-07-26T00:00:00Z', endTime='2024-09-23T00:00:00Z', id='person_123', direction=RelationDirectionEnum.OUTGOING.value)
     mock_opengin_service.fetch_relation.return_value = [mock_response]
 
     # Patch enrich_department_item with AsyncMock returning the department dict
@@ -291,7 +290,7 @@ async def test_prime_minister_without_person_data(organisation_service, mock_ope
     # Check fetch_relation was called correctly
     mock_opengin_service.fetch_relation.assert_called_with(
         entityId='gov_01',
-        relation=Relation(name='AS_PRIME_MINISTER', activeAt=Util.normalize_timestamp(selected_date), direction='OUTGOING')
+        relation=Relation(name=RelationNameEnum.AS_PRIME_MINISTER.value, activeAt=Util.normalize_timestamp(selected_date), direction=RelationDirectionEnum.OUTGOING.value)
     )
 
 @pytest.mark.asyncio 

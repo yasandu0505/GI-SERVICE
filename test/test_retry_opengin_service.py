@@ -1,4 +1,5 @@
 import pytest
+from src.enums.relationEnum import RelationNameEnum, RelationDirectionEnum
 from src.models.organisation_schemas import Relation
 from test.conftest import MockResponse
 from src.models.organisation_schemas import Entity
@@ -77,7 +78,7 @@ async def test_get_entity_succeeds_after_retries(mock_service, mock_session):
 async def test_fetch_relation_retries_stops_on_timeout(mock_service, mock_session):
     """Test that the method retries on InternalServerError and stops after timeout"""
     entity_id = "entity_123"
-    relation = Relation(id="relation_123",direction="OUTGOING")
+    relation = Relation(id="relation_123",direction=RelationDirectionEnum.OUTGOING.value)
 
     mock_session.post.side_effect = InternalServerError("Connection timeout")
 
@@ -100,7 +101,7 @@ async def test_fetch_relation_retries_stops_on_timeout(mock_service, mock_sessio
 async def test_fetch_relation_no_retry_on_bad_request(mock_service, mock_session):
     """Test that BadRequestError does NOT trigger retries"""
     entity_id = "entity_123"
-    relation = Relation(id="relation_123",direction="OUTGOING")
+    relation = Relation(id="relation_123",direction=RelationDirectionEnum.OUTGOING.value)
     
     mock_session.post.side_effect = BadRequestError("Bad request error")
     
@@ -116,9 +117,9 @@ async def test_fetch_relation_no_retry_on_bad_request(mock_service, mock_session
 async def test_fetch_relation_succeeds_after_retries(mock_service, mock_session):
     """Test that the method eventually succeeds after retries"""
     entity_id = "entity_123"
-    relation = Relation(id="relation_123",direction="OUTGOING")
+    relation = Relation(id="relation_123",direction=RelationDirectionEnum.OUTGOING.value)
     
-    success_response = MockResponse([Relation(id="relation_123",name="AS_MINISTER",direction="OUTGOING")])
+    success_response = MockResponse([Relation(id="relation_123",name=RelationNameEnum.AS_MINISTER.value,direction=RelationDirectionEnum.OUTGOING.value)])
     
     mock_session.post.return_value = success_response
 
@@ -135,8 +136,8 @@ async def test_fetch_relation_succeeds_after_retries(mock_service, mock_session)
             result_first_datum = result[0]
 
             assert result_first_datum.id == "relation_123"
-            assert result_first_datum.name == "AS_MINISTER"
-            assert result_first_datum.direction == "OUTGOING"
+            assert result_first_datum.name == RelationNameEnum.AS_MINISTER.value
+            assert result_first_datum.direction == RelationDirectionEnum.OUTGOING.value
             
             assert mock_session.post.call_count == 3
             assert mock_sleep.call_count == 2

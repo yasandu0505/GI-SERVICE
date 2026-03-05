@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Body, Path
+from fastapi import APIRouter, Depends, Path
 from src.dependencies import get_config
 from src.services import OpenGINService, PersonService
 

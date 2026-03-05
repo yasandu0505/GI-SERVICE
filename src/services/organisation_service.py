@@ -1,3 +1,5 @@
+from src.enums.relationEnum import RelationDirectionEnum
+from src.enums.relationEnum import RelationNameEnum
 from src.exception.exceptions import BadRequestError
 from src.exception.exceptions import NotFoundError
 from src.exception.exceptions import InternalServerError
@@ -148,7 +150,7 @@ class OrganisationService:
     async def process_portfolio_item(self, portfolio_relation: Relation, president_id: str, selected_date: str):
 
         try:
-            relation = Relation(name="AS_APPOINTED",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
+            relation = Relation(name=RelationNameEnum.AS_APPOINTED.value,activeAt=Util.normalize_timestamp(selected_date),direction=RelationDirectionEnum.OUTGOING.value)
             appointed_ministers = await self.opengin_service.fetch_relation(
                 entityId=portfolio_relation.relatedEntityId,
                 relation=relation
@@ -204,7 +206,7 @@ class OrganisationService:
         
         try:
             # First retrieve the relation list of the active portfolios under given president and given date  
-            relation = Relation(name="AS_MINISTER",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")   
+            relation = Relation(name=RelationNameEnum.AS_MINISTER.value,activeAt=Util.normalize_timestamp(selected_date),direction=RelationDirectionEnum.OUTGOING.value)   
             activePortfolioList = await self.opengin_service.fetch_relation(
                 entityId=president_id,
                 relation=relation
@@ -269,7 +271,7 @@ class OrganisationService:
 
         entity = Entity(id=department_id)
         department_data_task = self.opengin_service.get_entities(entity=entity)
-        dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relation=Relation(name="AS_CATEGORY", direction="OUTGOING"))
+        dataset_task = self.opengin_service.fetch_relation(entityId=department_id, relation=Relation(name=RelationNameEnum.AS_CATEGORY.value, direction=RelationDirectionEnum.OUTGOING.value))
 
         # run parallel calls to get department data and parent category relations to ensure the department has data
         department_data, dataset_relations = await asyncio.gather(department_data_task, dataset_task, return_exceptions=True)
@@ -325,7 +327,7 @@ class OrganisationService:
             raise BadRequestError("Selected date is required")
 
         try:
-            relation = Relation(name="AS_DEPARTMENT",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
+            relation = Relation(name=RelationNameEnum.AS_DEPARTMENT.value,activeAt=Util.normalize_timestamp(selected_date),direction=RelationDirectionEnum.OUTGOING.value)
             department_relation_list = await self.opengin_service.fetch_relation(
                 entityId=portfolio_id,
                 relation=relation
@@ -382,7 +384,7 @@ class OrganisationService:
             if not selected_date or not selected_date.strip():
                 raise BadRequestError("Selected date is required")
 
-            relation = Relation(name="AS_PRIME_MINISTER",activeAt=Util.normalize_timestamp(selected_date),direction="OUTGOING")
+            relation = Relation(name=RelationNameEnum.AS_PRIME_MINISTER.value,activeAt=Util.normalize_timestamp(selected_date),direction=RelationDirectionEnum.OUTGOING.value)
             prime_minister_relations = await self.opengin_service.fetch_relation(
                 entityId="gov_01",
                 relation=relation

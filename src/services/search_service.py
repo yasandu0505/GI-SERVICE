@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import List, Dict, Any, Optional
+from src.enums import KindMajorEnum, KindMinorEnum
 from src.exception.exceptions import BadRequestError, InternalServerError
 from src.models.organisation_schemas import Entity, Kind
 from src.models.search_schemas import SearchResult, SearchResponse
@@ -9,7 +10,7 @@ from src.utils.util_functions import Util
 logger = logging.getLogger(__name__)
 
 # Valid entity types for filtering
-VALID_ENTITY_TYPES = {"department", "stateMinister", "cabinetMinister", "dataset", "person"}
+VALID_ENTITY_TYPES = {KindMinorEnum.DEPARTMENT.value, KindMinorEnum.STATE_MINISTER.value, KindMinorEnum.CABINET_MINISTER.value, "dataset", "person"}
 class SearchService:
     """
     This service handles unified search across departments, ministers, datasets, and persons.
@@ -51,11 +52,11 @@ class SearchService:
         try:
             # Entity type configuration: maps entity type to (major, minor, display_name)
             entity_config = {
-                "department": ("Organisation", "department", "departments"),
-                "stateMinister": ("Organisation", "stateMinister", "stateMinisters"),
-                "cabinetMinister": ("Organisation", "cabinetMinister", "cabinetMinisters"),
-                "dataset": ("Dataset", "tabular", "datasets"),
-                "person": ("Person", "citizen", "persons"),
+                KindMinorEnum.DEPARTMENT.value: (KindMajorEnum.ORGANISATION.value, KindMinorEnum.DEPARTMENT.value, "departments"),
+                KindMinorEnum.STATE_MINISTER.value: (KindMajorEnum.ORGANISATION.value, KindMinorEnum.STATE_MINISTER.value, "stateMinisters"),
+                KindMinorEnum.CABINET_MINISTER.value: (KindMajorEnum.ORGANISATION.value, KindMinorEnum.CABINET_MINISTER.value, "cabinetMinisters"),
+                "dataset": (KindMajorEnum.DATASET.value, KindMinorEnum.TABULAR.value, "datasets"),
+                "person": (KindMajorEnum.PERSON.value, KindMinorEnum.CITIZEN.value, "persons"),
             }
 
             # Build search tasks dynamically based on requested types
@@ -207,11 +208,11 @@ class SearchService:
         """
         # Map major/minor combinations to entity types
         type_mapping = {
-            ("Organisation".lower(), "department".lower()): "department",
-            ("Organisation".lower(), "stateMinister".lower()): "stateMinister",
-            ("Organisation".lower(), "cabinetMinister".lower()): "cabinetMinister",
-            ("Dataset".lower(), "tabular".lower()): "dataset",
-            ("Person".lower(), "citizen".lower()): "person",
+            (KindMajorEnum.ORGANISATION.value.lower(), KindMinorEnum.DEPARTMENT.value.lower()): KindMinorEnum.DEPARTMENT.value,
+            (KindMajorEnum.ORGANISATION.value.lower(), KindMinorEnum.STATE_MINISTER.value.lower()): KindMinorEnum.STATE_MINISTER.value,
+            (KindMajorEnum.ORGANISATION.value.lower(), KindMinorEnum.CABINET_MINISTER.value.lower()): KindMinorEnum.CABINET_MINISTER.value,
+            (KindMajorEnum.DATASET.value.lower(), KindMinorEnum.TABULAR.value.lower()): "dataset",
+            (KindMajorEnum.PERSON.value.lower(), KindMinorEnum.CITIZEN.value.lower()): "person",
         }
 
         key = (major.lower(), minor.lower())

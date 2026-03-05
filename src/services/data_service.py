@@ -1,6 +1,7 @@
 import logging  
 import asyncio
 from typing import Dict
+from src.enums import KindMajorEnum, KindMinorEnum, RelationNameEnum, RelationDirectionEnum
 from src.exception.exceptions import InternalServerError, NotFoundError
 from src.exception.exceptions import BadRequestError
 from src.models.organisation_schemas import Relation
@@ -148,7 +149,7 @@ class DataService:
         
         try:
             if not category_ids:
-                entity = Entity(kind=Kind(major="Category", minor="parentCategory"))
+                entity = Entity(kind=Kind(major=KindMajorEnum.CATEGORY.value, minor=KindMinorEnum.PARENT_CATEGORY.value))
                 parentCategories = await self.opengin_service.get_entities(entity=entity)
 
                 enrich_category_task = [self.enrich_category(categories_dictionary=categories_dictionary, category=category) for category in parentCategories]
@@ -162,8 +163,8 @@ class DataService:
                     }
             
             else:
-                category_relation_instance = Relation(name="AS_CATEGORY", direction="OUTGOING")
-                dataset_relation_instance = Relation(name="IS_ATTRIBUTE", direction="OUTGOING")
+                category_relation_instance = Relation(name=RelationNameEnum.AS_CATEGORY.value, direction=RelationDirectionEnum.OUTGOING.value)
+                dataset_relation_instance = Relation(name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.OUTGOING.value)
                 
                 fetch_category_relation_tasks = [self.opengin_service.fetch_relation(entityId=category_id, relation=category_relation_instance) for category_id in category_ids]
                 fetch_dataset_relation_tasks = [self.opengin_service.fetch_relation(entityId=category_id, relation=dataset_relation_instance) for category_id in category_ids]
@@ -288,7 +289,7 @@ class DataService:
 
             # Prepare the dataset entity and relation objects
             dataset_entity = Entity(id=dataset_id)
-            dataset_relation = Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+            dataset_relation = Relation(name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.INCOMING.value)
 
             # Fetch the dataset entity and relations
             dataset_entity_result, dataset_relations_result = await asyncio.gather(
@@ -346,7 +347,7 @@ class DataService:
                 raise BadRequestError("Dataset ID is required")
             
             # Fetch relation to get the category ID
-            relation_instance = Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+            relation_instance = Relation(name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.INCOMING.value)
             relations = await self.opengin_service.fetch_relation(
                 entityId=dataset_id, 
                 relation=relation_instance
@@ -417,7 +418,7 @@ class DataService:
             dataset_name = Util.decode_protobuf_attribute_name(dataset.name)
 
             # Fetch relation to get the immediate parent category
-            relation_instance = Relation(name="IS_ATTRIBUTE", direction="INCOMING")
+            relation_instance = Relation(name=RelationNameEnum.IS_ATTRIBUTE.value, direction=RelationDirectionEnum.INCOMING.value)
             relations = await self.opengin_service.fetch_relation(
                 entityId=dataset_id,
                 relation=relation_instance
@@ -484,11 +485,11 @@ class DataService:
             })
 
             # Check if we've reached a department, state minister or cabinet minister (root)
-            if current_category.kind and current_category.kind.minor in ["department", "stateMinister", "cabinetMinister"]:
+            if current_category.kind and current_category.kind.minor in [KindMinorEnum.DEPARTMENT.value, KindMinorEnum.STATE_MINISTER.value, KindMinorEnum.CABINET_MINISTER.value]:
                 break
 
             # Get parent category
-            relation_instance = Relation(name="AS_CATEGORY", direction="INCOMING")
+            relation_instance = Relation(name=RelationNameEnum.AS_CATEGORY.value, direction=RelationDirectionEnum.INCOMING.value)
             parent_relations = await self.opengin_service.fetch_relation(
                 entityId=current_id,
                 relation=relation_instance
@@ -525,11 +526,11 @@ class DataService:
             current_category = category_results[0]
             
             # Check if this is a department or minister
-            if current_category.kind and current_category.kind.minor in ["department", "cabinetMinister", "stateMinister"]:
+            if current_category.kind and current_category.kind.minor in [KindMinorEnum.DEPARTMENT.value, KindMinorEnum.CABINET_MINISTER.value, KindMinorEnum.STATE_MINISTER.value]:
                 return current_category
             
             # If not, traverse up the hierarchy using AS_CATEGORY INCOMING relation
-            relation_instance = Relation(name="AS_CATEGORY", direction="INCOMING")
+            relation_instance = Relation(name=RelationNameEnum.AS_CATEGORY.value, direction=RelationDirectionEnum.INCOMING.value)
             parent_relations = await self.opengin_service.fetch_relation(
                 entityId=category_id,
                 relation=relation_instance
