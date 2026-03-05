@@ -418,4 +418,180 @@ class OrganisationService:
             raise
         except Exception as e:
             raise InternalServerError("An unexpected error occurred") from e
-     
+
+    # helper : get renamed lineage for a given entity id using BFS
+    async def _get_renamed_lineage(self, start_id: str) -> set[str]:
+        """BFS to find all related entity IDs via RENAMED_TO relations."""
+        entity_ids = {start_id}
+        queue = [start_id]
+        while queue:
+            current_id = queue.pop(0)
+            renamed_relations = await self.opengin_service.fetch_relation(
+                entityId=current_id,
+                relation=Relation(name="RENAMED_TO")
+            )
+            for relation in renamed_relations:
+                if relation.relatedEntityId not in entity_ids:
+                    entity_ids.add(relation.relatedEntityId)
+                    queue.append(relation.relatedEntityId)
+        return entity_ids
+
+    # helper : fetch entities in parallel and map them by id
+    async def _fetch_and_map_entities(self, entity_ids: list[str]) -> dict[str, Entity]:
+        """Fetch multiple entities in parallel and return a map by ID."""
+        tasks = [self.opengin_service.get_entities(Entity(id=entity_id)) for entity_id in entity_ids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        entity_map = {}
+        for result in results:
+            if not isinstance(result, Exception) and result:
+                entity_map[result[0].id] = result[0]
+        return entity_map
+
+    # helper : fetch relations for multiple entities in parallel and map them by id
+    async def _fetch_and_map_relations(self, entity_ids: list[str], relation_query: Relation) -> dict[str, list[Relation]]:
+        """Fetch relations for multiple entities in parallel and map them."""
+        tasks = [self.opengin_service.fetch_relation(entityId=entity_id, relation=relation_query) for entity_id in entity_ids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        relation_map = {}
+        for i, result in enumerate(results):
+            entity_id = entity_ids[i]
+            relation_map[entity_id] = result if not isinstance(result, Exception) else []
+        return relation_map
+
+    # API: department history timeline for the given department
+    async def department_history_timeline(self, department_id: str):
+        """
+        Fetch and enrich department history timeline.
+        Orchestrates fetching relations, detecting gaps, and filling with presidential data.
+        """
+        if not department_id:
+            return None
+
+        FAR_FUTURE = "9999-12-31T23:59:59Z"
+
+        try:
+            # 1. Get Lineage and Initial Relations
+            department_ids = await self._get_renamed_lineage(department_id)
+            
+            ministry_department_relation_map = await self._fetch_and_map_relations(
+                list(department_ids), 
+                Relation(name="AS_DEPARTMENT", direction="INCOMING")
+            )
+            
+            # Filter out same startTime and endTime min-dep relations
+            all_ministry_department_relations = [
+                relation for relations in ministry_department_relation_map.values() for relation in relations 
+                if relation.startTime != relation.endTime
+            ]
+
+            # 2. Fetch all Ministry Info and Person Appointment relations in parallel
+            ministry_ids = list(set(relation.relatedEntityId for relation in all_ministry_department_relations))
+            
+            ministry_info_map, person_appointment_relation_map = await asyncio.gather(
+                self._fetch_and_map_entities(ministry_ids),
+                self._fetch_and_map_relations(ministry_ids, Relation(name="AS_APPOINTED"))
+            )
+
+            # 3. Fetch all Person info for those appointments
+            person_ids = list(set(person_appointment.relatedEntityId for person_appointments in person_appointment_relation_map.values() for person_appointment in person_appointments))
+            person_info_map = await self._fetch_and_map_entities(person_ids)
+
+            # 4. Filter person appointments that overlap with this specific ministry-department period
+            enriched = []
+            for ministry_department_relation in all_ministry_department_relations:
+                ministry_id = ministry_department_relation.relatedEntityId
+                ministry_entity = ministry_info_map.get(ministry_id)
+                if not ministry_entity:
+                    continue
+                
+                ministry_name = Util.decode_protobuf_attribute_name(ministry_entity.name)
+                
+                relevant_persons = []
+                for person_appointment in person_appointment_relation_map.get(ministry_id, []):
+                    person_entity = person_info_map.get(person_appointment.relatedEntityId)
+                    if not person_entity:
+                        continue
+                    
+                    overlap_start = max(person_appointment.startTime, ministry_department_relation.startTime)
+                    overlap_end = min(person_appointment.endTime or FAR_FUTURE, ministry_department_relation.endTime or FAR_FUTURE)
+                    
+                    if overlap_start < overlap_end:
+                        relevant_persons.append({
+                            "ministry_id": ministry_id,
+                            "ministry_name": ministry_name,
+                            "minister_id": person_entity.id,
+                            "minister_name": Util.decode_protobuf_attribute_name(person_entity.name),
+                            "startTime": overlap_start,
+                            "endTime": overlap_end
+                        })
+                
+                # Detect gaps between appointed persons and placeholder them
+                relevant_persons.sort(key=lambda x: x["startTime"])
+                current_time = ministry_department_relation.startTime
+                relation_end = ministry_department_relation.endTime or FAR_FUTURE
+                
+                for person in relevant_persons:
+                    if current_time < person["startTime"]:
+                        enriched.append({
+                            "ministry_id": ministry_id, "ministry_name": ministry_name,
+                            "minister_id": None, "startTime": current_time, "endTime": person["startTime"]
+                        })
+                    current_time = person["endTime"]
+                
+                if current_time < relation_end:
+                    enriched.append({
+                        "ministry_id": ministry_id, "ministry_name": ministry_name,
+                        "minister_id": None, "startTime": current_time, "endTime": relation_end
+                    })
+                
+                enriched.extend(relevant_persons)
+
+            # 5. Fill Gaps With President (if gaps exist)
+            if any(entry.get("minister_id") is None for entry in enriched):
+                president_relations = await self.opengin_service.fetch_relation(entityId="gov_01", relation=Relation(name="AS_PRESIDENT"))
+                president_info_map = await self._fetch_and_map_entities(list(set(relation.relatedEntityId for relation in president_relations)))
+
+                for entry in enriched:
+                    if entry.get("minister_id") is None:
+                        for president_relation in president_relations:
+                            president_start_time, president_end_time = president_relation.startTime, president_relation.endTime or FAR_FUTURE
+                            overlap_start = max(president_start_time, entry["startTime"])
+                            overlap_end = min(president_end_time, entry["endTime"])
+                            
+                            if overlap_start < overlap_end:
+                                president_entity = president_info_map.get(president_relation.relatedEntityId)
+                                if president_entity:
+                                    entry.update({
+                                        "minister_id": president_entity.id,
+                                        "minister_name": Util.decode_protobuf_attribute_name(president_entity.name),
+                                        "startTime": overlap_start,
+                                        "endTime": overlap_end
+                                    })
+                                    break
+
+            # 6. Collapse consecutive similar entries
+            enriched.sort(key=lambda x: x["startTime"])
+            collapsed = []
+            for entry in enriched:
+                if collapsed and (collapsed[-1]["minister_id"] == entry["minister_id"] and 
+                                  collapsed[-1]["ministry_name"] == entry["ministry_name"] and 
+                                  collapsed[-1]["endTime"] >= entry["startTime"]):
+                    collapsed[-1]["endTime"] = max(collapsed[-1]["endTime"], entry["endTime"])
+                else:
+                    collapsed.append(entry)
+
+            # 7. Final Sort and clean up
+            collapsed.sort(key=lambda x: x["startTime"], reverse=True)
+            for entry in collapsed:
+                actual_end = None if entry["endTime"] == FAR_FUTURE else entry["endTime"]
+                entry["period"] = Util.term(entry["startTime"], actual_end, get_full_date=True)
+
+                for key in ["startTime", "endTime"]:
+                    entry.pop(key, None)
+
+            return collapsed
+
+        except Exception as e:
+            logger.error(f"Error in enrich_department_timeline: {e}")
+            raise InternalServerError("An unexpected error occurred") from e
+

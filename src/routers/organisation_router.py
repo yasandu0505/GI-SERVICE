@@ -34,3 +34,11 @@ async def prime_minister(
 ):
     service_response = await service.fetch_prime_minister(selected_date=body.date)
     return service_response
+
+@router.get('/department-history/{department_id}', summary="Get department history timeline.", description="Returns a timeline of a department including ministry relations and ministers.")
+async def department_history_timeline(
+    department_id: str = Path(..., description="ID of the department"),
+    service: OrganisationService = Depends(get_organisation_service)
+):
+    service_response = await service.department_history_timeline(department_id=department_id)
+    return service_response
