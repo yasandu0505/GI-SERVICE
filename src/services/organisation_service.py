@@ -421,36 +421,31 @@ class OrganisationService:
             raise InternalServerError("An unexpected error occurred") from e
 
     # API: cabinet flow fot the given president id and date range of the presidency
-    async def get_active_ministers(self, entityId, dateActive):
+    async def get_active_ministers(self, entity_id, date_active):
 
-        relation = Relation(name=RelationNameEnum.AS_MINISTER.value,activeAt=Util.normalize_timestamp(dateActive),direction=RelationDirectionEnum.OUTGOING.value)
+        relation = Relation(name=RelationNameEnum.AS_MINISTER.value,activeAt=Util.normalize_timestamp(date_active),direction=RelationDirectionEnum.OUTGOING.value)
 
         minister_relations = await self.opengin_service.fetch_relation(
-                entityId=entityId,
+                entityId=entity_id,
                 relation=relation
             )        
-        activeMinisterIds = []
+        return [item.relatedEntityId for item in minister_relations]
 
-        for item in minister_relations:
-            activeMinisterIds.append(item.relatedEntityId)
-        return activeMinisterIds
+    async def get_active_departments(self, entity_id, date_active):
 
-    async def get_active_departments(self, entityId, dateActive):
-
-        relation = Relation(name=RelationNameEnum.AS_DEPARTMENT.value,activeAt=Util.normalize_timestamp(dateActive),direction=RelationDirectionEnum.OUTGOING.value)
+        relation = Relation(name=RelationNameEnum.AS_DEPARTMENT.value,activeAt=Util.normalize_timestamp(date_active),direction=RelationDirectionEnum.OUTGOING.value)
 
         department_relations = await self.opengin_service.fetch_relation(
-                entityId=entityId,
+                entityId=entity_id,
                 relation=relation
             )        
-        activeDepartments = []
-
-        for item in department_relations:
-            activeDepartments.append({
-                        "ministerId": entityId,
-                        "departmentId": item.relatedEntityId
-                    })
-        return activeDepartments
+        return [
+            {
+                "ministerId": entity_id,
+                "departmentId": item.relatedEntityId
+            }
+            for item in department_relations
+        ]
 
     async def get_ministers_and_departments(self, president_id: str, selected_date: str):
         """
@@ -460,14 +455,13 @@ class OrganisationService:
         :param selected_date: Selected Date
 
         output format: 
-        {
-            "body": {
-                "id": "",
-                "name": "",
-                "isNew": false,
-                "term": ""
-            }
-        }
+        [
+            {
+                "ministerId": "<minister_id>",
+                "departmentId": "<department_id>"
+            },
+            ...
+        ]
         """
         departments_results = []
         try:
@@ -487,12 +481,7 @@ class OrganisationService:
             departments_results = await asyncio.gather(*tasks_for_departments, return_exceptions=True)
 
             # Step 3: Flatten the nested list
-            flattened_results = []
-            for result in departments_results:
-                if isinstance(result, list):
-                    flattened_results.extend(result)
-        
-            return flattened_results
+            return [item for sublist in departments_results if isinstance(sublist, list) for item in sublist]
 
         except (BadRequestError, NotFoundError):
             raise
@@ -507,7 +496,14 @@ class OrganisationService:
         :param dates: List of dates
 
         output format: 
-        {to be added}
+        {
+            "nodes": [
+                {"name": "<minister_id>", "time": "<date>"}
+            ],
+            "links": [
+                {"source": <node_index>, "target": <node_index>, "value": <count>}
+            ]
+        }
         """
         try:
             tasks_for_dates = [
