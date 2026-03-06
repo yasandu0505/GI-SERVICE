@@ -522,9 +522,6 @@ class OrganisationService:
                 if isinstance(result, Exception):
                     continue
 
-                if isinstance(result, dict) and "error" in result:
-                    continue
-
                 if not isinstance(result, list):
                     continue
 
