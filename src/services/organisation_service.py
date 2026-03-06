@@ -423,31 +423,26 @@ class OrganisationService:
     # API: cabinet flow fot the given president id and date range of the presidency
     async def get_active_ministers(self, entityId, dateActive):
 
-        relation = Relation(name="AS_MINISTER",activeAt=Util.normalize_timestamp(dateActive),direction="OUTGOING")
+        relation = Relation(name=RelationNameEnum.AS_MINISTER.value,activeAt=Util.normalize_timestamp(dateActive),direction=RelationDirectionEnum.OUTGOING.value)
 
         minister_relations = await self.opengin_service.fetch_relation(
                 entityId=entityId,
                 relation=relation
-            )
-        print("minister_relations: ", minister_relations)
-        
+            )        
         activeMinisterIds = []
 
         for item in minister_relations:
             activeMinisterIds.append(item.relatedEntityId)
-        print("activeMinisterIds: ", activeMinisterIds)
         return activeMinisterIds
 
     async def get_active_departments(self, entityId, dateActive):
 
-        relation = Relation(name="AS_DEPARTMENT",activeAt=Util.normalize_timestamp(dateActive),direction="OUTGOING")
+        relation = Relation(name=RelationNameEnum.AS_DEPARTMENT.value,activeAt=Util.normalize_timestamp(dateActive),direction=RelationDirectionEnum.OUTGOING.value)
 
         department_relations = await self.opengin_service.fetch_relation(
                 entityId=entityId,
                 relation=relation
-            )
-        print("department_relations: ", department_relations)
-        
+            )        
         activeDepartments = []
 
         for item in department_relations:
@@ -455,7 +450,6 @@ class OrganisationService:
                         "ministerId": entityId,
                         "departmentId": item.relatedEntityId
                     })
-        print("activeDepartments: ", activeDepartments)
         return activeDepartments
 
     async def get_ministers_and_departments(self, president_id: str, selected_date: str):
@@ -480,12 +474,9 @@ class OrganisationService:
             # Step 1: Get active ministers (sequential, must happen first)
             minister_ids = await self.get_active_ministers(president_id, selected_date)
 
-            # print(f"Minister IDs: {minister_ids}")
-
             if len(minister_ids) == 0:
                 return departments_results
 
-                        
             # Step 2: Get departments for each minister in parallel
             tasks_for_departments = [
                 self.get_active_departments(minister_id, selected_date)
@@ -500,11 +491,7 @@ class OrganisationService:
             for result in departments_results:
                 if isinstance(result, list):
                     flattened_results.extend(result)
-
-            # print(f"Flattened results length: {len(flattened_results)}")
-            
-            print("flattened_results: ", flattened_results)
-            print("flattened_results length: ", len(flattened_results))
+        
             return flattened_results
 
         except (BadRequestError, NotFoundError):
@@ -522,8 +509,6 @@ class OrganisationService:
         output format: 
         {to be added}
         """
-        print("president_id: ", president_id)
-        print("dates: ", dates)
         try:
             tasks_for_dates = [
                 self.get_ministers_and_departments(president_id, date)
@@ -593,7 +578,6 @@ class OrganisationService:
             ]
 
             return {
-                # "departmentsByMinisters": departments_by_ministers,
                 "nodes": nodes,
                 "links": links,
             }
@@ -601,6 +585,7 @@ class OrganisationService:
             raise
         except Exception as e:
             raise InternalServerError("An unexpected error occurred") from e
+
     # helper : get renamed lineage for a given entity id using BFS
     async def _get_renamed_lineage(self, start_id: str) -> set[str]:
         """BFS to find all related entity IDs via RENAMED_TO relations."""
