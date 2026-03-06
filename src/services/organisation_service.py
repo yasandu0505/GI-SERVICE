@@ -20,6 +20,7 @@ class OrganisationService:
     def __init__(self, config: dict, opengin_service):
         self.config = config
         self.opengin_service = opengin_service
+        self.department_semaphore = asyncio.Semaphore(10)
 
     @property
     def session(self) -> ClientSession:
@@ -446,42 +447,34 @@ class OrganisationService:
             }
             for item in department_relations
         ]
-
+    
     async def get_ministers_and_departments(self, president_id: str, selected_date: str):
-        """
-        Get Ministers and Departments
         
-        :param president_id: President ID
-        :param selected_date: Selected Date
-
-        output format: 
-        [
-            {
-                "ministerId": "<minister_id>",
-                "departmentId": "<department_id>"
-            },
-            ...
-        ]
-        """
         departments_results = []
+
         try:
-            # Step 1: Get active ministers (sequential, must happen first)
             minister_ids = await self.get_active_ministers(president_id, selected_date)
 
-            if len(minister_ids) == 0:
+            if not minister_ids:
                 return departments_results
 
-            # Step 2: Get departments for each minister in parallel
+            async def limited_department_fetch(minister_id: str):
+                async with self.department_semaphore:
+                    return await self.get_active_departments(minister_id, selected_date)
+
             tasks_for_departments = [
-                self.get_active_departments(minister_id, selected_date)
+                limited_department_fetch(minister_id)
                 for minister_id in minister_ids
             ]
-            
-            # Execute all department fetches in parallel
+
             departments_results = await asyncio.gather(*tasks_for_departments, return_exceptions=True)
 
-            # Step 3: Flatten the nested list
-            return [item for sublist in departments_results if isinstance(sublist, list) for item in sublist]
+            return [
+                item
+                for sublist in departments_results
+                if isinstance(sublist, list)
+                for item in sublist
+            ]
 
         except (BadRequestError, NotFoundError):
             raise
@@ -505,11 +498,20 @@ class OrganisationService:
             ]
         }
         """
+        MAX_DATES = 3
+        CONCURRENCY_LIMIT = 3
+
+        if len(dates) > MAX_DATES:
+            raise BadRequestError("Too many dates requested, only 3 dates are allowed")
+        
+        semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
+        
+        async def limited_get(date):
+            async with semaphore:
+                return await self.get_ministers_and_departments(president_id, date)
+
         try:
-            tasks_for_dates = [
-                self.get_ministers_and_departments(president_id, date)
-                for date in dates
-            ]
+            tasks_for_dates = [limited_get(date) for date in dates]
             dates_gov_struct = await asyncio.gather(*tasks_for_dates, return_exceptions=True)
 
             departments_by_ministers = {}
