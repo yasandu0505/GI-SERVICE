@@ -5,6 +5,7 @@ from src.models.organisation_schemas import Entity, Kind
 from src.models.search_schemas import SearchResponse
 from src.services.search_service import SearchService
 from src.services.opengin_service import OpenGINService
+from src.enums import KindMajorEnum, KindMinorEnum
 
 
 # Fixtures
@@ -32,7 +33,7 @@ async def test_unified_search_success(search_service, mock_opengin_service):
         Entity(
             id="dept_1",
             name="encoded_health",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created="2020-01-01T00:00:00Z"
         )
     ]
@@ -42,7 +43,7 @@ async def test_unified_search_success(search_service, mock_opengin_service):
         Entity(
             id="minister_1",
             name="encoded_minister",
-            kind=Kind(major="Organisation", minor="stateMinister"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.STATE_MINISTER.value),
             created="2019-06-15T00:00:00Z"
         )
     ]
@@ -52,7 +53,7 @@ async def test_unified_search_success(search_service, mock_opengin_service):
         Entity(
             id="minister_1",
             name="encoded_minister",
-            kind=Kind(major="Organisation", minor="cabinetMinister"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.CABINET_MINISTER.value),
             created="2019-06-15T00:00:00Z"
         )
     ]
@@ -62,7 +63,7 @@ async def test_unified_search_success(search_service, mock_opengin_service):
         Entity(
             id="dataset_1",
             name="encoded_dataset",
-            kind=Kind(major="Dataset", minor="tabular"),
+            kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
             created="2021-03-20T00:00:00Z"
         )
     ]
@@ -72,22 +73,22 @@ async def test_unified_search_success(search_service, mock_opengin_service):
         Entity(
             id="person_1",
             name="encoded_person",
-            kind=Kind(major="Person", minor="citizen"),
+            kind=Kind(major=KindMajorEnum.PERSON.value, minor=KindMinorEnum.CITIZEN.value),
             created="2018-12-01T00:00:00Z"
         )
     ]
 
     # Setup mock to return different entities based on Kind
     def get_entities_side_effect(entity):
-        if entity.kind.minor == "department":
+        if entity.kind.minor == KindMinorEnum.DEPARTMENT.value:
             return mock_departments
-        elif entity.kind.minor == "stateMinister":
+        elif entity.kind.minor == KindMinorEnum.STATE_MINISTER.value:
             return mock_state_ministers
-        elif entity.kind.minor == "cabinetMinister":
+        elif entity.kind.minor == KindMinorEnum.CABINET_MINISTER.value:
             return mock_cabinet_ministers
-        elif entity.kind.minor == "tabular":
+        elif entity.kind.minor == KindMinorEnum.TABULAR.value:
             return mock_datasets
-        elif entity.kind.minor == "citizen":
+        elif entity.kind.minor == KindMinorEnum.CITIZEN.value:
             return mock_persons
         return []
 
@@ -111,9 +112,9 @@ async def test_unified_search_success(search_service, mock_opengin_service):
 
     # Verify all types are present
     types = [r.type for r in result.results]
-    assert "department" in types
-    assert "stateMinister" in types
-    assert "cabinetMinister" in types
+    assert KindMinorEnum.DEPARTMENT.value in types
+    assert KindMinorEnum.STATE_MINISTER.value in types
+    assert KindMinorEnum.CABINET_MINISTER.value in types
     assert "dataset" in types
     assert "person" in types
 
@@ -194,7 +195,7 @@ async def test_unified_search_respects_limit(search_service, mock_opengin_servic
         Entity(
             id=f"dept_{i}",
             name=f"encoded_dept_{i}",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created="2020-01-01T00:00:00Z"
         )
         for i in range(10)
@@ -222,13 +223,13 @@ async def test_unified_search_sorted_by_score(search_service, mock_opengin_servi
 
     # Only return departments, empty for other types
     mock_departments = [
-        Entity(id="dept_1", name="encoded_1", kind=Kind(major="Organisation", minor="department"), created="2020-01-01T00:00:00Z"),
-        Entity(id="dept_2", name="encoded_2", kind=Kind(major="Organisation", minor="department"), created="2020-01-01T00:00:00Z"),
-        Entity(id="dept_3", name="encoded_3", kind=Kind(major="Organisation", minor="department"), created="2020-01-01T00:00:00Z"),
+        Entity(id="dept_1", name="encoded_1", kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value), created="2020-01-01T00:00:00Z"),
+        Entity(id="dept_2", name="encoded_2", kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value), created="2020-01-01T00:00:00Z"),
+        Entity(id="dept_3", name="encoded_3", kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value), created="2020-01-01T00:00:00Z"),
     ]
 
     def get_entities_side_effect(entity):
-        if entity.kind.minor == "department":
+        if entity.kind.minor == KindMinorEnum.DEPARTMENT.value:
             return mock_departments
         return []  # Empty for other types
 
@@ -263,14 +264,14 @@ async def test_unified_search_handles_partial_failures(search_service, mock_open
         Entity(
             id="dept_1",
             name="encoded_health",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created="2020-01-01T00:00:00Z"
         )
     ]
 
     # Make get_entities return departments for department kind, raise for others
     def get_entities_side_effect(entity):
-        if entity.kind.minor == "department":
+        if entity.kind.minor == KindMinorEnum.DEPARTMENT.value:
             return mock_departments
         raise Exception("Service unavailable")
 
@@ -288,7 +289,7 @@ async def test_unified_search_handles_partial_failures(search_service, mock_open
 
     # Should still return department results even though other searches failed
     assert result.total == 1
-    assert result.results[0].type == "department"
+    assert result.results[0].type == KindMinorEnum.DEPARTMENT.value
 
 #tests for entity_specific_search
 
@@ -300,14 +301,14 @@ async def test_entity_specific_search_departments(search_service, mock_opengin_s
         Entity(
             id="dept_1",
             name="encoded_health",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created="2020-01-01T00:00:00Z",
             terminated=""
         ),
         Entity(
             id="dept_2",
             name="encoded_education",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created="2019-06-15T00:00:00Z",
             terminated="2021-12-31T00:00:00Z"
         )
@@ -320,20 +321,20 @@ async def test_entity_specific_search_departments(search_service, mock_opengin_s
         side_effect=["Ministry of Health", "Ministry of Education"]
     ):
         results = await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
+            major=KindMajorEnum.ORGANISATION.value,
+            minor=KindMinorEnum.DEPARTMENT.value,
             query="Ministry",
             as_of_date="2022-01-01"
         )
     
     assert len(results) == 2
-    assert results[0]["type"] == "department"
+    assert results[0]["type"] == KindMinorEnum.DEPARTMENT.value
     assert results[0]["id"] == "dept_1"
     assert results[0]["name"] == "Ministry of Health"
     assert results[0]["created"] == "2020-01-01T00:00:00Z"
     assert results[0]["terminated"] == ""
     
-    assert results[1]["type"] == "department"
+    assert results[1]["type"] == KindMinorEnum.DEPARTMENT.value
     assert results[1]["id"] == "dept_2"
     assert results[1]["name"] == "Ministry of Education"
     assert results[1]["terminated"] == "2021-12-31T00:00:00Z"
@@ -346,7 +347,7 @@ async def test_entity_specific_search_ministers(search_service, mock_opengin_ser
         Entity(
             id="minister_1",
             name="encoded_minister",
-            kind=Kind(major="Organisation", minor="stateMinister"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.STATE_MINISTER.value),
             created="2019-06-15T00:00:00Z",
             terminated=""
         )
@@ -359,14 +360,14 @@ async def test_entity_specific_search_ministers(search_service, mock_opengin_ser
         return_value="Health Minister"
     ):
         results = await search_service.entity_specific_search(
-            major="Organisation",
-            minor="stateMinister",
+            major=KindMajorEnum.ORGANISATION.value,
+            minor=KindMinorEnum.STATE_MINISTER.value,
             query="Health",
             as_of_date="2022-01-01"
         )
     
     assert len(results) == 1
-    assert results[0]["type"] == "stateMinister"
+    assert results[0]["type"] == KindMinorEnum.STATE_MINISTER.value
     assert results[0]["id"] == "minister_1"
     assert results[0]["name"] == "Health Minister"
     assert results[0]["created"] == "2019-06-15T00:00:00Z"
@@ -379,7 +380,7 @@ async def test_entity_specific_search_datasets(search_service, mock_opengin_serv
         Entity(
             id="dataset_1",
             name="encoded_dataset",
-            kind=Kind(major="Dataset", minor="tabular"),
+            kind=Kind(major=KindMajorEnum.DATASET.value, minor=KindMinorEnum.TABULAR.value),
             created="2021-03-20T00:00:00Z",
             terminated=""
         )
@@ -398,8 +399,8 @@ async def test_entity_specific_search_datasets(search_service, mock_opengin_serv
         return_value="Health Statistics"
     ):
         results = await search_service.entity_specific_search(
-            major="Dataset",
-            minor="tabular",
+            major=KindMajorEnum.DATASET.value,
+            minor=KindMinorEnum.TABULAR.value,
             query="health",
             as_of_date="2022-01-01"
         )
@@ -418,7 +419,7 @@ async def test_entity_specific_search_persons(search_service, mock_opengin_servi
         Entity(
             id="person_1",
             name="encoded_person",
-            kind=Kind(major="Person", minor="citizen"),
+            kind=Kind(major=KindMajorEnum.PERSON.value, minor=KindMinorEnum.CITIZEN.value),
             created="2018-12-01T00:00:00Z",
             terminated=""
         )
@@ -431,8 +432,8 @@ async def test_entity_specific_search_persons(search_service, mock_opengin_servi
         return_value="John Doe"
     ):
         results = await search_service.entity_specific_search(
-            major="Person",
-            minor="citizen",
+            major=KindMajorEnum.PERSON.value,
+            minor=KindMinorEnum.CITIZEN.value,
             query="John",
             as_of_date="2022-01-01"
         )
@@ -451,13 +452,13 @@ async def test_entity_specific_search_filters_by_date(search_service, mock_openg
         Entity(
             id="dept_1",
             name="encoded_1",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created="2020-01-01T00:00:00Z"
         ),
         Entity(
             id="dept_2",
             name="encoded_2",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created="2023-01-01T00:00:00Z"  # Created after as_of_date
         )
     ]
@@ -469,8 +470,8 @@ async def test_entity_specific_search_filters_by_date(search_service, mock_openg
         side_effect=["Health Department", "Future Department"]
     ):
         results = await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
+            major=KindMajorEnum.ORGANISATION.value,
+            minor=KindMinorEnum.DEPARTMENT.value,
             query="Department",
             as_of_date="2022-01-01"
         )
@@ -484,9 +485,9 @@ async def test_entity_specific_search_sorted_by_score(search_service, mock_openg
     """Test entity_specific_search results are sorted by match score"""
     
     mock_departments = [
-        Entity(id="dept_1", name="encoded_1", kind=Kind(major="Organisation", minor="department"), created="2020-01-01T00:00:00Z"),
-        Entity(id="dept_2", name="encoded_2", kind=Kind(major="Organisation", minor="department"), created="2020-01-01T00:00:00Z"),
-        Entity(id="dept_3", name="encoded_3", kind=Kind(major="Organisation", minor="department"), created="2020-01-01T00:00:00Z"),
+        Entity(id="dept_1", name="encoded_1", kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value), created="2020-01-01T00:00:00Z"),
+        Entity(id="dept_2", name="encoded_2", kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value), created="2020-01-01T00:00:00Z"),
+        Entity(id="dept_3", name="encoded_3", kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value), created="2020-01-01T00:00:00Z"),
     ]
     
     mock_opengin_service.get_entities.return_value = mock_departments
@@ -497,8 +498,8 @@ async def test_entity_specific_search_sorted_by_score(search_service, mock_openg
         side_effect=["Ministry of Health", "Health Ministry", "health"]
     ):
         results = await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
+            major=KindMajorEnum.ORGANISATION.value,
+            minor=KindMinorEnum.DEPARTMENT.value,
             query="health",
             as_of_date="2022-01-01"
         )
@@ -518,7 +519,7 @@ async def test_entity_specific_search_respects_limit(search_service, mock_opengi
         Entity(
             id=f"dept_{i}",
             name=f"encoded_{i}",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created="2020-01-01T00:00:00Z"
         )
         for i in range(10)
@@ -531,8 +532,8 @@ async def test_entity_specific_search_respects_limit(search_service, mock_opengi
         side_effect=[f"Health Department {i}" for i in range(10)]
     ):
         results = await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
+            major=KindMajorEnum.ORGANISATION.value,
+            minor=KindMinorEnum.DEPARTMENT.value,
             query="Health",
             as_of_date="2022-01-01",
             limit=3
@@ -548,8 +549,8 @@ async def test_entity_specific_search_handles_exceptions(search_service, mock_op
     mock_opengin_service.get_entities.side_effect = Exception("Service error")
     
     results = await search_service.entity_specific_search(
-        major="Organisation",
-        minor="department",
+        major=KindMajorEnum.ORGANISATION.value,
+        minor=KindMinorEnum.DEPARTMENT.value,
         query="health",
         as_of_date="2022-01-01"
     )
@@ -564,7 +565,7 @@ async def test_entity_specific_search_case_insensitive(search_service, mock_open
         Entity(
             id="dept_1",
             name="encoded_health",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created="2020-01-01T00:00:00Z"
         )
     ]
@@ -576,8 +577,8 @@ async def test_entity_specific_search_case_insensitive(search_service, mock_open
         return_value="Ministry of Health"
     ):
         results = await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
+            major=KindMajorEnum.ORGANISATION.value,
+            minor=KindMinorEnum.DEPARTMENT.value,
             query="HEALTH",
             as_of_date="2022-01-01"
         )
@@ -593,7 +594,7 @@ async def test_entity_specific_search_handles_entities_without_created(search_se
         Entity(
             id="dept_1",
             name="encoded_health",
-            kind=Kind(major="Organisation", minor="department"),
+            kind=Kind(major=KindMajorEnum.ORGANISATION.value, minor=KindMinorEnum.DEPARTMENT.value),
             created=""  # Empty created date (will default to year 9999 in extract_year)
         )
     ]
@@ -605,8 +606,8 @@ async def test_entity_specific_search_handles_entities_without_created(search_se
         return_value="Ministry of Health"
     ):
         results = await search_service.entity_specific_search(
-            major="Organisation",
-            minor="department",
+            major=KindMajorEnum.ORGANISATION.value,
+            minor=KindMinorEnum.DEPARTMENT.value,
             query="Health",
             as_of_date="2022-01-01"
         )
@@ -619,35 +620,35 @@ async def test_entity_specific_search_handles_entities_without_created(search_se
 
 def test_determine_entity_type_department(search_service):
     """Test _determine_entity_type returns 'department' for Organisation/department"""
-    entity_type = search_service._determine_entity_type("Organisation", "department")
-    assert entity_type == "department"
+    entity_type = search_service._determine_entity_type(KindMajorEnum.ORGANISATION.value, KindMinorEnum.DEPARTMENT.value)
+    assert entity_type == KindMinorEnum.DEPARTMENT.value
 
 
 def test_determine_entity_type_minister(search_service):
     """Test _determine_entity_type returns 'minister' for Organisation/minister"""
-    entity_type = search_service._determine_entity_type("Organisation", "stateMinister")
-    assert entity_type == "stateMinister"
+    entity_type = search_service._determine_entity_type(KindMajorEnum.ORGANISATION.value, KindMinorEnum.STATE_MINISTER.value)
+    assert entity_type == KindMinorEnum.STATE_MINISTER.value
 
 
 def test_determine_entity_type_dataset(search_service):
     """Test _determine_entity_type returns 'dataset' for Dataset/tabular"""
-    entity_type = search_service._determine_entity_type("Dataset", "tabular")
+    entity_type = search_service._determine_entity_type(KindMajorEnum.DATASET.value, KindMinorEnum.TABULAR.value)
     assert entity_type == "dataset"
 
 
 def test_determine_entity_type_person(search_service):
     """Test _determine_entity_type returns 'person' for Person/citizen"""
-    entity_type = search_service._determine_entity_type("Person", "citizen")
+    entity_type = search_service._determine_entity_type(KindMajorEnum.PERSON.value, KindMinorEnum.CITIZEN.value)
     assert entity_type == "person"
 
 
 def test_determine_entity_type_case_insensitive(search_service):
     """Test _determine_entity_type is case insensitive"""
-    assert search_service._determine_entity_type("organisation", "department") == "department"
-    assert search_service._determine_entity_type("ORGANISATION", "stateMinister") == "stateMinister"
-    assert search_service._determine_entity_type("organisation", "cabinetMinister") == "cabinetMinister"
-    assert search_service._determine_entity_type("dataset", "TABULAR") == "dataset"
-    assert search_service._determine_entity_type("PERSON", "citizen") == "person"
+    assert search_service._determine_entity_type(KindMajorEnum.ORGANISATION.value.lower(), KindMinorEnum.DEPARTMENT.value) == KindMinorEnum.DEPARTMENT.value
+    assert search_service._determine_entity_type(KindMajorEnum.ORGANISATION.value.upper(), KindMinorEnum.STATE_MINISTER.value) == KindMinorEnum.STATE_MINISTER.value
+    assert search_service._determine_entity_type(KindMajorEnum.ORGANISATION.value.lower(), KindMinorEnum.CABINET_MINISTER.value) == KindMinorEnum.CABINET_MINISTER.value
+    assert search_service._determine_entity_type(KindMajorEnum.DATASET.value.lower(), KindMinorEnum.TABULAR.value.upper()) == "dataset"
+    assert search_service._determine_entity_type(KindMajorEnum.PERSON.value.upper(), KindMinorEnum.CITIZEN.value) == "person"
 
 
 def test_determine_entity_type_unknown_combination(search_service):
@@ -658,22 +659,22 @@ def test_determine_entity_type_unknown_combination(search_service):
 
 def test_determine_entity_type_empty_major(search_service):
     """Test _determine_entity_type returns 'unknown' for empty major"""
-    entity_type = search_service._determine_entity_type("", "department")
+    entity_type = search_service._determine_entity_type("", KindMinorEnum.DEPARTMENT.value)
     assert entity_type == "unknown"
 
 
 def test_determine_entity_type_empty_minor(search_service):
     """Test _determine_entity_type returns 'unknown' for empty minor"""
-    entity_type = search_service._determine_entity_type("Organisation", "")
+    entity_type = search_service._determine_entity_type(KindMajorEnum.ORGANISATION.value, "")
     assert entity_type == "unknown"
 
 
 def test_determine_entity_type_partial_match(search_service):
     """Test _determine_entity_type doesn't match partial combinations"""
     # Valid major, but invalid minor
-    entity_type = search_service._determine_entity_type("Organisation", "invalid")
+    entity_type = search_service._determine_entity_type(KindMajorEnum.ORGANISATION.value, "invalid")
     assert entity_type == "unknown"
     
     # Valid minor, but invalid major
-    entity_type = search_service._determine_entity_type("Invalid", "department")
+    entity_type = search_service._determine_entity_type("Invalid", KindMinorEnum.DEPARTMENT.value)
     assert entity_type == "unknown"

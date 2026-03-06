@@ -1,13 +1,12 @@
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, patch
 from src.models.organisation_schemas import Entity, Relation
 from src.models.person_schemas import PersonResponse
 from src.exception.exceptions import BadRequestError, InternalServerError, NotFoundError
 from datetime import date
+from src.enums import KindMinorEnum
 
 # --- Tests for is_president_during ---
-
 
 @pytest.mark.asyncio
 async def test_is_president_during_true(person_service):
@@ -244,17 +243,15 @@ async def test_enrich_history_item_error(person_service, mock_opengin_service):
 async def test_fetch_person_profile_success(person_service, mock_opengin_service):
     person_id = "person_123"
 
-    mock_opengin_service.get_entities = AsyncMock(return_value=None)
-    mock_opengin_service.get_attributes = AsyncMock(
-        return_value={
-            "start": "",
-            "end": "",
-            "value": "encoded",
-        }
-    )
+    mock_opengin_service.get_entities.return_value = None
+    mock_opengin_service.get_attributes.return_value = {
+        "start": "",
+        "end": "",
+        "value": "encoded",
+    }
 
     fake_json = {
-        "type": "tabular",
+        "type": KindMinorEnum.TABULAR.value,
         "data": {
             "columns": [
                 "name",
@@ -323,14 +320,12 @@ async def test_fetch_person_profile_rows_empty_should_raise_not_found(
 ):
     person_id = "person_123"
 
-    mock_opengin_service.get_entities = AsyncMock(return_value=None)
-    mock_opengin_service.get_attributes = AsyncMock(
-        return_value={
-            "start": "",
-            "end": "",
-            "value": "encoded",
-        }
-    )
+    mock_opengin_service.get_entities.return_value = None
+    mock_opengin_service.get_attributes.return_value = {
+        "start": "",
+        "end": "",
+        "value": "encoded",
+    }
 
     with (
         patch(
@@ -369,14 +364,12 @@ async def test_fetch_person_profile_with_null_values_coming_from_upstream(
 ):
     person_id = "person_123"
 
-    mock_opengin_service.get_entities = AsyncMock(return_value=None)
-    mock_opengin_service.get_attributes = AsyncMock(
-        return_value={
-            "start": "",
-            "end": "",
-            "value": "encoded",
-        }
-    )
+    mock_opengin_service.get_entities.return_value = None
+    mock_opengin_service.get_attributes.return_value = {
+        "start": "",
+        "end": "",
+        "value": "encoded",
+    }
 
     with patch(
         "src.services.person_service.Util.transform_data_for_chart",
@@ -431,14 +424,12 @@ async def test_fetch_person_profile_with_null_values_coming_from_upstream_2(
 ):
     person_id = "person_123"
 
-    mock_opengin_service.get_entities = AsyncMock(return_value=None)
-    mock_opengin_service.get_attributes = AsyncMock(
-        return_value={
-            "start": "",
-            "end": "",
-            "value": "encoded",
-        }
-    )
+    mock_opengin_service.get_entities.return_value = None
+    mock_opengin_service.get_attributes.return_value = {
+        "start": "",
+        "end": "",
+        "value": "encoded",
+    }
 
     with patch(
         "src.services.person_service.Util.transform_data_for_chart",
@@ -494,14 +485,12 @@ async def test_fetch_person_profile_with_null_values_coming_from_upstream_3(
 ):
     person_id = "person_123"
 
-    mock_opengin_service.get_entities = AsyncMock(return_value=None)
-    mock_opengin_service.get_attributes = AsyncMock(
-        return_value={
-            "start": "",
-            "end": "",
-            "value": "encoded",
-        }
-    )
+    mock_opengin_service.get_entities.return_value = None
+    mock_opengin_service.get_attributes.return_value = {
+        "start": "",
+        "end": "",
+        "value": "encoded",
+    }
 
     with patch(
         "src.services.person_service.Util.transform_data_for_chart",
@@ -556,8 +545,8 @@ async def test_fetch_person_profile_with_null_name_should_raise_error(
 ):
     person_id = "person_123"
 
-    mock_opengin_service.get_entities = AsyncMock(return_value=None)
-    mock_opengin_service.get_attributes = AsyncMock(return_value={})
+    mock_opengin_service.get_entities.return_value = None
+    mock_opengin_service.get_attributes.return_value = {}
 
     with patch(
         "src.services.person_service.Util.transform_data_for_chart",

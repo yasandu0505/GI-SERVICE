@@ -289,6 +289,7 @@ paths:
         "500":
           description: Server Error
 
+
   /v1/active-portfolio-list:
     post:
       tags:
@@ -813,3 +814,50 @@ components:
           type: string
         id:
           type: string
+
+  /v1/organisation/department-history/{department_id}:
+    get:
+      tags:
+        - Organization
+      summary: Get department history timeline.
+      description: Returns a timeline of a department including ministry relations and ministers.
+      operationId: getDepartmentHistoryTimeline
+      parameters:
+        - name: department_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    ministry_id:
+                      type: string
+                    ministry_name:
+                      type: string
+                    minister_id:
+                      type: string
+                    minister_name:
+                      type: string
+                    period:
+                      type: string
+              example:
+                - ministry_id: "min_01"
+                  ministry_name: "Ministry of Finance"
+                  minister_id: "pers_01"
+                  minister_name: "John Doe"
+                  period: "2020 Jan 01 - 2021 Jan 01"
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+

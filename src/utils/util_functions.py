@@ -5,6 +5,7 @@ from datetime import datetime, date
 from google.protobuf.wrappers_pb2 import StringValue
 from google.protobuf import struct_pb2
 from google.protobuf.json_format import MessageToDict
+from src.enums import KindMinorEnum
 
 class Util:
     # helper: normalize timestamp
@@ -213,13 +214,13 @@ class Util:
             detected_type = Util.detect_data_type(data_dictionary)
             
             # Handle different data types
-            if detected_type == "tabular":
+            if detected_type == KindMinorEnum.TABULAR.value:
                 # Tabular data with columns and rows
                 columns = data_dictionary.get("columns", [])
                 rows = data_dictionary.get("rows", [])
                 
                 return {
-                    "type": "tabular",
+                    "type": KindMinorEnum.TABULAR.value,
                     "data": {
                         "columns": columns,
                         "rows": rows
@@ -255,7 +256,7 @@ class Util:
         
         # Check for tabular data (has both columns and rows)
         if "columns" in data_dict and "rows" in data_dict:
-            return "tabular"
+            return KindMinorEnum.TABULAR.value
         
         # Default to unknown
         return "unknown"
