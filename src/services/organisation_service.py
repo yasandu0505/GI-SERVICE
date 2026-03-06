@@ -6,8 +6,7 @@ from src.utils.util_functions import Util
 from aiohttp import ClientSession
 from src.utils import http_client
 from src.models.organisation_schemas import Entity, Relation
-from typing import Optional
-import re
+from typing import Optional, Sequence
 import logging
 
 logger = logging.getLogger(__name__)
@@ -418,4 +417,185 @@ class OrganisationService:
             raise
         except Exception as e:
             raise InternalServerError("An unexpected error occurred") from e
-     
+
+    # API: cabinet flow fot the given president id and date range of the presidency
+    async def get_active_ministers(self, entityId, dateActive):
+
+        relation = Relation(name="AS_MINISTER",activeAt=Util.normalize_timestamp(dateActive),direction="OUTGOING")
+
+        minister_relations = await self.opengin_service.fetch_relation(
+                entityId=entityId,
+                relation=relation
+            )
+        print("minister_relations: ", minister_relations)
+        
+        activeMinisterIds = []
+
+        for item in minister_relations:
+            activeMinisterIds.append(item.relatedEntityId)
+        print("activeMinisterIds: ", activeMinisterIds)
+        return activeMinisterIds
+
+    async def get_active_departments(self, entityId, dateActive):
+
+        relation = Relation(name="AS_DEPARTMENT",activeAt=Util.normalize_timestamp(dateActive),direction="OUTGOING")
+
+        department_relations = await self.opengin_service.fetch_relation(
+                entityId=entityId,
+                relation=relation
+            )
+        print("department_relations: ", department_relations)
+        
+        activeDepartments = []
+
+        for item in department_relations:
+            activeDepartments.append({
+                        "ministerId": entityId,
+                        "departmentId": item.relatedEntityId
+                    })
+        print("activeDepartments: ", activeDepartments)
+        return activeDepartments
+
+    async def get_ministers_and_departments(self, president_id: str, selected_date: str):
+        """
+        Get Ministers and Departments
+        
+        :param president_id: President ID
+        :param selected_date: Selected Date
+
+        output format: 
+        {
+            "body": {
+                "id": "",
+                "name": "",
+                "isNew": false,
+                "term": ""
+            }
+        }
+        """
+        departments_results = []
+        try:
+            # Step 1: Get active ministers (sequential, must happen first)
+            minister_ids = await self.get_active_ministers(president_id, selected_date)
+
+            # print(f"Minister IDs: {minister_ids}")
+
+            if len(minister_ids) == 0:
+                return departments_results
+
+                        
+            # Step 2: Get departments for each minister in parallel
+            tasks_for_departments = [
+                self.get_active_departments(minister_id, selected_date)
+                for minister_id in minister_ids
+            ]
+            
+            # Execute all department fetches in parallel
+            departments_results = await asyncio.gather(*tasks_for_departments, return_exceptions=True)
+
+            # Step 3: Flatten the nested list
+            flattened_results = []
+            for result in departments_results:
+                if isinstance(result, list):
+                    flattened_results.extend(result)
+
+            # print(f"Flattened results length: {len(flattened_results)}")
+            
+            print("flattened_results: ", flattened_results)
+            print("flattened_results length: ", len(flattened_results))
+            return flattened_results
+
+        except (BadRequestError, NotFoundError):
+            raise
+        except Exception as e:
+            raise InternalServerError("An unexpected error occurred") from e
+    
+    async def fetch_cabinet_flow(self, president_id: str, dates: Sequence[str]):
+        """
+        Fetch Cabinet Flow
+        
+        :param president_id: President ID
+        :param dates: List of dates
+
+        output format: 
+        {to be added}
+        """
+        print("president_id: ", president_id)
+        print("dates: ", dates)
+        try:
+            tasks_for_dates = [
+                self.get_ministers_and_departments(president_id, date)
+                for date in dates
+            ]
+            dates_gov_struct = await asyncio.gather(*tasks_for_dates, return_exceptions=True)
+
+            departments_by_ministers = {}
+            expected_slots = len(dates)
+            nodes: list[dict[str, str]] = []
+            node_indices: dict[tuple[str, int], int] = {} # key: (minister_id, date_index), value: node_index
+            links_counter: dict[tuple[int, int], int] = {}
+
+            for date_index, result in enumerate(dates_gov_struct):
+                if isinstance(result, Exception):
+                    continue
+
+                if isinstance(result, dict) and "error" in result:
+                    continue
+
+                if not isinstance(result, list):
+                    continue
+
+                for relation in result:
+                    if not isinstance(relation, dict):
+                        continue
+
+                    department_id = relation.get("departmentId")
+                    minister_id = relation.get("ministerId")
+
+                    if not department_id:
+                        continue
+
+                    # create nodes dict
+                    node_index = None
+                    if minister_id:
+                        node_key = (minister_id, date_index)
+                        node_index = node_indices.get(node_key)
+                        if node_index is None:
+                            node_index = len(nodes)
+                            node_indices[node_key] = node_index
+                            nodes.append({
+                                "name": minister_id,
+                                "time": dates[date_index]
+                            })
+
+                    # create departments_by_ministers dict for comparison:
+                    #   key is the department
+                    #   value is the ministers index in the nodes list (for each date)
+                    timeline = departments_by_ministers.get(department_id) # check if dept already in dict
+                    if timeline is None:
+                        timeline = [None] * expected_slots
+                        departments_by_ministers[department_id] = timeline
+
+                    # get previous and current minister index the department is under
+                    previous_index = timeline[date_index - 1] if date_index > 0 else None
+                    timeline[date_index] = node_index
+
+                    # if we not on the first date only then we can create a link between the previous and current minister
+                    if previous_index is not None and node_index is not None:
+                        key = (previous_index, node_index)
+                        links_counter[key] = links_counter.get(key, 0) + 1 # increment the number of departments moved from m1->m2
+                    
+            links = [
+                {"source": source, "target": target, "value": value}
+                for (source, target), value in links_counter.items()
+            ]
+
+            return {
+                # "departmentsByMinisters": departments_by_ministers,
+                "nodes": nodes,
+                "links": links,
+            }
+        except (BadRequestError, NotFoundError):
+            raise
+        except Exception as e:
+            raise InternalServerError("An unexpected error occurred") from e

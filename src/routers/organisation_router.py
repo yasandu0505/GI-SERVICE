@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query, Body, Path
 from src.dependencies import get_config
 from src.models.organisation_schemas import Date
 from src.services import OpenGINService, OrganisationService
+from typing import Sequence
 
 router = APIRouter(prefix="/v1/organisation", tags=["Organisation"])
 
@@ -34,3 +35,12 @@ async def prime_minister(
 ):
     service_response = await service.fetch_prime_minister(selected_date=body.date)
     return service_response
+
+@router.post("/cabinet-flow/{president_id}")
+async def cabinet_flow(
+    president_id: str = Path(..., description="ID of the president"),
+    dates: Sequence[str] = Body(...),
+    service: OrganisationService = Depends(get_organisation_service),
+):
+    service_response = await service.fetch_cabinet_flow (president_id=president_id, dates=dates)
+    return service_response 

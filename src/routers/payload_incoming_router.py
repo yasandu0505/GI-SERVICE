@@ -74,7 +74,7 @@ async def write_metadata(writer: WriteAttributes = Depends(get_writer_service)):
     else:
         return "❌ Could not connect to MongoDB"
     
-    return writer.create_parent_categories_and_children_categories_v2(result)
+    # return writer.create_parent_categories_and_children_categories_v2(result)
 
 @router.get("/data/yearswithdata")
 async def yearswithdata(
@@ -103,16 +103,6 @@ async def get_ministers_and_departments(
     result = await statService.get_ministers_and_departments(entityId, activeDate, session)
     return result
 
-@router.post("/data/orgchart/sankey/{entityId}")
-async def get_sankey_data(
-    entityId: str,
-    dates: Sequence[str],
-    statService: IncomingServiceAttributes = Depends(get_stat_service),
-    session: ClientSession = Depends(get_http_session),
-):
-    result = await statService.get_sankey_data(session, entityId, dates)
-    return result
-
 @router.get("/data/orgchart/president/{presidentId}")
 async def get_president_tenure(
     presidentId: str,
@@ -122,20 +112,3 @@ async def get_president_tenure(
     result = await statService.get_president_tenure(presidentId, session)
     return result
 
-# Get the timeline for the orgchart
-# @router.get("/data/orgchart/timeline")
-# async def get_timeline_for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_orgchart_service)):
-#     documentData = await orgchartService.get_documents()
-#     presidentData = await orgchartService.get_presidents()
-#     timeLine = orgchartService.get_timeline(documentData, presidentData)
-#     return timeLine
-
-# # Get ministries for the selected date
-# @router.post("/data/orgchart/ministries")
-# async def get__for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_orgchart_service)):
-#     return
-
-# # Get departments for the selected ministry at the selected date
-# @router.post("/data/orgchart/departments")
-# async def get__for_orgchart(orgchartService: IncomingServiceOrgchart = Depends(get_orgchart_service)):
-#     return
