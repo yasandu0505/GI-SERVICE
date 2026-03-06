@@ -127,6 +127,80 @@ paths:
         "500":
           description: Server Error
 
+  /v1/organisation/cabinet-flow/{president_id}:
+    post:
+      tags:
+        - Organization
+      summary: Get cabinet flow for a president.
+      description: Returns cabinet flow data for a president across up to three given dates.
+      operationId: getCabinetFlow
+      parameters:
+        - name: president_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: List of dates (max 3) for which to compute the cabinet flow.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - name
+                        - time
+                      properties:
+                        name:
+                          type: string
+                        time:
+                          type: string
+                  links:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - source
+                        - target
+                        - value
+                      properties:
+                        source:
+                          type: integer
+                        target:
+                          type: integer
+                        value:
+                          type: integer
+              example:
+                nodes:
+                  - name: "min_01"
+                    time: "2024-09-23T00:00:00Z"
+                  - name: "min_02"
+                    time: "2024-11-18T00:00:00Z"
+                links:
+                  - source: 0
+                    target: 1
+                    value: 3
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+
   /v1/person-history/{personId}:
     get:
       tags:
@@ -288,7 +362,6 @@ paths:
           description: Not found
         "500":
           description: Server Error
-
 
   /v1/active-portfolio-list:
     post:
