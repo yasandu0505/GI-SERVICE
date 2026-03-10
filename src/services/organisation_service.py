@@ -623,9 +623,7 @@ class OrganisationService:
                     timeline = departments_by_ministers.get(department_id)  # reuse the same list across dates
                     if timeline is None:
                         timeline = [None] * expected_slots
-                        print(f"Timeline: {timeline}\n")
                         departments_by_ministers[department_id] = timeline
-                        print(f"Departments by ministers: {departments_by_ministers}\n")
                     # Compare consecutive dates for this department to detect a move.
                     # previous_index is the minister-node at dates[date_index - 1]; node_index is at dates[date_index].
                     previous_index = timeline[date_index - 1] if date_index > 0 else None
