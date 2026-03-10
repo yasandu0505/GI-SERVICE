@@ -42,7 +42,7 @@ async def cabinet_flow(
     dates: Sequence[str] = Body(...),
     service: OrganisationService = Depends(get_organisation_service),
 ):
-    service_response = await service.fetch_cabinet_flow (president_id=president_id, dates=dates)
+    service_response = await service.fetch_cabinet_flow(president_id=president_id, dates=dates)
     return service_response 
 
 @router.get('/department-history/{department_id}', summary="Get department history timeline.", description="Returns a timeline of a department including ministry relations and ministers.")
