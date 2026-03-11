@@ -508,53 +508,7 @@ class OrganisationService:
             dates_gov_struct = await asyncio.gather(*tasks_for_dates, return_exceptions=True)
 
             departments_by_ministers = {}
-            expected_slots = len(dates)
-            nodes: list[dict[str, str]] = []
-            node_indices: dict[tuple[str, int], int] = {} # key: (minister_id, date_index), value: node_index
-            links_counter: dict[tuple[int, int], int] = {}
-            date_status: list[dict[str, object]] = [
-                {"date": d, "status": "pending"} for d in dates
-            ]
-
-            for date_index, result in enumerate(dates_gov_struct):
-                if isinstance(result, Exception):
-                    date_status[date_index] = {
-                        "date": dates[date_index],
-                        "status": "error",
-                        "message": str(result),
-                    }
-                    continue
-
-                if not isinstance(result, list):
-                    date_status[date_index] = {
-                        "date": dates[date_index],
-                        "status": "error",
-                        "message": "Unexpected response type while building cabinet flow",
-                    }
-                    continue
-                
-                if not result:
-                    date_status[date_index] = {
-                        "date": dates[date_index],
-                        "status": "no_data",
-                        "departmentsCount": 0,
-                    }
-                    continue
-                
-                date_status[date_index] = {
-                    "date": dates[date_index],
-                    "status": "ok",
-                    "departmentsCount": len(result),
-                }
-
-                for relation in result:
-                    if not isinstance(relation, dict):
-                        continue
-
-                    department_id = relation.get("departmentId")
-                    minister_id = relation.get("ministerId")
-
-            departments_by_ministers = {}
+            name_lookup = {}
             expected_slots = len(dates)
             nodes: list[dict[str, str]] = []
             node_indices: dict[tuple[str, int], int] = {} # key: (minister_id, date_index), value: node_index
@@ -613,7 +567,7 @@ class OrganisationService:
                             node_index = len(nodes)
                             node_indices[node_key] = node_index
                             nodes.append({
-                                "name": minister_id,
+                                "id": minister_id,
                                 "time": dates[date_index]
                             })
 
@@ -638,6 +592,24 @@ class OrganisationService:
                 {"source": source, "target": target, "value": value}
                 for (source, target), value in links_counter.items()
             ]
+            
+            unique_ids = list({node['id'] for node in nodes})
+            tasks_for_getting_names = [
+                self.opengin_service.get_entities(
+                    entity= Entity(id=id)
+                )
+                for id in unique_ids
+            ]
+            name_output = await asyncio.gather(*tasks_for_getting_names, return_exceptions=True) 
+            
+            for name_obj in name_output:
+                if isinstance(name_obj, Exception):
+                    continue
+                for name in name_obj:
+                    name_lookup[name.id] = Util.decode_protobuf_attribute_name(name.name)
+                        
+            for node in nodes:
+                node["name"] = name_lookup.get(node['id'])
 
             return {
                 "nodes": nodes,
