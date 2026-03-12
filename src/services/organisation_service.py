@@ -470,7 +470,6 @@ class OrganisationService:
             for result in departments_results:
                 if isinstance(result, list):
                     flattened_results.extend(result)
-                    
             return flattened_results
 
         except (BadRequestError, NotFoundError):
@@ -496,9 +495,12 @@ class OrganisationService:
         }
         """
         MAX_DATES = 3
-
+        
         if len(dates) > MAX_DATES:
             raise BadRequestError("Too many dates requested, only 3 dates are allowed")
+        
+        if len(dates) == 1:
+            raise ValueError("At least 2 dates required for the comparison")
 
         try:
             tasks_for_dates = [
