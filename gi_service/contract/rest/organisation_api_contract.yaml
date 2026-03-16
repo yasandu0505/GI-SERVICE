@@ -132,7 +132,7 @@ paths:
       tags:
         - Organization
       summary: Get cabinet flow for a president (How the organisation structure changed over time).
-      description: Returns a d3-force-directed graph data with nodes, links and dates (nodes and links are for a specific date, dates are for the list of dates for which the cabinet flow is computed).
+      description: Returns a d3-force-directed graph data with nodes, links and dates (nodes correspond to the ministers and the links link two minister nodes with a value corresponding to the department count. The dates array contains the list of dates for which the cabinet flow is computed.)
       operationId: getCabinetFlow
       parameters:
         - name: president_id
