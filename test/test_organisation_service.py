@@ -547,7 +547,7 @@ async def test_fetch_and_map_relations_with_errors(organisation_service, mock_op
     
 @pytest.mark.asyncio
 async def test_fetch_cabinet_flow_too_many_dates(organisation_service):
-    president_id = "2403-03-01_cit_1"
+    president_id = "pres1"
     dates = ["2024-09-23", "2024-09-24", "2024-09-25", "2024-09-26"]
     
     with pytest.raises(BadRequestError):
@@ -555,7 +555,7 @@ async def test_fetch_cabinet_flow_too_many_dates(organisation_service):
 
 @pytest.mark.asyncio
 async def test_fetch_cabinet_flow_single_date_fails(organisation_service):
-    president_id = "2403-03-01_cit_1"
+    president_id = "pres1"
     dates = ["2024-09-23"]
     
     with pytest.raises(ValueError):
@@ -734,7 +734,6 @@ async def test_multiple_departments_aggregation(organisation_service):
     Test that multiple departments moving along the same minister path are aggregated into a single link
     with correct value.
     """
-    # ---- Arrange ----
 
     # Two dates: both departments move from min1 -> min2
     organisation_service.get_ministers_and_departments = AsyncMock(

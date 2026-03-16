@@ -20,7 +20,6 @@ class OrganisationService:
     def __init__(self, config: dict, opengin_service):
         self.config = config
         self.opengin_service = opengin_service
-        self.department_semaphore = asyncio.Semaphore(10)
 
     @property
     def session(self) -> ClientSession:
@@ -421,7 +420,6 @@ class OrganisationService:
         except Exception as e:
             raise InternalServerError("An unexpected error occurred") from e
 
-    # API: cabinet flow fot the given president id and date range of the presidency
     async def get_active_ministers(self, entity_id, date_active):
 
         relation = Relation(name=RelationNameEnum.AS_MINISTER.value,activeAt=Util.normalize_timestamp(date_active),direction=RelationDirectionEnum.OUTGOING.value)
@@ -477,7 +475,8 @@ class OrganisationService:
         except Exception as e:
             raise InternalServerError("An unexpected error occurred") from e
     
-    async def fetch_cabinet_flow(self, president_id: str, dates: Sequence[str]):
+    # API: cabinet flow for the given president id and date range of the presidency
+    async def fetch_cabinet_flow(self, president_id: str, dates: Sequence[str], max_dates: int = 3):
         """
         Fetch Cabinet Flow
         
@@ -487,17 +486,19 @@ class OrganisationService:
         output format: 
         {
             "nodes": [
-                {"name": "<minister_id>", "time": "<date>"}
+                {"id": "<minister_id>", "time": "<date>", "name": "<minister_name>"}
             ],
             "links": [
                 {"source": <node_index>, "target": <node_index>, "value": <count>}
+            ],
+            "dates": [
+                {"date": "<date>", "status": "<status>", "departmentsCount": <count>}
             ]
         }
         """
-        MAX_DATES = 3
         
-        if len(dates) > MAX_DATES:
-            raise BadRequestError("Too many dates requested, only 3 dates are allowed")
+        if len(dates) > max_dates:
+            raise BadRequestError(f"Too many dates requested, only {max_dates} dates are allowed")
         
         if len(dates) == 1:
             raise ValueError("At least 2 dates required for the comparison")
@@ -509,15 +510,15 @@ class OrganisationService:
             ]
             dates_gov_struct = await asyncio.gather(*tasks_for_dates, return_exceptions=True)
 
-            departments_by_ministers = {}
-            name_lookup = {}
-            expected_slots = len(dates)
-            nodes: list[dict[str, str]] = []
-            node_indices: dict[tuple[str, int], int] = {} # key: (minister_id, date_index), value: node_index
-            links_counter: dict[tuple[int, int], int] = {}
+            departments_by_ministers = {} # maps department_id -> [node_index_at_date0, node_index_at_date1, ...] to track which minister held each department across dates
+            name_lookup = {} # maps entity_id -> human-readable name, populated after fetching minister names
+            expected_slots = len(dates) # number of dates requested, used to initialise fixed-size timeline slots per department
+            nodes: list[dict[str, str]] = [] # list of graph nodes, each representing a minister at a specific date e.g. {"id": "minister_001", "time": "2015-01-01"}
+            node_indices: dict[tuple[str, int], int] = {} # maps (minister_id, date_index) -> index in `nodes`, avoids duplicate nodes for the same minister at the same date
+            links_counter: dict[tuple[int, int], int] = {} # maps (source_node_index, target_node_index) -> count of departments that moved between those two ministers across consecutive dates
             date_status: list[dict[str, object]] = [
                 {"date": d, "status": "pending"} for d in dates
-            ]
+            ] # tracks processing status per date ("pending" -> "ok" / "error" / "no_data") for the response metadata
 
             for date_index, result in enumerate(dates_gov_struct):
                 if isinstance(result, Exception):
@@ -561,10 +562,11 @@ class OrganisationService:
                         continue
 
                     # create nodes dict
+                    # eg: nodes = [{"id": "minister_001", "time": "2015-01-01"}, {"id": "minister_002", "time": "2015-01-01"}]
                     node_index = None
                     if minister_id:
-                        node_key = (minister_id, date_index)
-                        node_index = node_indices.get(node_key)
+                        node_key = (minister_id, date_index) # e.g. ("minister_001", 0) — unique key per minister per date
+                        node_index = node_indices.get(node_key) # check if this minister already has a node for this date
                         if node_index is None:
                             node_index = len(nodes)
                             node_indices[node_key] = node_index
