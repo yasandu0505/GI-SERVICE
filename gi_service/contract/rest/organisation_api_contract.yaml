@@ -127,6 +127,119 @@ paths:
         "500":
           description: Server Error
 
+  /v1/organisation/cabinet-flow/{president_id}:
+    post:
+      tags:
+        - Organization
+      summary: Get cabinet flow for a president (How the organisation structure changed over time).
+      description: Returns a d3-force-directed graph data with nodes, links and dates (nodes correspond to the ministers and the links link two minister nodes with a value corresponding to the department count. The dates array contains the list of dates for which the cabinet flow is computed.)
+      operationId: getCabinetFlow
+      parameters:
+        - name: president_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: List of dates (max 3) for which to compute the cabinet flow.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+            example:
+              - "2024-09-23"
+              - "2024-09-24"
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - name
+                        - time
+                      properties:
+                        id:
+                          type: string
+                          description: Unique identifier for the ministry node.
+                        name:
+                          type: string
+                          description: Display name of the ministry.
+                        time:
+                          type: string
+                          description: The date snapshot this node belongs to (YYYY-MM-DD).
+                  links:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - source
+                        - target
+                        - value
+                      properties:
+                        source:
+                          type: integer
+                          description: Index of the source node in the nodes array.
+                        target:
+                          type: integer
+                          description: Index of the target node in the nodes array.
+                        value:
+                          type: integer
+                          description: Number of departments shared between the source and target ministry nodes.
+                  dates:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - date
+                        - status
+                        - departmentsCount
+                      properties:
+                        date:
+                          type: string
+                          description: The date snapshot (YYYY-MM-DD).
+                        status:
+                          type: string
+                          description: Status of the data retrieval for this date (e.g. "ok").
+                        departmentsCount:
+                          type: integer
+                          description: Total number of active departments on this date.
+              example:
+                nodes:
+                  - id: "2289-43_min_1"
+                    name: "Minister of Defence"
+                    time: "2024-09-23"
+                  - id: "2289-43_min_1"
+                    name: "Minister of Defence"
+                    time: "2024-09-24"
+                links:
+                  - source: 0
+                    target: 1
+                    value: 25
+                dates:
+                  - date: "2024-09-23"
+                    status: "ok"
+                    departmentsCount: 449
+                  - date: "2024-09-24"
+                    status: "ok"
+                    departmentsCount: 449
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
+
   /v1/person-history/{personId}:
     get:
       tags:
@@ -289,6 +402,51 @@ paths:
         "500":
           description: Server Error
 
+  /v1/organisation/department-history/{department_id}:
+    get:
+      tags:
+        - Organization
+      summary: Get department history timeline.
+      description: Returns a timeline of a department including ministry relations and ministers.
+      operationId: getDepartmentHistoryTimeline
+      parameters:
+        - name: department_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    ministry_id:
+                      type: string
+                    ministry_name:
+                      type: string
+                    minister_id:
+                      type: string
+                    minister_name:
+                      type: string
+                    period:
+                      type: string
+              example:
+                - ministry_id: "min_01"
+                  ministry_name: "Ministry of Finance"
+                  minister_id: "pers_01"
+                  minister_name: "John Doe"
+                  period: "2020 Jan 01 - 2021 Jan 01"
+        "400":
+          description: Bad request
+        "404":
+          description: Not found
+        "500":
+          description: Server Error
 
   /v1/active-portfolio-list:
     post:
@@ -814,50 +972,3 @@ components:
           type: string
         id:
           type: string
-
-  /v1/organisation/department-history/{department_id}:
-    get:
-      tags:
-        - Organization
-      summary: Get department history timeline.
-      description: Returns a timeline of a department including ministry relations and ministers.
-      operationId: getDepartmentHistoryTimeline
-      parameters:
-        - name: department_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Successfully returned
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    ministry_id:
-                      type: string
-                    ministry_name:
-                      type: string
-                    minister_id:
-                      type: string
-                    minister_name:
-                      type: string
-                    period:
-                      type: string
-              example:
-                - ministry_id: "min_01"
-                  ministry_name: "Ministry of Finance"
-                  minister_id: "pers_01"
-                  minister_name: "John Doe"
-                  period: "2020 Jan 01 - 2021 Jan 01"
-        "400":
-          description: Bad request
-        "404":
-          description: Not found
-        "500":
-          description: Server Error
-

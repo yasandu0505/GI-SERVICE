@@ -2,7 +2,7 @@ import pytest
 from src.enums.relationEnum import RelationNameEnum, RelationDirectionEnum
 from src.exception.exceptions import InternalServerError, BadRequestError
 from src.utils.util_functions import Util
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from src.models.organisation_schemas import Entity, Relation
 
 @pytest.mark.asyncio
@@ -544,3 +544,245 @@ async def test_fetch_and_map_relations_with_errors(organisation_service, mock_op
     assert len(result) == 2
     assert len(result["e1"]) == 1
     assert result["e2"] == [] # Should default to empty list on error
+    
+@pytest.mark.asyncio
+async def test_fetch_cabinet_flow_too_many_dates(organisation_service):
+    president_id = "pres1"
+    dates = ["2024-09-23", "2024-09-24", "2024-09-25", "2024-09-26"]
+    
+    with pytest.raises(BadRequestError):
+        await organisation_service.fetch_cabinet_flow(president_id, dates)
+
+@pytest.mark.asyncio
+async def test_fetch_cabinet_flow_single_date_fails(organisation_service):
+    president_id = "pres1"
+    dates = ["2024-09-23"]
+    
+    with pytest.raises(ValueError):
+        await organisation_service.fetch_cabinet_flow(president_id, dates)
+        
+@pytest.mark.asyncio
+async def test_department_moves_between_ministers(organisation_service):
+    organisation_service.get_ministers_and_departments = AsyncMock(
+        side_effect=[
+            [
+                {"ministerId": "min4", "departmentId": "dep177"},
+                {"ministerId": "min4", "departmentId": "dep175"},
+                {"ministerId": "min4", "departmentId": "dep182"},
+                {"ministerId": "min4", "departmentId": "dep176"},
+        ],
+        [
+                {"ministerId": "min9", "departmentId": "dep177"}, #moved
+                {"ministerId": "min4", "departmentId": "dep175"}, #same
+                {"ministerId": "min4", "departmentId": "dep182"}, #same
+                {"ministerId": "min10", "departmentId": "dep176"}, #moved
+        ]
+        ]
+    )
+    
+    mock_entity1 = MagicMock()
+    mock_entity1.id = "min4"
+    mock_entity1.name = "Minister 4"
+
+    mock_entity2 = MagicMock()
+    mock_entity2.id = "min9"
+    mock_entity2.name = "Minister 9"
+
+    mock_entity3 = MagicMock()
+    mock_entity3.id = "min10"
+    mock_entity3.name = "Minister 10"
+    
+    organisation_service.opengin_service.get_entities = AsyncMock(
+        return_value=[mock_entity1, mock_entity2, mock_entity3]
+    )
+    
+    result = await organisation_service.fetch_cabinet_flow(
+        president_id="pres1",
+        dates=["2024-01-01", "2024-02-01"]
+    )
+    
+    # 2 departments moved (dep177 and dep176)
+    assert len(result["links"]) == 3
+
+    # total movements should equal 4
+    total_flow = sum(link["value"] for link in result["links"])
+    assert total_flow == 4
+
+    # nodes should exist
+    assert len(result["nodes"]) > 0
+
+    # date statuses should be ok
+    assert result["dates"][0]["status"] == "ok"
+    assert result["dates"][1]["status"] == "ok"
+
+    # dependency should be called once per date
+    assert organisation_service.get_ministers_and_departments.call_count == 2
+
+@pytest.mark.asyncio
+async def test_no_departments(organisation_service):
+    organisation_service.get_ministers_and_departments = AsyncMock(return_value=[])
+
+    result = await organisation_service.fetch_cabinet_flow(
+        "pres1",
+        ["2024-01-01","2024-01-02"]
+    )
+    
+    assert result["nodes"] == []
+    assert result["links"] == []
+    assert result["dates"][0]["status"] == "no_data"
+    assert result["dates"][1]["status"] == "no_data"
+
+@pytest.mark.asyncio
+async def test_no_departments_for_one_date(organisation_service):
+    organisation_service.get_ministers_and_departments = AsyncMock(
+        side_effect=[
+            [
+                {"ministerId": "min3", "departmentId": "dep177"},
+                {"ministerId": "min4", "departmentId": "dep175"},
+                {"ministerId": "min5", "departmentId": "dep182"},
+                {"ministerId": "min6", "departmentId": "dep176"},
+            ],
+            []
+        ]
+    )
+    
+    mock_entity1 = MagicMock()
+    mock_entity1.id = "min3"
+    mock_entity1.name = "Minister 3"
+    
+    mock_entity2 = MagicMock()
+    mock_entity2.id = "min4"
+    mock_entity2.name = "Minister 4"
+    
+    mock_entity3 = MagicMock()
+    mock_entity3.id = "min5"
+    mock_entity3.name = "Minister 5"
+    
+    mock_entity4 = MagicMock()
+    mock_entity4.id = "min6"
+    mock_entity4.name = "Minister 6"
+    
+    organisation_service.opengin_service.get_entities = AsyncMock(
+        return_value=[mock_entity1,mock_entity2,mock_entity3,mock_entity4]
+    )
+    
+    result = await organisation_service.fetch_cabinet_flow(
+        president_id="pres1",
+        dates=["2024-01-01", "2024-02-01"]
+    )
+    
+    # no movement on departments since the second date is empty
+    assert len(result["links"]) == 0
+
+    # total movements should equal 0
+    total_flow = sum(link["value"] for link in result["links"])
+    assert total_flow == 0
+
+    # nodes should exist
+    assert len(result["nodes"]) > 0
+    assert len(result["nodes"]) == 4
+
+    # date statuses should be ok and one date should be no_data
+    assert result["dates"][0]["status"] == "ok"
+    assert result["dates"][1]["status"] == "no_data"
+
+    # dependency should be called once per date
+    assert organisation_service.get_ministers_and_departments.call_count == 2
+
+@pytest.mark.asyncio
+async def test_one_date_failure(organisation_service):
+    organisation_service.get_ministers_and_departments = AsyncMock(side_effect=[
+        Exception("API failed"),
+        [{"ministerId": "min3", "departmentId": "dep177"}]
+    ])
+    
+    mock_entity1 = MagicMock()
+    mock_entity1.id = "min3"
+    mock_entity1.name = "Minister 3"
+
+    organisation_service.opengin_service.get_entities = AsyncMock(
+        return_value=[mock_entity1]
+    )
+
+    result = await organisation_service.fetch_cabinet_flow(
+        "pres1",
+        ["2024-01-01","2024-02-01"]
+    )
+
+    assert result["dates"][0]["status"] == "error"
+    assert result["dates"][1]["status"] == "ok"
+
+@pytest.mark.asyncio
+async def test_invalid_response_type(organisation_service):
+    organisation_service.get_ministers_and_departments = AsyncMock(side_effect=[
+        "hi test 1",
+        "hi test 2"
+    ])
+
+    result = await organisation_service.fetch_cabinet_flow(
+        "pres1",
+        ["2024-01-01","2024-01-02"]
+    )
+
+    assert result["dates"][0]["status"] == "error"
+    assert result["dates"][1]["status"] == "error"
+    
+
+@pytest.mark.asyncio
+async def test_multiple_departments_aggregation(organisation_service):
+    """
+    Test that multiple departments moving along the same minister path are aggregated into a single link
+    with correct value.
+    """
+
+    # Two dates: both departments move from min1 -> min2
+    organisation_service.get_ministers_and_departments = AsyncMock(
+        side_effect=[
+            [  # 
+                {"ministerId": "min1", "departmentId": "dep1"},
+                {"ministerId": "min1", "departmentId": "dep2"},
+            ],
+            [  
+                {"ministerId": "min2", "departmentId": "dep1"},
+                {"ministerId": "min2", "departmentId": "dep2"},
+            ],
+        ]
+    )
+
+    mock_entity1 = MagicMock()
+    mock_entity1.id = "min1"
+    mock_entity1.name = "Minister 1"
+
+    mock_entity2 = MagicMock()
+    mock_entity2.id = "min2"
+    mock_entity2.name = "Minister 2"
+
+    organisation_service.opengin_service.get_entities = AsyncMock(
+        return_value=[mock_entity1, mock_entity2]
+    )
+
+    result = await organisation_service.fetch_cabinet_flow(
+        president_id="pres1",
+        dates=["2024-01-01", "2024-02-01"]
+    )
+
+    # There should be exactly one link (min1 -> min2)
+    assert len(result["links"]) == 1
+
+    # The value should be 2 because two departments moved along this path
+    link = result["links"][0]
+    assert link["value"] == 2
+
+    # Nodes should exist for both ministers
+    node_ids = {node["id"] for node in result["nodes"]}
+    assert node_ids == {"min1", "min2"}
+
+    # Dates statuses should both be "ok"
+    assert result["dates"][0]["status"] == "ok"
+    assert result["dates"][1]["status"] == "ok"
+
+    # Dependency should be called once per date
+    assert organisation_service.get_ministers_and_departments.call_count == 2
+    
+
+    
