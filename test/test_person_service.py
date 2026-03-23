@@ -619,13 +619,17 @@ async def test_fetch_all_presidents_success(person_service, mock_opengin_service
         assert president["name"] == "President One"
         assert len(president["terms"]) == 2
         
-        # Check gazettes are grouped correctly and sorted by date
-        gazettes = president["gazettes_published"]
-        assert len(gazettes) == 2
-        assert gazettes[0]["date"] == "2020-05-01"
-        assert "org_gzt" in gazettes[0]["ids"]
-        assert gazettes[1]["date"] == "2022-08-01"
-        assert "per_gzt" in gazettes[1]["ids"]
+        # Check gazettes are inside the first term (2020 term)
+        term1_gazettes = president["terms"][0]["gazettes_published"]
+        assert len(term1_gazettes) == 1
+        assert term1_gazettes[0]["date"] == "2020-05-01"
+        assert "org_gzt" in term1_gazettes[0]["ids"]
+
+        # Check gazettes are inside the second term (2022 term)
+        term2_gazettes = president["terms"][1]["gazettes_published"]
+        assert len(term2_gazettes) == 1
+        assert term2_gazettes[0]["date"] == "2022-08-01"
+        assert "per_gzt" in term2_gazettes[0]["ids"]
 
 
 @pytest.mark.asyncio
@@ -653,7 +657,7 @@ async def test_fetch_all_presidents_no_gazettes(person_service, mock_opengin_ser
 
         assert "p1" in result
         assert result["p1"]["name"] == "President One"
-        assert result["p1"]["gazettes_published"] == []
+        assert result["p1"]["terms"][0]["gazettes_published"] == []
 
 
 @pytest.mark.asyncio
