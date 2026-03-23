@@ -288,7 +288,7 @@ class PersonService:
             )
             
             if not president_relations:
-                return []
+                return {}
 
             # Group relations by id for multiple terms for the same president
             presidents_map = {}
@@ -372,14 +372,16 @@ class PersonService:
                 
                 president_info["gazettes_published"] = gazettes_list
 
-            # Sort the presidents by their latest term's start date in descending order
-            # def get_latest_start(president):
-            #     return max(term["start"] for term in president["terms"])
+             # Sort the presidents by their latest term's start date in descending order
+            def get_latest_start(item):
+                president_data = item[1]
+                return max(term["start"] for term in president_data["terms"])
 
-            # presidents_list = list(presidents_map.values())
-            # presidents_list.sort(key=get_latest_start, reverse=True)
+            sorted_presidents_map = dict(
+                sorted(presidents_map.items(), key=get_latest_start, reverse=True)
+            )
 
-            return presidents_map
+            return sorted_presidents_map
         except Exception as e:
             logger.error(f"Error fetching all presidents: {e}")
             raise InternalServerError("An unexpected error occurred") from e
