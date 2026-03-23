@@ -594,3 +594,103 @@ async def test_fetch_person_profile_internal_error(
 
     with pytest.raises(InternalServerError):
         await person_service.fetch_person_profile("person_123")
+
+# --- Tests for fetch_all_presidents ---
+
+@pytest.mark.asyncio
+async def test_fetch_all_presidents_success(person_service, mock_opengin_service):
+
+    mock_opengin_service.fetch_relation.return_value = [
+        Relation(relatedEntityId="p1", startTime="2020-01-01T00:00:00Z", endTime="2022-01-01T00:00:00Z"),
+        Relation(relatedEntityId="p1", startTime="2022-06-01T00:00:00Z", endTime="")
+    ]
+
+    mock_opengin_service.get_entities.side_effect = [
+        [Entity(id="g_org", created="2020-05-01T00:00:00Z", name="org_gzt")],
+        [Entity(id="g_per", created="2022-08-01T00:00:00Z", name="per_gzt")],
+        [Entity(id="p1", name="President One")] # president name fetch
+    ]
+
+    with patch("src.services.person_service.Util.decode_protobuf_attribute_name", side_effect=lambda x: x):
+        result = await person_service.fetch_all_presidents()
+
+        assert "p1" in result
+        president = result["p1"]
+        assert president["name"] == "President One"
+        assert len(president["terms"]) == 2
+        
+        # Check gazettes are grouped correctly and sorted by date
+        gazettes = president["gazettes_published"]
+        assert len(gazettes) == 2
+        assert gazettes[0]["date"] == "2020-05-01"
+        assert "org_gzt" in gazettes[0]["ids"]
+        assert gazettes[1]["date"] == "2022-08-01"
+        assert "per_gzt" in gazettes[1]["ids"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_all_presidents_no_data(person_service, mock_opengin_service):
+    mock_opengin_service.fetch_relation.return_value = []
+    
+    result = await person_service.fetch_all_presidents()
+    
+    assert result == {}
+
+@pytest.mark.asyncio
+async def test_fetch_all_presidents_no_gazettes(person_service, mock_opengin_service):
+    mock_opengin_service.fetch_relation.return_value = [
+        Relation(relatedEntityId="p1", startTime="2020-01-01T00:00:00Z", endTime="")
+    ]
+
+    mock_opengin_service.get_entities.side_effect = [
+        [],  # No organization gazettes
+        [],  # No person gazettes
+        [Entity(id="p1", name="President One")] 
+    ]
+
+    with patch("src.services.person_service.Util.decode_protobuf_attribute_name", side_effect=lambda x: x):
+        result = await person_service.fetch_all_presidents()
+
+        assert "p1" in result
+        assert result["p1"]["name"] == "President One"
+        assert result["p1"]["gazettes_published"] == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_all_presidents_sorting_with_multiple_terms(person_service, mock_opengin_service):
+    # Setup: 
+    # p_old started in 2010
+    # p_multi started in 2005 AND 2022. 
+    # Even though p_multi has a 2005 term, their 2022 term should put them at the TOP.
+
+    mock_opengin_service.fetch_relation.return_value = [
+        Relation(relatedEntityId="p_old", startTime="2010-01-01T00:00:00Z", endTime="2015-01-01T00:00:00Z"),
+        Relation(relatedEntityId="p_multi", startTime="2005-01-01T00:00:00Z", endTime="2009-12-31T00:00:00Z"),
+        Relation(relatedEntityId="p_multi", startTime="2022-01-01T00:00:00Z", endTime="")
+    ]
+
+    mock_opengin_service.get_entities.side_effect = [
+        [], [], # no gazettes for either
+        [Entity(id="p_old", name="Old President")],
+        [Entity(id="p_multi", name="Multi-term President")]
+    ]
+
+    with patch("src.services.person_service.Util.decode_protobuf_attribute_name", side_effect=lambda x: x):
+        result = await person_service.fetch_all_presidents()
+
+        # keys (president ids) in final dictionary
+        ids_in_order = list(result.keys())
+        
+        # p_multi should be first because 2022 > 2010
+        assert ids_in_order[0] == "p_multi"
+        assert ids_in_order[1] == "p_old"
+
+
+@pytest.mark.asyncio
+async def test_fetch_all_presidents_internal_error(person_service, mock_opengin_service):
+    mock_opengin_service.fetch_relation.side_effect = Exception("Database down")
+    
+    with pytest.raises(InternalServerError):
+        await person_service.fetch_all_presidents()
+
+
