@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from src.routers import payload_incoming_router
 from src.routers import organisation_router, data_router, search_router, person_router
 from dotenv import load_dotenv
 import os
@@ -56,7 +55,6 @@ app.add_middleware(
 
 app.add_middleware(ThrottlingMiddleware)
 
-app.include_router(payload_incoming_router.router)
 app.include_router(organisation_router)
 app.include_router(data_router)
 app.include_router(search_router)
