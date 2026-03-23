@@ -180,16 +180,16 @@ paths:
                   terms:
                     - start: "2010-01-01"
                       end: "2015-01-01"
-                  gazettes_published:
-                    - date: "2012-05-15"
-                      ids: ["gzt-101", "gzt-102"]
+                      gazettes_published:
+                        - date: "2012-05-15"
+                          ids: ["gzt-101", "gzt-102"]
                 "pres-2":
                   id: "pres-2"
                   name: "Jane Smith"
                   terms:
                     - start: "2015-01-01"
                       end: null
-                  gazettes_published: []
+                      gazettes_published: []
 
         "500":
           description: Server Error
@@ -327,7 +327,6 @@ components:
         - id
         - name
         - terms
-        - gazettes_published
       properties:
         id:
           type: string
@@ -341,16 +340,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PresidentTerm"
-        gazettes_published:
-          type: array
-          items:
-            $ref: "#/components/schemas/GazettePublished"
 
     PresidentTerm:
       type: object
       required:
         - start
         - end
+        - gazettes_published
       properties:
         start:
           type: string
@@ -363,6 +359,10 @@ components:
           nullable: true
           description: "Term end date (YYYY-MM-DD), null if ongoing"
           example: "2015-01-01"
+        gazettes_published:
+          type: array
+          items:
+            $ref: "#/components/schemas/GazettePublished"
 
     GazettePublished:
       type: object
