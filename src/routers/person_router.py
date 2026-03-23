@@ -23,3 +23,10 @@ async def person_profile(
 ):
     service_response = await service.fetch_person_profile(person_id)
     return service_response
+
+@router.get('/all-presidents', summary="Get all presidents.", description="Returns a list of all presidents.")
+async def all_presidents(
+    service: PersonService = Depends(get_person_service)
+):
+    service_response = await service.fetch_all_presidents()
+    return service_response
