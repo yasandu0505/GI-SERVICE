@@ -365,7 +365,8 @@ class PersonService:
                     
                     try:
                         gazette_id = Util.decode_protobuf_attribute_name(gazette.name)
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"Could not decode gazette name, falling back to raw string: {e}")
                         gazette_id = str(gazette.name)
 
                     term_dict = term_item["term_data"]
