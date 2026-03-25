@@ -282,11 +282,15 @@ class PersonService:
                 ))
             )
             
-            president_relations, organization_gazettes, person_gazettes = await asyncio.gather(
-                president_relations_task, organization_gazettes_task, person_gazettes_task
+            results = await asyncio.gather(
+                president_relations_task, 
+                organization_gazettes_task, 
+                person_gazettes_task,
+                return_exceptions=True
             )
+            president_relations, organization_gazettes, person_gazettes = results
             
-            if not president_relations:
+            if isinstance(president_relations, Exception) or not president_relations:
                 return {}
 
             # Group relations by id for multiple terms for the same president
