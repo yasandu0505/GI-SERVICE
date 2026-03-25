@@ -290,7 +290,11 @@ class PersonService:
             )
             president_relations, organization_gazettes, person_gazettes = results
             
-            if isinstance(president_relations, Exception) or not president_relations:
+            if isinstance(president_relations, Exception):
+                logger.error(f"Failed to fetch president relations: {president_relations}")
+                raise InternalServerError("An unexpected error occurred while fetching president relations")
+
+            if not president_relations:
                 return {}
 
             # Group relations by id for multiple terms for the same president
