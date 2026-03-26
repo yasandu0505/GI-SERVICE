@@ -246,22 +246,24 @@ class PersonService:
         
         Output Format:
             {
-                "president_id": {
-                    "id": "president_id",
-                    "name": "president_name",
-                    "terms": [
-                        {
-                            "start": "start_date",
-                            "end": "end_date",
-                            "gazettes_published": [
-                                {
-                                    "date": "gazette_date",
-                                    "ids": ["gazette_id"]
-                                }
-                            ]
-                        }
-                    ]
-                }
+                "presidents": [
+                    {
+                        "id": "president_id",
+                        "name": "president_name",
+                        "terms": [
+                            {
+                                "start": "start_date",
+                                "end": "end_date",
+                                "gazettes_published": [
+                                    {
+                                        "date": "gazette_date",
+                                        "ids": ["gazette_id"]
+                                    }
+                                ]
+                            }
+                        ],
+                    }
+                ]
             }
         """
         try:
@@ -296,7 +298,7 @@ class PersonService:
                 raise InternalServerError("An unexpected error occurred while fetching president relations")
 
             if not president_relations:
-                return {}
+                return []
 
             # Group relations by id for multiple terms for the same president
             presidents_map = {}
@@ -346,10 +348,9 @@ class PersonService:
             
             # Combine all gazettes into a single list
             all_gazettes = []
-            if not isinstance(organization_gazettes, Exception) and organization_gazettes:
-                all_gazettes.extend(organization_gazettes)
-            if not isinstance(person_gazettes, Exception) and person_gazettes:
-                all_gazettes.extend(person_gazettes)
+            for gazette_result in (organization_gazettes, person_gazettes):
+                if not isinstance(gazette_result, Exception) and gazette_result:
+                    all_gazettes.extend(gazette_result)
 
             # Sort both lists 
             all_terms.sort(key=lambda x: x["start"])
@@ -396,16 +397,15 @@ class PersonService:
                     
                     term["gazettes_published"] = gazettes_list
 
-             # Sort the presidents by their latest term's start date in descending order
-            def get_latest_start(item):
-                president_data = item[1]
+            # Sort the presidents by their latest term's start date in descending order
+            def get_latest_start(president_data):
                 return max(term["start"] for term in president_data["terms"])
 
-            sorted_presidents_map = dict(
-                sorted(presidents_map.items(), key=get_latest_start, reverse=True)
+            presidents_list = sorted(
+                presidents_map.values(), key=get_latest_start, reverse=True
             )
 
-            return sorted_presidents_map
+            return {"presidents": presidents_list}
         except Exception as e:
             logger.error(f"Error fetching all presidents: {e}")
             raise InternalServerError("An unexpected error occurred") from e
