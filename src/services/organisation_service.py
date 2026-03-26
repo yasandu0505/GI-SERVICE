@@ -8,6 +8,7 @@ from src.utils.util_functions import Util
 from aiohttp import ClientSession
 from src.utils import http_client
 from src.models.organisation_schemas import Entity, Relation
+from src.enums.idEnum import EntityIdEnum
 from typing import Optional, Sequence
 import logging
 
@@ -384,7 +385,7 @@ class OrganisationService:
 
             relation = Relation(name=RelationNameEnum.AS_PRIME_MINISTER.value,activeAt=Util.normalize_timestamp(selected_date),direction=RelationDirectionEnum.OUTGOING.value)
             prime_minister_relations = await self.opengin_service.fetch_relation(
-                entityId="gov_01",
+                entityId=EntityIdEnum.GOVERNMENT.value,
                 relation=relation
             )
 
@@ -753,7 +754,7 @@ class OrganisationService:
 
             # 5. Fill Gaps With President (if gaps exist)
             if any(entry.get("minister_id") is None for entry in enriched):
-                president_relations = await self.opengin_service.fetch_relation(entityId="gov_01", relation=Relation(name="AS_PRESIDENT"))
+                president_relations = await self.opengin_service.fetch_relation(entityId=EntityIdEnum.GOVERNMENT.value, relation=Relation(name="AS_PRESIDENT"))
                 president_info_map = await self._fetch_and_map_entities(list(set(relation.relatedEntityId for relation in president_relations)))
 
                 for entry in enriched:
