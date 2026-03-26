@@ -164,7 +164,7 @@ paths:
       tags:
         - Person
       summary: Get all presidents.
-      description: Returns a dictionary of all presidents with their terms and gazettes published during those terms.
+      description: Returns a list of all presidents with their terms and gazettes published during those terms.
       operationId: getAllPresidents
       responses:
         "200":
@@ -173,23 +173,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AllPresidentsResponse"
-              example:
-                "pres-1":
-                  id: "pres-1"
-                  name: "John Doe"
-                  terms:
-                    - start: "2010-01-01"
-                      end: "2015-01-01"
-                      gazettes_published:
-                        - date: "2012-05-15"
-                          ids: ["gzt-101", "gzt-102"]
-                "pres-2":
-                  id: "pres-2"
-                  name: "Jane Smith"
-                  terms:
-                    - start: "2015-01-01"
-                      end: null
-                      gazettes_published: []
+      example:
+        presidents:
+          - id: "pres-1"
+            name: "John Doe"
+            terms:
+              - start: "2010-01-01"
+                end: "2015-01-01"
+                gazettes_published:
+                  - date: "2012-05-15"
+                    ids: ["gzt-101", "gzt-102"]
+          - id: "pres-2"
+            name: "Jane Smith"
+            terms:
+              - start: "2015-01-01"
+                end: null
+                gazettes_published: []
 
         "500":
           description: Server Error
@@ -317,9 +316,14 @@ components:
 
     AllPresidentsResponse:
       type: object
-      additionalProperties:
-        $ref: "#/components/schemas/PresidentInfo"
-      description: "A map where keys are president IDs and values are president details"
+      required:
+        - presidents
+      properties:
+        presidents:
+          type: array
+          description: "List of all presidents sorted by their latest term date"
+          items:
+            $ref: "#/components/schemas/PresidentInfo"
 
     PresidentInfo:
       type: object
@@ -338,6 +342,7 @@ components:
           example: "John Doe"
         terms:
           type: array
+          description: "List of presidential terms, sorted by latest term first"
           items:
             $ref: "#/components/schemas/PresidentTerm"
 
@@ -358,7 +363,7 @@ components:
           format: date
           nullable: true
           description: "Term end date (YYYY-MM-DD), null if ongoing"
-          example: "2015-01-01"
+          examples: ["2015-01-01", null]
         gazettes_published:
           type: array
           items:
@@ -374,10 +379,10 @@ components:
           type: string
           format: date
           description: "Date the gazettes were published"
-          example: "2012-05-15"
+          examples: ["2012-05-15"]
         ids:
           type: array
           items:
             type: string
-          description: "List of gazette names/IDs published on this date"
+          description: "List of gazette IDs published on this date"
           example: ["gzt-101", "gzt-102"]
