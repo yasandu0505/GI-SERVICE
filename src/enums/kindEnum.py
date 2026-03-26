@@ -15,5 +15,5 @@ class KindMinorEnum(Enum):
     CITIZEN = "citizen"
     PARENT_CATEGORY = "parentCategory"
     CHILD_CATEGORY = "childCategory"
-    EXTRA_ORDINARY_GAZETTE_ORGANISATION = "extgztorg"
-    EXTRA_ORDINARY_GAZETTE_PERSON = "extgztperson"
+    EXTGZT_ORGANISATION = "extgztorg"
+    EXTGZT_PERSON = "extgztperson"

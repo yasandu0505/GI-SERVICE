@@ -9,6 +9,7 @@ from aiohttp import ClientSession
 from src.utils import http_client
 from src.models.organisation_schemas import Entity, Relation, Kind
 from src.enums.kindEnum import KindMajorEnum, KindMinorEnum
+from src.enums.idEnum import EntityIdEnum
 from src.models.person_schemas import PersonResponse
 from datetime import datetime
 
@@ -266,20 +267,20 @@ class PersonService:
         """
         try:
             president_relations_task = self.opengin_service.fetch_relation(
-                entityId="gov_01",
+                entityId=EntityIdEnum.GOVERNMENT.value,
                 relation=Relation(name=RelationNameEnum.AS_PRESIDENT.value),
             )
 
             organization_gazettes_task = self.opengin_service.get_entities(
                 Entity(kind=Kind(
                     major=KindMajorEnum.DOCUMENT.value, 
-                    minor=KindMinorEnum.EXTRA_ORDINARY_GAZETTE_ORGANISATION.value
+                    minor=KindMinorEnum.EXTGZT_ORGANISATION.value
                 ))
             )
             person_gazettes_task = self.opengin_service.get_entities(
                 Entity(kind=Kind(
                     major=KindMajorEnum.DOCUMENT.value, 
-                    minor=KindMinorEnum.EXTRA_ORDINARY_GAZETTE_PERSON.value
+                    minor=KindMinorEnum.EXTGZT_PERSON.value
                 ))
             )
             
