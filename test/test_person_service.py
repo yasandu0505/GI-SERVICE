@@ -614,8 +614,10 @@ async def test_fetch_all_presidents_success(person_service, mock_opengin_service
     with patch("src.services.person_service.Util.decode_protobuf_attribute_name", side_effect=lambda x: x):
         result = await person_service.fetch_all_presidents()
 
-        assert "p1" in result
-        president = result["p1"]
+        presidents = result["presidents"]
+        assert len(presidents) == 1
+        president = presidents[0]
+        assert president["id"] == "p1"
         assert president["name"] == "President One"
         assert len(president["terms"]) == 2
         
@@ -638,7 +640,7 @@ async def test_fetch_all_presidents_no_data(person_service, mock_opengin_service
     
     result = await person_service.fetch_all_presidents()
     
-    assert result == {}
+    assert result == []
 
 @pytest.mark.asyncio
 async def test_fetch_all_presidents_no_gazettes(person_service, mock_opengin_service):
@@ -655,9 +657,10 @@ async def test_fetch_all_presidents_no_gazettes(person_service, mock_opengin_ser
     with patch("src.services.person_service.Util.decode_protobuf_attribute_name", side_effect=lambda x: x):
         result = await person_service.fetch_all_presidents()
 
-        assert "p1" in result
-        assert result["p1"]["name"] == "President One"
-        assert result["p1"]["terms"][0]["gazettes_published"] == []
+        presidents = result["presidents"]
+        assert len(presidents) == 1
+        assert presidents[0]["name"] == "President One"
+        assert presidents[0]["terms"][0]["gazettes_published"] == []
 
 
 @pytest.mark.asyncio
@@ -682,12 +685,11 @@ async def test_fetch_all_presidents_sorting_with_multiple_terms(person_service, 
     with patch("src.services.person_service.Util.decode_protobuf_attribute_name", side_effect=lambda x: x):
         result = await person_service.fetch_all_presidents()
 
-        # keys (president ids) in final dictionary
-        ids_in_order = list(result.keys())
+        presidents = result["presidents"]
         
         # p_multi should be first because 2022 > 2010
-        assert ids_in_order[0] == "p_multi"
-        assert ids_in_order[1] == "p_old"
+        assert presidents[0]["id"] == "p_multi"
+        assert presidents[1]["id"] == "p_old"
 
 
 @pytest.mark.asyncio
