@@ -21,8 +21,7 @@ class PersonService:
     This service is responsible for executing aggregate functions by calling the OpenGINService and processing the returned data.
     """
 
-    def __init__(self, config: dict, opengin_service):
-        self.config = config
+    def __init__(self, opengin_service):
         self.opengin_service = opengin_service
 
     @property

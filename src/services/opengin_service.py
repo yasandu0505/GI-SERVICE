@@ -37,8 +37,8 @@ class OpenGINService:
     """
     The OpenGINService directly interfaces with the OpenGIN APIs to retrieve data.
     """
-    def __init__(self, config: dict):
-        self.config = config
+    def __init__(self):
+        pass
 
     @property
     def session(self) -> ClientSession:

@@ -18,8 +18,7 @@ def mock_opengin_service():
 @pytest.fixture
 def search_service(mock_opengin_service):
     """SearchService fixture with mocked OpenGINService"""
-    config = {}
-    return SearchService(config, mock_opengin_service)
+    return SearchService(mock_opengin_service)
 
 
 # ============ Tests for unified_search ============

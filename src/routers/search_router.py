@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
 from datetime import datetime
-from src.dependencies import get_config
 from src.services.search_service import SearchService
 from src.services.opengin_service import OpenGINService
 from src.models.search_schemas import SearchResponse
@@ -9,10 +8,10 @@ from src.models.search_schemas import SearchResponse
 router = APIRouter(prefix="/v1/search", tags=["Search"])
 
 
-def get_search_service(config: dict = Depends(get_config)):
+def get_search_service():
     """Factory function to create SearchService with dependencies."""
-    opengin_service = OpenGINService(config=config)
-    return SearchService(config, opengin_service)
+    opengin_service = OpenGINService()
+    return SearchService(opengin_service)
 
 
 @router.get(
