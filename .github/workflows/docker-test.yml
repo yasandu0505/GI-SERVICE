@@ -25,7 +25,6 @@ jobs:
                 # run the container
                 docker run -d --name gi-service \
                   -e BASE_URL_QUERY="http://localhost:8081" \
-                  -e BASE_URL_CRUD="http://localhost:8082" \
                   gi-service
 
                 # wait for 3 seconds

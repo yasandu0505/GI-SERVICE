@@ -14,13 +14,11 @@ logger = logging.getLogger(__name__)
 def load_config():
     load_dotenv()
     
-    BASE_URL_CRUD = os.getenv("BASE_URL_CRUD")
     BASE_URL_QUERY = os.getenv("BASE_URL_QUERY")
     
-    if BASE_URL_CRUD and BASE_URL_QUERY:
-        logger.info(f"BASE_URL_CRUD and BASE_URL_QUERY found: {BASE_URL_QUERY} , {BASE_URL_CRUD}...")
+    if BASE_URL_QUERY:
+        logger.info(f"BASE_URL_QUERY found: {BASE_URL_QUERY}...")
         return {
-            "BASE_URL_CRUD": BASE_URL_CRUD,
             "BASE_URL_QUERY": BASE_URL_QUERY
         }      
     else:
