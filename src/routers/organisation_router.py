@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Depends, Query, Body, Path
-from src.dependencies import get_config
 from src.models.organisation_schemas import Date
 from src.services import OpenGINService, OrganisationService
 from typing import Sequence
 
 router = APIRouter(prefix="/v1/organisation", tags=["Organisation"])
 
-def get_organisation_service(config: dict = Depends(get_config)):
-    opengin_service = OpenGINService(config=config)
-    return OrganisationService(config, opengin_service)
+def get_organisation_service():
+    opengin_service = OpenGINService()
+    return OrganisationService(opengin_service)
 
 @router.post('/active-portfolio-list', summary="Get active portfolio list.", description="Returns a list of portfolios under a given president and a given date.")
 async def active_portfolio_list(

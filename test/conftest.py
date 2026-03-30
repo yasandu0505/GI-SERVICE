@@ -41,7 +41,7 @@ def mock_session():
 @pytest.fixture
 def mock_service():
     """Service fixture with mocked session"""
-    return OpenGINService(config={})
+    return OpenGINService()
 
 
 # Fixtueres for OrganisationService tests
@@ -52,8 +52,7 @@ def mock_opengin_service():
 @pytest.fixture
 def organisation_service(mock_opengin_service):
     """OrganisationService fixture with mocked OpenGINService"""
-    config = {}
-    return OrganisationService(config, mock_opengin_service)
+    return OrganisationService(mock_opengin_service)
 
 # Fixtures for Util functions tests
 @pytest.fixture
@@ -64,13 +63,11 @@ def util():
 @pytest.fixture
 def data_service(mock_opengin_service):
     """DataService fixture with mocked OpenGINService"""
-    config = {}
-    return DataService(config, mock_opengin_service)
+    return DataService(mock_opengin_service)
 
 
 @pytest.fixture
 def person_service(mock_opengin_service):
     """PersonService fixture with mocked OpenGINService"""
-    config = {}
-    return PersonService(config, mock_opengin_service)
+    return PersonService(mock_opengin_service)
 
