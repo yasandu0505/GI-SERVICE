@@ -3,17 +3,9 @@ from src.services import OpenGINService, PersonService
 
 router = APIRouter(prefix="/v1/person", tags=["Person"])
 
-<<<<<<< HEAD
 def get_person_service():
     opengin_service = OpenGINService()
     return PersonService(opengin_service)
-=======
-
-def get_person_service(config: dict = Depends(get_config)):
-    opengin_service = OpenGINService(config=config)
-    return PersonService(config, opengin_service)
->>>>>>> c92f16b (Refactor enums)
-
 
 @router.get(
     "/person-history/{person_id}",
