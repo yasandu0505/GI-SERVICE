@@ -173,22 +173,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AllPresidentsResponse"
-      example:
-        presidents:
-          - id: "pres-1"
-            name: "John Doe"
-            terms:
-              - start: "2010-01-01"
-                end: "2015-01-01"
-                gazettes_published:
-                  - date: "2012-05-15"
-                    ids: ["gzt-101", "gzt-102"]
-          - id: "pres-2"
-            name: "Jane Smith"
-            terms:
-              - start: "2015-01-01"
-                end: null
-                gazettes_published: []
+              example:
+                presidents:
+                  - id: "pres-1"
+                    name: "John Doe"
+                    terms:
+                      - start: "2010-01-01"
+                        end: "2015-01-01"
+                        gazettes_published:
+                          - date: "2012-05-15"
+                            ids: ["gzt-101", "gzt-102"]
+                  - id: "pres-2"
+                    name: "Jane Smith"
+                    terms:
+                      - start: "2015-01-01"
+                        end: null
+                        gazettes_published: []
 
         "500":
           description: Server Error

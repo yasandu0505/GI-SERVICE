@@ -242,7 +242,7 @@ class PersonService:
         Fetches all presidents and their terms.
         
         Returns:
-            dict: Dictionary of presidents with their terms and gazettes published by date.
+            dict: A dictionary containing a 'presidents' key with a list of presidents with their terms, and gazettes published during those terms
         
         Output Format:
             {
@@ -298,10 +298,11 @@ class PersonService:
                 raise InternalServerError("An unexpected error occurred while fetching president relations")
 
             if not president_relations:
-                return []
+                return {"presidents": []}
 
             # Group relations by id for multiple terms for the same president
             presidents_map = {}
+            all_terms = []
             for relation in president_relations:
                 president_id = relation.relatedEntityId
                 
@@ -311,16 +312,23 @@ class PersonService:
                 term = {
                     "start": start_date,
                     "end": end_date,
-                    "_gazettes_dict": {} # Temporary lookup map for this term
+                    "gazettes_published": []
                 }
                 
                 if president_id not in presidents_map:
                     presidents_map[president_id] = {
                         "id": president_id,
+                        "name": "Unknown",
                         "terms": []
                     }
                     
                 presidents_map[president_id]["terms"].append(term)
+                
+                all_terms.append({
+                    "start": term["start"],
+                    "end": term.get("end") or "9999-12-31", # far future if ongoing
+                    "term_data": term # Reference to the term dictionary
+                })
 
             unique_president_ids = list(presidents_map.keys())
             
@@ -336,66 +344,47 @@ class PersonService:
                     decoded_name = Util.decode_protobuf_attribute_name(entity.name)
                     presidents_map[president_id]["name"] = decoded_name
 
-            # Move references for chronological processing
-            all_terms = []
-            for p_id, p_info in presidents_map.items():
-                for term in p_info["terms"]:
-                    all_terms.append({
-                        "start": term["start"],
-                        "end": term.get("end") or "9999-12-31", # far future if ongoing
-                        "term_data": term # Reference to the term dictionary
-                    })
-            
             # Combine all gazettes into a single list
             all_gazettes = []
             for gazette_result in (organization_gazettes, person_gazettes):
                 if not isinstance(gazette_result, Exception) and gazette_result:
                     all_gazettes.extend(gazette_result)
 
-            # Sort both lists 
+            # 5. Group all gazettes globally by date first
+            gazettes_by_date = {}
+            for g in all_gazettes:
+                d = g.created.split("T")[0]
+                try:
+                    g_id = Util.decode_protobuf_attribute_name(g.name)
+                except Exception as e:
+                    logger.warning(f"Could not decode gazette name, falling back to raw string: {e}")
+                    g_id = str(g.name)
+                    
+                if d not in gazettes_by_date:
+                    gazettes_by_date[d] = []
+                if g_id not in gazettes_by_date[d]:
+                    gazettes_by_date[d].append(g_id)
+
+            # Sort both lists for chronological processing
             all_terms.sort(key=lambda x: x["start"])
+            sorted_dates = sorted(gazettes_by_date.keys())
 
-            all_gazettes = [g for g in all_gazettes if g.created]
-            all_gazettes.sort(key=lambda x: x.created)
-
-            # gazette grouping by term
-            # currently alive term (so that previous terms are not considered)
+            # 6. Assign unique dates to terms based on tenure logic in one pass
             term_index = 0
             n_terms = len(all_terms)
 
-            for gazette in all_gazettes:
-                gazette_date = gazette.created.split("T")[0]
-                
-                # Skip terms that ended on or before this gazette was published 
-                while term_index < n_terms and all_terms[term_index]["end"] <= gazette_date:
+            for g_date in sorted_dates:
+                # Skip terms that ended before this date
+                while term_index < n_terms and all_terms[term_index]["end"] <= g_date:
                     term_index += 1
                 
                 if term_index < n_terms:
-                    term_item = all_terms[term_index]
-                    
-                    try:
-                        gazette_id = Util.decode_protobuf_attribute_name(gazette.name)
-                    except Exception as e:
-                        logger.warning(f"Could not decode gazette name, falling back to raw string: {e}")
-                        gazette_id = str(gazette.name)
-
-                    term_dict = term_item["term_data"]
-                    date_dict = term_dict["_gazettes_dict"]
-                    if gazette_date not in date_dict:
-                        date_dict[gazette_date] = []
-                    
-                    if gazette_id not in date_dict[gazette_date]:
-                        date_dict[gazette_date].append(gazette_id)
-
-            # Convert intermediate _gazettes_dict inside each term to the final format
-            for president_info in presidents_map.values():
-                for term in president_info["terms"]:
-                    date_dict = term.pop("_gazettes_dict")
-                    
-                    gazettes_list = [{"date": k, "ids": v} for k, v in date_dict.items()]
-                    gazettes_list.sort(key=lambda x: x["date"])
-                    
-                    term["gazettes_published"] = gazettes_list
+                    term_dict = all_terms[term_index]["term_data"]
+                    # Add formatted entry directly to the final list
+                    term_dict["gazettes_published"].append({
+                        "date": g_date,
+                        "ids": gazettes_by_date[g_date]
+                    })
 
             # Sort the presidents by their latest term's start date in descending order
             def get_latest_start(president_data):
