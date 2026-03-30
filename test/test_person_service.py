@@ -640,7 +640,7 @@ async def test_fetch_all_presidents_no_data(person_service, mock_opengin_service
     
     result = await person_service.fetch_all_presidents()
     
-    assert result == []
+    assert result == {"presidents": []}
 
 @pytest.mark.asyncio
 async def test_fetch_all_presidents_no_gazettes(person_service, mock_opengin_service):
