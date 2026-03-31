@@ -332,7 +332,7 @@ class PersonService:
 
             unique_president_ids = list(presidents_map.keys())
             
-            # Fetch presidnet details - name
+            # Fetch president details - name
             tasks = [self.opengin_service.get_entities(Entity(id=president_id)) for president_id in unique_president_ids]
             entities_results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -350,40 +350,40 @@ class PersonService:
                 if not isinstance(gazette_result, Exception) and gazette_result:
                     all_gazettes.extend(gazette_result)
 
-            # 5. Group all gazettes globally by date first
+            # Group all gazettes globally by date first
             gazettes_by_date = {}
-            for g in all_gazettes:
-                d = g.created.split("T")[0]
+            for gazette in all_gazettes:
+                date = gazette.created.split("T")[0]
                 try:
-                    g_id = Util.decode_protobuf_attribute_name(g.name)
+                    gazette_id = Util.decode_protobuf_attribute_name(gazette.name)
                 except Exception as e:
-                    logger.warning(f"Could not decode gazette name, falling back to raw string: {e}")
-                    g_id = str(g.name)
+                    logger.warning(f"Could not decode gazette name")
+                    gazette_id = "Unknown"
                     
-                if d not in gazettes_by_date:
-                    gazettes_by_date[d] = []
-                if g_id not in gazettes_by_date[d]:
-                    gazettes_by_date[d].append(g_id)
+                if date not in gazettes_by_date:
+                    gazettes_by_date[date] = []
+                if gazette_id not in gazettes_by_date[date]:
+                    gazettes_by_date[date].append(gazette_id)
 
             # Sort both lists for chronological processing
             all_terms.sort(key=lambda x: x["start"])
             sorted_dates = sorted(gazettes_by_date.keys())
 
-            # 6. Assign unique dates to terms based on tenure logic in one pass
+            # Assign unique dates to terms based on tenure logic in one pass
             term_index = 0
-            n_terms = len(all_terms)
+            number_of_terms = len(all_terms)
 
-            for g_date in sorted_dates:
+            for gazette_date in sorted_dates:
                 # Skip terms that ended before this date
-                while term_index < n_terms and all_terms[term_index]["end"] <= g_date:
+                while term_index < number_of_terms and all_terms[term_index]["end"] <= gazette_date:
                     term_index += 1
                 
-                if term_index < n_terms:
+                if term_index < number_of_terms and all_terms[term_index]["start"] <= gazette_date:
                     term_dict = all_terms[term_index]["term_data"]
                     # Add formatted entry directly to the final list
                     term_dict["gazettes_published"].append({
-                        "date": g_date,
-                        "ids": gazettes_by_date[g_date]
+                        "date": gazette_date,
+                        "ids": gazettes_by_date[gazette_date]
                     })
 
             # Sort the presidents by their latest term's start date in descending order

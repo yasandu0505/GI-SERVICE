@@ -513,7 +513,7 @@ async def test_department_history_timeline_success(
                 ]
         if (
             entityId == EntityIdEnum.GOVERNMENT.value
-            and relation.name == "AS_PRESIDENT"
+            and relation.name == RelationNameEnum.AS_PRESIDENT.value
         ):
             return [
                 Relation(

@@ -754,7 +754,7 @@ class OrganisationService:
 
             # 5. Fill Gaps With President (if gaps exist)
             if any(entry.get("minister_id") is None for entry in enriched):
-                president_relations = await self.opengin_service.fetch_relation(entityId=EntityIdEnum.GOVERNMENT.value, relation=Relation(name="AS_PRESIDENT"))
+                president_relations = await self.opengin_service.fetch_relation(entityId=EntityIdEnum.GOVERNMENT.value, relation=Relation(name=RelationNameEnum.AS_PRESIDENT.value))
                 president_info_map = await self._fetch_and_map_entities(list(set(relation.relatedEntityId for relation in president_relations)))
 
                 for entry in enriched:
