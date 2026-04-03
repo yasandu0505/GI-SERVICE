@@ -7,7 +7,9 @@ import asyncio
 from src.utils.util_functions import Util
 from aiohttp import ClientSession
 from src.utils import http_client
-from src.models.organisation_schemas import Entity, Relation
+from src.models.organisation_schemas import Entity, Relation, Kind
+from src.enums.kindEnum import KindMajorEnum, KindMinorEnum
+from src.enums.idEnum import EntityIdEnum
 from src.models.person_schemas import PersonResponse
 from datetime import datetime
 
@@ -233,4 +235,166 @@ class PersonService:
             raise
         except Exception as e:
             logger.error(f"Error fetching person profile: {e}")
+            raise InternalServerError("An unexpected error occurred") from e
+
+    async def fetch_all_presidents(self):
+        """
+        Fetches all presidents and their terms.
+        
+        Returns:
+            dict: A dictionary containing a 'presidents' key with a list of presidents with their terms, and gazettes published during those terms
+        
+        Output Format:
+            {
+                "presidents": [
+                    {
+                        "id": "president_id",
+                        "name": "president_name",
+                        "terms": [
+                            {
+                                "start": "start_date",
+                                "end": "end_date",
+                                "gazettes_published": [
+                                    {
+                                        "date": "gazette_date",
+                                        "ids": ["gazette_id"]
+                                    }
+                                ]
+                            }
+                        ],
+                    }
+                ]
+            }
+        """
+        try:
+            president_relations_task = self.opengin_service.fetch_relation(
+                entityId=EntityIdEnum.GOVERNMENT.value,
+                relation=Relation(name=RelationNameEnum.AS_PRESIDENT.value),
+            )
+
+            organization_gazettes_task = self.opengin_service.get_entities(
+                Entity(kind=Kind(
+                    major=KindMajorEnum.DOCUMENT.value, 
+                    minor=KindMinorEnum.EXTGZT_ORGANISATION.value
+                ))
+            )
+            person_gazettes_task = self.opengin_service.get_entities(
+                Entity(kind=Kind(
+                    major=KindMajorEnum.DOCUMENT.value, 
+                    minor=KindMinorEnum.EXTGZT_PERSON.value
+                ))
+            )
+            
+            results = await asyncio.gather(
+                president_relations_task, 
+                organization_gazettes_task, 
+                person_gazettes_task,
+                return_exceptions=True
+            )
+            president_relations, organization_gazettes, person_gazettes = results
+            
+            if isinstance(president_relations, Exception):
+                logger.error(f"Failed to fetch president relations: {president_relations}")
+                raise InternalServerError("An unexpected error occurred while fetching president relations")
+
+            if not president_relations:
+                return {"presidents": []}
+
+            # Group relations by id for multiple terms for the same president
+            presidents_map = {}
+            all_terms = []
+            for relation in president_relations:
+                president_id = relation.relatedEntityId
+                
+                start_date = relation.startTime.split('T')[0]
+                end_date = relation.endTime.split('T')[0] if relation.endTime else None
+                
+                term = {
+                    "start": start_date,
+                    "end": end_date,
+                    "gazettes_published": []
+                }
+                
+                if president_id not in presidents_map:
+                    presidents_map[president_id] = {
+                        "id": president_id,
+                        "name": "Unknown",
+                        "terms": []
+                    }
+                    
+                presidents_map[president_id]["terms"].append(term)
+                
+                all_terms.append({
+                    "start": term["start"],
+                    "end": term.get("end") or "9999-12-31", # far future if ongoing
+                    "term_data": term # Reference to the term dictionary
+                })
+
+            unique_president_ids = list(presidents_map.keys())
+            
+            # Fetch president details - name
+            tasks = [self.opengin_service.get_entities(Entity(id=president_id)) for president_id in unique_president_ids]
+            entities_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Update the map with names
+            for i, president_id in enumerate(unique_president_ids):
+                entity_data = entities_results[i]
+                if not isinstance(entity_data, Exception) and entity_data:
+                    entity = entity_data[0]
+                    decoded_name = Util.decode_protobuf_attribute_name(entity.name)
+                    presidents_map[president_id]["name"] = decoded_name
+
+            # Combine all gazettes into a single list
+            all_gazettes = []
+            for gazette_result in (organization_gazettes, person_gazettes):
+                if not isinstance(gazette_result, Exception) and gazette_result:
+                    all_gazettes.extend(gazette_result)
+
+            # Group all gazettes globally by date first
+            gazettes_by_date = {}
+            for gazette in all_gazettes:
+                date = gazette.created.split("T")[0]
+                try:
+                    gazette_id = Util.decode_protobuf_attribute_name(gazette.name)
+                except Exception as e:
+                    logger.warning(f"Could not decode gazette name")
+                    gazette_id = "Unknown"
+                    
+                if date not in gazettes_by_date:
+                    gazettes_by_date[date] = []
+                if gazette_id not in gazettes_by_date[date]:
+                    gazettes_by_date[date].append(gazette_id)
+
+            # Sort both lists for chronological processing
+            all_terms.sort(key=lambda x: x["start"])
+            sorted_dates = sorted(gazettes_by_date.keys())
+
+            # Assign unique dates to terms based on tenure logic in one pass
+            term_index = 0
+            number_of_terms = len(all_terms)
+
+            for gazette_date in sorted_dates:
+                # Skip terms that ended before this date
+                while term_index < number_of_terms and all_terms[term_index]["end"] <= gazette_date:
+                    term_index += 1
+                
+                if term_index < number_of_terms and all_terms[term_index]["start"] <= gazette_date:
+                    term_dict = all_terms[term_index]["term_data"]
+                    # Add formatted entry directly to the final list
+                    term_dict["gazettes_published"].append({
+                        "date": gazette_date,
+                        "ids": gazettes_by_date[gazette_date]
+                    })
+
+            # Sort the presidents by their latest term's start date in descending order
+            def get_latest_start(president_data):
+                return max(term["start"] for term in president_data["terms"])
+
+            presidents_list = sorted(
+                presidents_map.values(), key=get_latest_start, reverse=True
+            )
+
+            return {"presidents": presidents_list}
+        except Exception as e:
+            logger.error(f"Error fetching all presidents: {e}")
             raise InternalServerError("An unexpected error occurred") from e

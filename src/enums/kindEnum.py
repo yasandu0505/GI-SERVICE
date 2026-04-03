@@ -5,6 +5,7 @@ class KindMajorEnum(Enum):
     PERSON = "Person"
     CATEGORY = "Category"
     DATASET = "Dataset"
+    DOCUMENT = "Document"
 
 class KindMinorEnum(Enum):
     DEPARTMENT = "department"
@@ -14,3 +15,5 @@ class KindMinorEnum(Enum):
     CITIZEN = "citizen"
     PARENT_CATEGORY = "parentCategory"
     CHILD_CATEGORY = "childCategory"
+    EXTGZT_ORGANISATION = "extgztorg"
+    EXTGZT_PERSON = "extgztperson"
